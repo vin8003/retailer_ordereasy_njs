@@ -57,7 +57,20 @@ export default function CustomersPage() {
         try {
             const response = await customerService.getRetailerCustomers();
             if (response.status === 200) {
-                setCustomers(response.data);
+                // Map snake_case to camelCase
+                const mappedData = response.data.map((item: any) => ({
+                    customerId: item.customer_id,
+                    customerName: item.customer_name,
+                    phoneNumber: item.phone_number,
+                    profileImage: item.profile_image,
+                    totalOrders: item.total_orders,
+                    totalSpent: item.total_spent ? parseFloat(item.total_spent) : 0,
+                    averageRating: item.average_rating ? parseFloat(item.average_rating) : 0,
+                    joinedDate: item.joined_date,
+                    lastOrderDate: item.last_order_date,
+                    isBlacklisted: item.is_blacklisted,
+                }));
+                setCustomers(mappedData);
             } else {
                 throw new Error('Failed to load customers');
             }
@@ -82,9 +95,9 @@ export default function CustomersPage() {
             const query = searchQuery.toLowerCase();
             result = result.filter(
                 (c) =>
-                    c.customerName.toLowerCase().includes(query) ||
+                    (c.customerName && c.customerName.toLowerCase().includes(query)) ||
                     (c.phoneNumber && c.phoneNumber.includes(query)) ||
-                    c.customerId.toString().includes(query)
+                    (c.customerId && c.customerId.toString().includes(query))
             );
         }
 
@@ -226,7 +239,7 @@ export default function CustomersPage() {
                         </TableHeader>
                         <TableBody>
                             {filteredCustomers.length === 0 ? (
-                                <TableRow>
+                                <TableRow key="no-customers">
                                     <TableCell colSpan={6} className="text-center h-24">
                                         No customers found.
                                     </TableCell>

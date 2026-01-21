@@ -112,7 +112,12 @@ api.interceptors.response.use(
 export const authService = {
   login: (data: any) => api.post('auth/retailer/login/', data),
   signup: (data: any) => api.post('auth/retailer/signup/', data),
-  fetchProfile: () => api.get('auth/profile/'),
+  fetchProfile: () => api.get('retailer/profile/'),
+  updateProfile: (data: any) => {
+    // Determine content type based on data (FormData vs JSON)
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    return api.put('retailer/profile/update/', data, { headers });
+  },
   fetchStats: () => api.get('orders/stats/'),
 };
 

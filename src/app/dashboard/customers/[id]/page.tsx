@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { customerService, api } from '@/services/api';
+import api, { customerService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +50,10 @@ interface CustomerDetail {
 
 export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
-    const [id, setId] = useState<number | null>(null); // Use state for unwrapped ID
+    // Unwrap params using React.use()
+    const { id: idParam } = use(params);
+    const id = idParam ? parseInt(idParam) : null;
+
     const [customer, setCustomer] = useState<CustomerDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -64,21 +67,31 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     const [actionLoading, setActionLoading] = useState(false);
 
 
-    // Unwrap params properly
-    useEffect(() => {
-        params.then((unwrappedParams) => {
-            setId(parseInt(unwrappedParams.id));
-        });
-    }, [params]);
-
-
     const fetchDetails = async () => {
-        if (!id) return;
+        if (!id) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const response = await customerService.getRetailerCustomerDetail(id);
             if (response.status === 200) {
-                setCustomer(response.data);
+                const data = response.data;
+                setCustomer({
+                    customerId: data.customer_id,
+                    customerName: data.customer_name,
+                    phoneNumber: data.phone_number,
+                    email: data.email,
+                    profileImage: data.profile_image,
+                    totalOrders: data.total_orders,
+                    totalSpent: data.total_spent ? parseFloat(data.total_spent) : 0,
+                    points: data.points ? parseFloat(data.points) : 0,
+                    averageRating: data.average_rating ? parseFloat(data.average_rating) : 0,
+                    joinedDate: data.joined_date,
+                    isBlacklisted: data.is_blacklisted,
+                    recentOrders: data.recent_orders || [],
+                    rewardHistory: data.reward_history || [],
+                });
             } else {
                 throw new Error('Failed to load details');
             }
@@ -148,8 +161,6 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         const baseUrl = 'https://api.ordereasy.win';
         return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
     };
-
-    if (!id) return null; // Wait for ID
 
     if (loading) {
         return (
