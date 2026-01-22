@@ -118,7 +118,7 @@ export function ProductTable({ products, isLoading, onDelete }: ProductTableProp
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                         <DropdownMenuItem
-                                            onClick={() => router.push(`/dashboard/products/${product.id}/edit`)}
+                                            onClick={() => router.push(`/dashboard/products/edit?id=${product.id}`)}
                                         >
                                             <Edit className="mr-2 h-4 w-4" />
                                             Edit

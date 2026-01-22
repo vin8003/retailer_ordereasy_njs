@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api, { customerService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,10 +48,10 @@ interface CustomerDetail {
     rewardHistory: any[];
 }
 
-export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+function CustomerDetailContent() {
     const router = useRouter();
-    // Unwrap params using React.use()
-    const { id: idParam } = use(params);
+    const searchParams = useSearchParams();
+    const idParam = searchParams.get('id');
     const id = idParam ? parseInt(idParam) : null;
 
     const [customer, setCustomer] = useState<CustomerDetail | null>(null);
@@ -368,6 +368,18 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                 </DialogContent>
             </Dialog>
         </div>
+    );
+}
+
+export default function CustomerDetailPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex justify-center items-center h-screen">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        }>
+            <CustomerDetailContent />
+        </Suspense>
     );
 }
 

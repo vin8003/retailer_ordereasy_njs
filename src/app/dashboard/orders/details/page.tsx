@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail } from "lucide-react";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,8 @@ import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 import { orderService } from "@/services/api";
 
-export default function OrderDetailPage() {
-    const params = useParams();
+function OrderDetailContent() {
+    const searchParams = useSearchParams();
     const router = useRouter();
     const [order, setOrder] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -24,7 +24,7 @@ export default function OrderDetailPage() {
     const fetchOrderDetails = async () => {
         setIsLoading(true);
         try {
-            const id = Number(params?.id);
+            const id = Number(searchParams.get('id'));
             if (!id) throw new Error("Invalid Order ID");
             const response = await orderService.fetchOrderDetails(id);
             setOrder(response.data);
@@ -37,10 +37,10 @@ export default function OrderDetailPage() {
     };
 
     useEffect(() => {
-        if (params?.id) {
+        if (searchParams.get('id')) {
             fetchOrderDetails();
         }
-    }, [params]);
+    }, [searchParams]);
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
     if (error || !order) return <div className="p-8 text-center text-red-500">{error || "Order not found"}</div>;
@@ -191,5 +191,13 @@ export default function OrderDetailPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function OrderDetailPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading order details...</div>}>
+            <OrderDetailContent />
+        </Suspense>
     );
 }

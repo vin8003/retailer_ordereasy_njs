@@ -59,7 +59,7 @@ export function SessionList() {
                     <Card
                         key={session.id}
                         className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => router.push(`/dashboard/products/bulk/${session.id}`)}
+                        onClick={() => router.push(`/dashboard/products/bulk/details?id=${session.id}`)}
                     >
                         <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
                             <div className="flex items-center gap-4">

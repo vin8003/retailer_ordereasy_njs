@@ -108,7 +108,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                         <DropdownMenuItem
-                                            onClick={() => router.push(`/dashboard/orders/${order.id}`)}
+                                            onClick={() => router.push(`/dashboard/orders/details?id=${order.id}`)}
                                         >
                                             <Eye className="mr-2 h-4 w-4" />
                                             View Details

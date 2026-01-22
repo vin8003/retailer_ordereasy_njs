@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductForm } from "@/components/products/ProductForm";
 import { productService } from "@/services/api";
 
-export default function EditProductPage() {
+function EditProductContent() {
     const router = useRouter();
-    const params = useParams();
+    const searchParams = useSearchParams();
     const [product, setProduct] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function EditProductPage() {
         const fetchProduct = async () => {
             setIsLoading(true);
             try {
-                const id = Number(params?.id);
+                const id = Number(searchParams.get('id'));
                 if (!id) throw new Error("Invalid Product ID");
                 const response = await productService.fetchProductDetails(id);
                 setProduct(response.data);
@@ -30,10 +30,10 @@ export default function EditProductPage() {
             }
         };
 
-        if (params?.id) {
+        if (searchParams.get('id')) {
             fetchProduct();
         }
-    }, [params]);
+    }, [searchParams]);
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading product...</div>;
     if (error || !product) return <div className="p-8 text-center text-red-500">{error || "Product not found"}</div>;
@@ -56,5 +56,13 @@ export default function EditProductPage() {
                 <ProductForm initialData={product} isEditing={true} />
             </div>
         </div>
+    );
+}
+
+export default function EditProductPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+            <EditProductContent />
+        </Suspense>
     );
 }

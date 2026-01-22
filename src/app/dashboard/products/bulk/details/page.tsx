@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { productService } from "@/services/api";
-import { ArrowLeft, Save, CheckCircle, Smartphone } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Smartphone, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,9 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
-export default function SessionReviewPage() {
+function SessionReviewContent() {
     const router = useRouter();
-    const params = useParams();
+    const searchParams = useSearchParams();
     const [isLoading, setIsLoading] = useState(true);
     const [session, setSession] = useState<any>(null);
     const [matchedItems, setMatchedItems] = useState<any[]>([]);
@@ -37,12 +37,12 @@ export default function SessionReviewPage() {
 
     useEffect(() => {
         loadSession();
-    }, [params]);
+    }, [searchParams]);
 
     const loadSession = async () => {
         setIsLoading(true);
         try {
-            const id = Number(params?.id);
+            const id = Number(searchParams.get('id'));
             if (!id) throw new Error("Invalid Session ID");
             const response = await productService.getSessionDetails(id);
             const { session, matched_items, unmatched_items } = response.data;
@@ -106,7 +106,7 @@ export default function SessionReviewPage() {
         if (modifiedItems.size === 0) return;
         setIsSaving(true);
         try {
-            const id = Number(params?.id);
+            const id = Number(searchParams.get('id'));
             const allItems = [...matchedItems, ...unmatchedItems];
             const itemsToUpdate = allItems
                 .filter(i => modifiedItems.has(i.id))
@@ -126,7 +126,7 @@ export default function SessionReviewPage() {
         setIsSaving(true);
         try {
             // First save everything explicitly to ensure backend states match UI
-            const id = Number(params?.id);
+            const id = Number(searchParams.get('id'));
             const allItems = [...matchedItems, ...unmatchedItems];
             const itemsToUpdate = allItems.map(i => ({ id: i.id, product_details: i.product_details }));
 
@@ -226,6 +226,14 @@ export default function SessionReviewPage() {
                 </Button>
             </div>
         </div>
+    );
+}
+
+export default function SessionReviewPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading session details...</div>}>
+            <SessionReviewContent />
+        </Suspense>
     );
 }
 

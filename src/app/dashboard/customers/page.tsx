@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { customerService, api } from '@/services/api';
+import { customerService } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -249,7 +249,7 @@ export default function CustomersPage() {
                                     <TableRow
                                         key={customer.customerId}
                                         className="cursor-pointer hover:bg-slate-50"
-                                        onClick={() => router.push(`/dashboard/customers/${customer.customerId}`)}
+                                        onClick={() => router.push(`/dashboard/customers/details?id=${customer.customerId}`)}
                                     >
                                         <TableCell>
                                             <div className="flex items-center gap-3">
