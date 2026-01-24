@@ -46,7 +46,16 @@ export default function OrdersPage() {
             fetchOrders();
         }, 300); // 300ms debounce for search
 
-        return () => clearTimeout(timer);
+        const handleFcmUpdate = () => {
+            console.log('Retailer Orders page refreshing due to FCM update');
+            fetchOrders();
+        };
+
+        window.addEventListener('fcm_order_update', handleFcmUpdate);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('fcm_order_update', handleFcmUpdate);
+        };
     }, [statusFilter, searchQuery]);
 
     return (

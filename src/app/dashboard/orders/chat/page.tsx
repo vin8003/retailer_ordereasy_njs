@@ -44,12 +44,20 @@ function ChatContent() {
         fetchMessages();
         markRead();
 
-        intervalRef.current = setInterval(() => {
-            fetchMessages(true);
-        }, 5000);
+        const handleFcmUpdate = (event: any) => {
+            const payload = event.detail;
+            const updatedOrderId = payload.data?.order_id || payload.data?.id;
+
+            if (Number(updatedOrderId) === safeOrderId) {
+                fetchMessages(true);
+                markRead();
+            }
+        };
+
+        window.addEventListener('fcm_chat_message', handleFcmUpdate);
 
         return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
+            window.removeEventListener('fcm_chat_message', handleFcmUpdate);
         };
     }, [safeOrderId]);
 
@@ -147,8 +155,8 @@ function ChatContent() {
 
                                 <div className={`flex flex-col ${msg.is_me ? 'items-end' : 'items-start'}`}>
                                     <div className={`px-4 py-2 rounded-2xl text-sm ${msg.is_me
-                                            ? 'bg-primary text-primary-foreground rounded-br-sm'
-                                            : 'bg-white border shadow-sm rounded-bl-sm'
+                                        ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                        : 'bg-white border shadow-sm rounded-bl-sm'
                                         }`}>
                                         {msg.message}
                                     </div>

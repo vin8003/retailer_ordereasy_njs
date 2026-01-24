@@ -37,9 +37,24 @@ function OrderDetailContent() {
     };
 
     useEffect(() => {
-        if (searchParams.get('id')) {
+        const id = searchParams.get('id');
+        if (id) {
             fetchOrderDetails();
         }
+
+        const handleFcmUpdate = (event: any) => {
+            const payload = event.detail;
+            const updatedOrderId = payload.data?.order_id || payload.data?.id;
+
+            if (Number(updatedOrderId) === Number(id)) {
+                fetchOrderDetails();
+            }
+        };
+
+        window.addEventListener('fcm_order_update', handleFcmUpdate);
+        return () => {
+            window.removeEventListener('fcm_order_update', handleFcmUpdate);
+        };
     }, [searchParams]);
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;

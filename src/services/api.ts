@@ -105,6 +105,11 @@ export const authService = {
   login: (data: any) => api.post('auth/retailer/login/', data),
   signup: (data: any) => api.post('auth/retailer/signup/', data),
   fetchProfile: () => api.get('retailer/profile/'),
+  registerDeviceToken: (token: string) => api.post('auth/device/register/', {
+    registration_id: token,
+    type: 'web',
+    name: 'retailer_web'
+  }),
   updateProfile: (data: any) => {
     // Determine content type based on data (FormData vs JSON)
     const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
