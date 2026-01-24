@@ -119,6 +119,13 @@ export const authService = {
     return api.put('retailer/profile/update/', data, { headers });
   },
   fetchStats: () => api.get('orders/stats/'),
+  verifyPhoneWithFirebase: async (phone: string, token: string) => {
+    const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`;
+    return api.post('auth/customer/verify-otp/', {
+      phone_number: formattedPhone,
+      firebase_token: token
+    });
+  },
 };
 
 export const orderService = {

@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine } from 'lucide-react';
+import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine, CheckCircle, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
+import PhoneVerification from '@/components/auth/PhoneVerification';
 
 interface RetailerProfile {
     // Basic
@@ -23,6 +24,7 @@ interface RetailerProfile {
     contactEmail: string;
     contactPhone: string;
     whatsappNumber?: string;
+    isPhoneVerified?: boolean;
 
     // Address
     addressLine1: string;
@@ -64,6 +66,9 @@ export default function ProfilePage() {
     const [shopImageFile, setShopImageFile] = useState<File | null>(null);
     const [qrCodeFile, setQrCodeFile] = useState<File | null>(null);
 
+    // Phone Verification
+    const [showVerification, setShowVerification] = useState(false);
+
     const fetchProfile = async () => {
         setLoading(true);
         try {
@@ -76,8 +81,9 @@ export default function ProfilePage() {
                     shopDescription: data.shop_description,
                     username: data.username,
                     contactEmail: data.contact_email,
-                    contactPhone: data.contact_phone,
+                    contactPhone: data.contact_phone, // This is profile contact phone, usually same as user phone
                     whatsappNumber: data.whatsapp_number,
+                    isPhoneVerified: data.is_phone_verified, // Added to serializer
                     addressLine1: data.address_line1,
                     addressLine2: data.address_line2,
                     city: data.city,
@@ -112,10 +118,8 @@ export default function ProfilePage() {
     }, []);
 
     const handleLogout = () => {
-        // Clear local storage
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        // Redirect
         router.push('/login');
         toast.success("Logged out successfully");
     };
@@ -125,24 +129,16 @@ export default function ProfilePage() {
         try {
             const formDataToSend = new FormData();
 
-            // Append all text fields
-            // Note: We need to map camelCase back to snake_case for the API
             Object.entries(formData).forEach(([key, value]) => {
                 const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
                 if (key === 'serviceablePincodes' && Array.isArray(value)) {
-                    // Handle array usually by sending multiple keys or JSON string. 
-                    // DRF expects list usually.
-                    // For FormData, often we append each item.
-                    // However, standard DRF with FormData might need comma separated or multiple appends.
-                    // Let's try appending strictly.
                     value.forEach(p => formDataToSend.append('serviceable_pincodes', p));
-                } else if (value !== undefined && value !== null) {
+                } else if (value !== undefined && value !== null && key !== 'isPhoneVerified') {
                     formDataToSend.append(snakeKey, value.toString());
                 }
             });
 
-            // Append files if changed
             if (shopImageFile) {
                 formDataToSend.append('shop_image', shopImageFile);
             }
@@ -183,6 +179,16 @@ export default function ProfilePage() {
 
     return (
         <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+            <PhoneVerification
+                isOpen={showVerification}
+                onClose={() => setShowVerification(false)}
+                initialPhone={profile.contactPhone}
+                onVerified={() => {
+                    fetchProfile();
+                    setShowVerification(false);
+                }}
+            />
+
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Store Profile</h1>
                 {!isEditing && (
@@ -250,7 +256,25 @@ export default function ProfilePage() {
                                 <Input disabled={!isEditing} value={formData.contactEmail} onChange={e => setFormData({ ...formData, contactEmail: e.target.value })} />
                             </div>
                             <div className="space-y-2">
-                                <Label>Phone</Label>
+                                <div className="flex justify-between items-center">
+                                    <Label>Phone</Label>
+                                    <div className="flex items-center gap-1">
+                                        {profile.isPhoneVerified ? (
+                                            <span className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                                                <CheckCircle className="w-3 h-3 mr-1" /> Verified
+                                            </span>
+                                        ) : (
+                                            <Button
+                                                variant="link"
+                                                size="sm"
+                                                className="h-auto p-0 text-xs text-blue-600 font-normal"
+                                                onClick={() => setShowVerification(true)}
+                                            >
+                                                Verify Now
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
                                 <Input disabled={!isEditing} value={formData.contactPhone} onChange={e => setFormData({ ...formData, contactPhone: e.target.value })} />
                             </div>
                             <div className="space-y-2">
