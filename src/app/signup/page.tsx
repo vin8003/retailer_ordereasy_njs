@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { authService } from "@/services/api";
+import { authService, setAuthToken } from "@/services/api";
 
 const formSchema = z.object({
     username: z.string().min(1, "Username is required"),
@@ -62,10 +62,17 @@ export default function SignupPage() {
                 password_confirm: values.confirm_password,
             };
 
-            await authService.signup(payload);
+            const response = await authService.signup(payload);
 
-            toast.success("Account created successfully! Please login.");
-            router.push("/login");
+            if (response.data && response.data.tokens) {
+                const { access, refresh } = response.data.tokens;
+                setAuthToken(access, refresh);
+                toast.success("Account created successfully!");
+                router.push("/dashboard");
+            } else {
+                toast.success("Account created successfully! Please login.");
+                router.push("/login");
+            }
         } catch (error: any) {
             console.error("Signup error:", error);
             const errorMessage =

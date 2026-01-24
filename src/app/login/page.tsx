@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { authService } from "@/services/api";
+import { authService, setAuthToken } from "@/services/api";
 
 const formSchema = z.object({
     username: z.string().min(1, "Username is required"),
@@ -46,8 +46,7 @@ export default function LoginPage() {
             const response = await authService.login(values);
             const { access, refresh } = response.data.tokens;
 
-            localStorage.setItem("access_token", access);
-            localStorage.setItem("refresh_token", refresh);
+            setAuthToken(access, refresh);
 
             toast.success("Login successful!");
             router.push("/dashboard"); // Redirect to dashboard

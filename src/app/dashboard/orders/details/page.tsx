@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2 } from "lucide-react";
+import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,10 @@ function OrderDetailContent() {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    {/* Placeholder for Print Invoice or other actions */}
+                    <Button variant="outline" onClick={() => router.push(`/dashboard/orders/chat?id=${order.id}`)}>
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Chat with Customer
+                    </Button>
                 </div>
             </div>
 
