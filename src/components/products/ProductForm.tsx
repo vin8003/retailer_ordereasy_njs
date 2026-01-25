@@ -12,11 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
     Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Autocomplete } from "@/components/ui/Autocomplete";
 import { productService } from "@/services/api";
 
 interface ProductFormProps {
@@ -37,6 +35,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [unit, setUnit] = useState(initialData?.unit || "piece");
     const [minOrderQty, setMinOrderQty] = useState(initialData?.minimum_order_quantity || "1");
     const [maxOrderQty, setMaxOrderQty] = useState(initialData?.maximum_order_quantity || "");
+    const [productGroup, setProductGroup] = useState(initialData?.product_group || "");
 
     // Handle category: could be ID (create) or Object (edit)
     const getInitialCategoryId = () => {
@@ -54,21 +53,36 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
     // Data State
     const [categories, setCategories] = useState<any[]>([]);
+    const [allCategories, setAllCategories] = useState<any[]>([]);
+    const [productGroups, setProductGroups] = useState<string[]>([]);
+    const [categorySearch, setCategorySearch] = useState(initialData?.category?.name || (typeof initialData?.category === 'string' ? initialData.category : ""));
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchInitialData = async () => {
             try {
-                const response = await productService.fetchCategories();
-                setCategories(response.data);
+                const [catsRes, allCatsRes, groupsRes] = await Promise.all([
+                    productService.fetchCategories(),
+                    productService.fetchAllCategories(),
+                    productService.fetchProductGroups()
+                ]);
+                setCategories(catsRes.data);
+                setAllCategories(allCatsRes.data);
+                setProductGroups(groupsRes.data);
+
+                // If editing, find the display name for the category
+                if (isEditing && initialData?.category) {
+                    const id = typeof initialData.category === 'object' ? initialData.category.id : initialData.category;
+                    const found = allCatsRes.data.find((c: any) => c.id === id);
+                    if (found) setCategorySearch(found.name);
+                }
             } catch (error) {
-                console.error("Failed to load categories", error);
-                toast.error("Failed to load categories");
+                console.error("Failed to load form data", error);
             }
         };
-        fetchCategories();
-    }, []);
+        fetchInitialData();
+    }, [isEditing, initialData]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -110,6 +124,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("unit", unit);
             formData.append("minimum_order_quantity", minOrderQty);
             if (maxOrderQty) formData.append("maximum_order_quantity", maxOrderQty);
+            if (productGroup) formData.append("product_group", productGroup);
 
             if (categoryId) formData.append("category", categoryId);
             formData.append("is_active", String(isActive));
@@ -296,21 +311,30 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     />
                 </div>
 
+                {/* Product Group */}
+                <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="productGroup">Product Group</Label>
+                    <Autocomplete
+                        value={productGroup}
+                        onChange={setProductGroup}
+                        suggestions={productGroups}
+                        placeholder="e.g. Ketchup & Sauces"
+                    />
+                </div>
+
                 {/* Category */}
                 <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Select value={categoryId} onValueChange={setCategoryId}>
-                        <SelectTrigger id="category">
-                            <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[200px]">
-                            {categories.map((cat: any) => (
-                                <SelectItem key={cat.id} value={cat.id.toString()}>
-                                    {cat.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Autocomplete
+                        value={categorySearch}
+                        onChange={(val) => {
+                            setCategorySearch(val);
+                            if (!val) setCategoryId("");
+                        }}
+                        onSelect={(id) => setCategoryId(id)}
+                        suggestions={allCategories}
+                        placeholder="Search category..."
+                    />
                 </div>
 
                 {/* Active Status */}

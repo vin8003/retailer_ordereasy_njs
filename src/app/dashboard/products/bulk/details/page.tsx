@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { productService } from "@/services/api";
+import { Autocomplete } from "@/components/ui/Autocomplete";
 import { ArrowLeft, Save, CheckCircle, Smartphone, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,10 +35,26 @@ function SessionReviewContent() {
     const [unmatchedItems, setUnmatchedItems] = useState<any[]>([]);
     const [modifiedItems, setModifiedItems] = useState<Set<number>>(new Set());
     const [isSaving, setIsSaving] = useState(false);
+    const [allCategories, setAllCategories] = useState<any[]>([]);
+    const [productGroups, setProductGroups] = useState<string[]>([]);
 
     useEffect(() => {
         loadSession();
+        fetchSuggestions();
     }, [searchParams]);
+
+    const fetchSuggestions = async () => {
+        try {
+            const [catsRes, groupsRes] = await Promise.all([
+                productService.fetchAllCategories(),
+                productService.fetchProductGroups()
+            ]);
+            setAllCategories(catsRes.data);
+            setProductGroups(groupsRes.data);
+        } catch (error) {
+            console.error("Failed to load suggestions", error);
+        }
+    };
 
     const loadSession = async () => {
         setIsLoading(true);
@@ -63,6 +80,7 @@ function SessionReviewContent() {
                         quantity: details.quantity || "",
                         brand: details.brand || uiData.brand || "",
                         category: details.category || uiData.category || "",
+                        product_group: details.product_group || uiData.product_group || "",
                     }
                 };
             });
@@ -222,6 +240,8 @@ function SessionReviewContent() {
                                 isMatched={false}
                                 onChange={(field, val) => handleItemChange(item.id, field, val, false)}
                                 onDelete={() => handleDeleteItem(item.id)}
+                                categories={allCategories}
+                                productGroups={productGroups}
                             />
                         ))
                     )}
@@ -238,6 +258,8 @@ function SessionReviewContent() {
                                 isMatched={true}
                                 onChange={(field, val) => handleItemChange(item.id, field, val, true)}
                                 onDelete={() => handleDeleteItem(item.id)}
+                                categories={allCategories}
+                                productGroups={productGroups}
                             />
                         ))
                     )}
@@ -262,7 +284,21 @@ export default function SessionReviewPage() {
     );
 }
 
-function SessionItemCard({ item, isMatched, onChange, onDelete }: { item: any, isMatched: boolean, onChange: (field: string, val: any) => void, onDelete: () => void }) {
+function SessionItemCard({
+    item,
+    isMatched,
+    onChange,
+    onDelete,
+    categories,
+    productGroups
+}: {
+    item: any,
+    isMatched: boolean,
+    onChange: (field: string, val: any) => void,
+    onDelete: () => void,
+    categories: any[],
+    productGroups: string[]
+}) {
     const details = item.product_details;
     const imageUrl = item.image || item.ui_data?.image_url || item.uiData?.image || item.uiData?.image_url;
 
@@ -342,6 +378,27 @@ function SessionItemCard({ item, isMatched, onChange, onDelete }: { item: any, i
                                     onChange={(e) => onChange('quantity', e.target.value)}
                                     className="h-8 text-sm"
                                     placeholder="0"
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-xs">Product Group</Label>
+                                <Autocomplete
+                                    value={details.product_group || ''}
+                                    onChange={(val) => onChange('product_group', val)}
+                                    suggestions={productGroups}
+                                    placeholder="Group"
+                                    className="h-8"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <Label className="text-xs">Category</Label>
+                                <Autocomplete
+                                    value={typeof details.category === 'object' ? details.category.name : (details.category_name || details.category || '')}
+                                    onChange={(val) => onChange('category', val)}
+                                    onSelect={(id) => onChange('category', id)}
+                                    suggestions={categories}
+                                    placeholder="Search category..."
+                                    className="h-8"
                                 />
                             </div>
                         </div>

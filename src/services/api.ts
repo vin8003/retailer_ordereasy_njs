@@ -157,6 +157,8 @@ export const productService = {
   deleteProduct: (id: number) => api.delete(`products/${id}/delete/`),
   fetchCategories: () => api.get('products/categories/'),
   fetchBrands: (query?: string) => api.get('products/brands/', { params: { search: query } }),
+  fetchAllCategories: (query?: string) => api.get('products/categories/all/', { params: { search: query } }),
+  fetchProductGroups: (query?: string) => api.get('products/product-groups/', { params: { search: query } }),
   fetchProductDetails: (id: number) => api.get(`products/${id}/`),
 
   // Bulk Upload (Excel)
