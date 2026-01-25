@@ -35,6 +35,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [originalPrice, setOriginalPrice] = useState(initialData?.original_price || "");
     const [quantity, setQuantity] = useState(initialData?.quantity || "");
     const [unit, setUnit] = useState(initialData?.unit || "piece");
+    const [minOrderQty, setMinOrderQty] = useState(initialData?.minimum_order_quantity || "1");
+    const [maxOrderQty, setMaxOrderQty] = useState(initialData?.maximum_order_quantity || "");
 
     // Handle category: could be ID (create) or Object (edit)
     const getInitialCategoryId = () => {
@@ -106,6 +108,9 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (originalPrice) formData.append("original_price", originalPrice);
             formData.append("quantity", quantity);
             formData.append("unit", unit);
+            formData.append("minimum_order_quantity", minOrderQty);
+            if (maxOrderQty) formData.append("maximum_order_quantity", maxOrderQty);
+
             if (categoryId) formData.append("category", categoryId);
             formData.append("is_active", String(isActive));
 
@@ -264,6 +269,30 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         placeholder="e.g. kg, pcs, box"
                         value={unit}
                         onChange={(e) => setUnit(e.target.value)}
+                    />
+                </div>
+
+                {/* Min Order Quantity */}
+                <div className="space-y-2">
+                    <Label htmlFor="minOrderQty">Min Order Quantity</Label>
+                    <Input
+                        id="minOrderQty"
+                        type="number"
+                        placeholder="1"
+                        value={minOrderQty}
+                        onChange={(e) => setMinOrderQty(e.target.value)}
+                    />
+                </div>
+
+                {/* Max Order Quantity */}
+                <div className="space-y-2">
+                    <Label htmlFor="maxOrderQty">Max Order Quantity (Optional)</Label>
+                    <Input
+                        id="maxOrderQty"
+                        type="number"
+                        placeholder="e.g. 10"
+                        value={maxOrderQty}
+                        onChange={(e) => setMaxOrderQty(e.target.value)}
                     />
                 </div>
 
