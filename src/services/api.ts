@@ -181,6 +181,8 @@ export const productService = {
   getSessionDetails: (id: number) => api.get(`products/upload/session/${id}/`),
   updateSessionItems: (sessionId: number, items: any[]) =>
     api.post('products/upload/session/update-items/', { session_id: sessionId, items }),
+  deleteSessionItem: (itemId: number) =>
+    api.delete(`products/upload/session/item/${itemId}/delete/`),
   commitSession: (sessionId: number) =>
     api.post('products/upload/session/commit/', { session_id: sessionId }),
 };
