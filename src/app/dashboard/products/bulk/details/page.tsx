@@ -51,7 +51,7 @@ function SessionReviewContent() {
             const hydrate = (items: any[]) => items.map(item => {
                 // Ensure product_details has essential fields from uiData if missing
                 const details = item.product_details || {};
-                const uiData = item.uiData || {};
+                const uiData = item.ui_data || item.uiData || {};
 
                 return {
                     ...item,
@@ -239,7 +239,7 @@ export default function SessionReviewPage() {
 
 function SessionItemCard({ item, isMatched, onChange }: { item: any, isMatched: boolean, onChange: (field: string, val: any) => void }) {
     const details = item.product_details;
-    const imageUrl = item.image || item.uiData?.image || item.uiData?.image_url;
+    const imageUrl = item.image || item.ui_data?.image_url || item.uiData?.image || item.uiData?.image_url;
 
     return (
         <Card>
