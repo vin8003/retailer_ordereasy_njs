@@ -192,4 +192,9 @@ export const customerService = {
     api.post(`orders/${orderId}/rate-customer/`, { rating, comment }),
 };
 
+export const rewardService = {
+  getRewardConfig: () => api.get('retailer/reward-config/'),
+  updateRewardConfig: (data: any) => api.put('retailer/reward-config/', data),
+};
+
 export default api;
