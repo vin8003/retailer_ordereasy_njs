@@ -79,7 +79,11 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                 </TableHeader>
                 <TableBody>
                     {orders.map((order) => (
-                        <TableRow key={order.id}>
+                        <TableRow
+                            key={order.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => router.push(`/dashboard/orders/details?id=${order.id}`)}
+                        >
                             <TableCell className="font-medium">{order.order_number}</TableCell>
                             <TableCell>
                                 {format(new Date(order.created_at), "MMM d, yyyy")}
@@ -100,7 +104,11 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <Button
+                                            variant="ghost"
+                                            className="h-8 w-8 p-0"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             <span className="sr-only">Open menu</span>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
@@ -108,7 +116,10 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                         <DropdownMenuItem
-                                            onClick={() => router.push(`/dashboard/orders/details?id=${order.id}`)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/dashboard/orders/details?id=${order.id}`);
+                                            }}
                                         >
                                             <Eye className="mr-2 h-4 w-4" />
                                             View Details

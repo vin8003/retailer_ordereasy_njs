@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { productService } from "@/services/api";
-import { ArrowLeft, Save, CheckCircle, Smartphone, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Smartphone, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ function SessionReviewContent() {
             const hydrate = (items: any[]) => items.map(item => {
                 // Ensure product_details has essential fields from uiData if missing
                 const details = item.product_details || {};
-                const uiData = item.uiData || {};
+                const uiData = item.ui_data || item.uiData || {};
 
                 return {
                     ...item,
@@ -82,6 +82,11 @@ function SessionReviewContent() {
     const handleItemChange = (id: number, field: string, value: any, isMatched: boolean) => {
         const updateList = (items: any[]) => items.map(item => {
             if (item.id === id) {
+                // Handle Barcode at root level
+                if (field === 'barcode') {
+                    return { ...item, barcode: value };
+                }
+
                 return {
                     ...item,
                     product_details: {
@@ -110,7 +115,7 @@ function SessionReviewContent() {
             const allItems = [...matchedItems, ...unmatchedItems];
             const itemsToUpdate = allItems
                 .filter(i => modifiedItems.has(i.id))
-                .map(i => ({ id: i.id, product_details: i.product_details }));
+                .map(i => ({ id: i.id, product_details: i.product_details, barcode: i.barcode }));
 
             await productService.updateSessionItems(id, itemsToUpdate);
             toast.success("Draft saved successfully");
@@ -128,7 +133,7 @@ function SessionReviewContent() {
             // First save everything explicitly to ensure backend states match UI
             const id = Number(searchParams.get('id'));
             const allItems = [...matchedItems, ...unmatchedItems];
-            const itemsToUpdate = allItems.map(i => ({ id: i.id, product_details: i.product_details }));
+            const itemsToUpdate = allItems.map(i => ({ id: i.id, product_details: i.product_details, barcode: i.barcode }));
 
             if (itemsToUpdate.length > 0) {
                 await productService.updateSessionItems(id, itemsToUpdate);
@@ -142,6 +147,24 @@ function SessionReviewContent() {
             toast.error(error.response?.data?.error || "Failed to finalize session");
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleDeleteItem = async (itemId: number) => {
+        if (!confirm("Are you sure you want to remove this item?")) return;
+
+        try {
+            await productService.deleteSessionItem(itemId);
+            toast.success("Item removed");
+            setMatchedItems(prev => prev.filter(i => i.id !== itemId));
+            setUnmatchedItems(prev => prev.filter(i => i.id !== itemId));
+            setModifiedItems(prev => {
+                const next = new Set(prev);
+                next.delete(itemId);
+                return next;
+            });
+        } catch (error) {
+            toast.error("Failed to delete item");
         }
     };
 
@@ -198,6 +221,7 @@ function SessionReviewContent() {
                                 item={item}
                                 isMatched={false}
                                 onChange={(field, val) => handleItemChange(item.id, field, val, false)}
+                                onDelete={() => handleDeleteItem(item.id)}
                             />
                         ))
                     )}
@@ -213,6 +237,7 @@ function SessionReviewContent() {
                                 item={item}
                                 isMatched={true}
                                 onChange={(field, val) => handleItemChange(item.id, field, val, true)}
+                                onDelete={() => handleDeleteItem(item.id)}
                             />
                         ))
                     )}
@@ -237,9 +262,9 @@ export default function SessionReviewPage() {
     );
 }
 
-function SessionItemCard({ item, isMatched, onChange }: { item: any, isMatched: boolean, onChange: (field: string, val: any) => void }) {
+function SessionItemCard({ item, isMatched, onChange, onDelete }: { item: any, isMatched: boolean, onChange: (field: string, val: any) => void, onDelete: () => void }) {
     const details = item.product_details;
-    const imageUrl = item.image || item.uiData?.image || item.uiData?.image_url;
+    const imageUrl = item.image || item.ui_data?.image_url || item.uiData?.image || item.uiData?.image_url;
 
     return (
         <Card>
@@ -256,18 +281,31 @@ function SessionItemCard({ item, isMatched, onChange }: { item: any, isMatched: 
 
                     <div className="flex-1 space-y-4">
                         {/* Header Info */}
-                        <div>
-                            <h4 className="font-semibold text-lg">{details.name || "Unknown Product"}</h4>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                                <span className="font-mono bg-muted px-2 py-0.5 rounded">{item.barcode}</span>
-                                {details.brand && <span>{details.brand}</span>}
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h4 className="font-semibold text-lg">{details.name || "Unknown Product"}</h4>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                    <span className="font-mono bg-muted px-2 py-0.5 rounded">{item.barcode}</span>
+                                    {details.brand && <span>{details.brand}</span>}
+                                </div>
                             </div>
+                            <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                         </div>
 
                         <Separator />
 
                         {/* Editable Fields */}
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="md:col-span-1">
+                                <Label className="text-xs">Barcode</Label>
+                                <Input
+                                    value={item.barcode}
+                                    onChange={(e) => onChange('barcode', e.target.value)}
+                                    className="h-8 text-sm"
+                                />
+                            </div>
                             <div className="md:col-span-1">
                                 <Label className="text-xs">Product Name</Label>
                                 <Input
@@ -304,15 +342,6 @@ function SessionItemCard({ item, isMatched, onChange }: { item: any, isMatched: 
                                     onChange={(e) => onChange('quantity', e.target.value)}
                                     className="h-8 text-sm"
                                     placeholder="0"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-xs">Category</Label>
-                                <Input
-                                    value={details.category}
-                                    onChange={(e) => onChange('category', e.target.value)}
-                                    className="h-8 text-sm"
-                                    placeholder="Category"
                                 />
                             </div>
                         </div>

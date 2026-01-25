@@ -24,18 +24,18 @@ export default function BulkProductsPage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="upload" className="w-full">
+            <Tabs defaultValue="sessions" className="w-full">
                 <TabsList className="grid w-full max-w-[400px] grid-cols-2">
-                    <TabsTrigger value="upload">File Upload</TabsTrigger>
                     <TabsTrigger value="sessions">Scanner Sessions</TabsTrigger>
+                    <TabsTrigger value="upload">File Upload</TabsTrigger>
                 </TabsList>
-
-                <TabsContent value="upload" className="mt-6">
-                    <BulkUpload />
-                </TabsContent>
 
                 <TabsContent value="sessions" className="mt-6">
                     <SessionList />
+                </TabsContent>
+
+                <TabsContent value="upload" className="mt-6">
+                    <BulkUpload />
                 </TabsContent>
             </Tabs>
         </div>

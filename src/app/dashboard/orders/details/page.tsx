@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle } from "lucide-react";
+import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,11 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
-import { orderService } from "@/services/api";
+
+import { orderService, customerService } from "@/services/api";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 function OrderDetailContent() {
     const searchParams = useSearchParams();
@@ -20,6 +24,12 @@ function OrderDetailContent() {
     const [order, setOrder] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Rating State
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+    const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState("");
+    const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
     const fetchOrderDetails = async () => {
         setIsLoading(true);
@@ -33,6 +43,20 @@ function OrderDetailContent() {
             setError("Failed to load order details");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleRateCustomer = async () => {
+        if (!rating) return;
+        setIsSubmittingRating(true);
+        try {
+            await customerService.rateCustomer(order.id, rating, comment);
+            setIsRatingModalOpen(false);
+            fetchOrderDetails();
+        } catch (err) {
+            console.error("Failed to rate customer", err);
+        } finally {
+            setIsSubmittingRating(false);
         }
     };
 
@@ -183,6 +207,33 @@ function OrderDetailContent() {
                         </CardContent>
                     </Card>
 
+                    {/* Rate Customer Card */}
+                    {['delivered', 'cancelled', 'returned'].includes(order.status) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Star className="h-5 w-5" /> Rate Customer
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {!order.has_retailer_rating ? (
+                                    <Button
+                                        className="w-full"
+                                        variant="outline"
+                                        onClick={() => setIsRatingModalOpen(true)}
+                                    >
+                                        Rate this Customer
+                                    </Button>
+                                ) : (
+                                    <div className="flex items-center justify-center p-3 bg-green-50 text-green-700 rounded-md border border-green-200 text-sm font-medium">
+                                        <UserCheck className="h-4 w-4 mr-2" />
+                                        Customer Rated
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Delivery Address */}
                     <Card>
                         <CardHeader>
@@ -191,11 +242,40 @@ function OrderDetailContent() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-sm leading-relaxed">
+                            <p className="text-sm leading-relaxed mb-4">
                                 {order.delivery_address_map?.address_line_1 || order.delivery_address_text || "No address provided"}
                                 <br />
                                 {order.delivery_address_map?.city}, {order.delivery_address_map?.state} - {order.delivery_address_map?.pincode}
                             </p>
+
+                            {/* Map & Navigation */}
+                            {order.delivery_latitude && order.delivery_longitude && (
+                                <div className="space-y-3 mb-4">
+                                    <div className="aspect-video w-full rounded-md overflow-hidden bg-muted border relative">
+                                        <iframe
+                                            width="100%"
+                                            height="100%"
+                                            frameBorder="0"
+                                            scrolling="no"
+                                            marginHeight={0}
+                                            marginWidth={0}
+                                            src={`https://maps.google.com/maps?q=${order.delivery_latitude},${order.delivery_longitude}&z=15&output=embed`}
+                                            title="Customer Location"
+                                        ></iframe>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        className="w-full gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                        onClick={() => window.open(
+                                            `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_latitude},${order.delivery_longitude}`,
+                                            '_blank'
+                                        )}
+                                    >
+                                        <MapPin className="h-4 w-4" /> Start Navigation
+                                    </Button>
+                                </div>
+                            )}
+
                             {order.special_instructions && (
                                 <div className="mt-4 p-3 bg-muted rounded-md border text-sm">
                                     <p className="font-medium mb-1 flex items-center gap-2">
@@ -208,7 +288,50 @@ function OrderDetailContent() {
                     </Card>
                 </div>
             </div>
-        </div>
+
+            <Dialog open={isRatingModalOpen} onOpenChange={setIsRatingModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Rate Customer</DialogTitle>
+                        <DialogDescription>
+                            How was your experience with {order.customer?.first_name || "this customer"}?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="flex justify-center gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setRating(star)}
+                                    className="focus:outline-none transition-transform active:scale-95"
+                                >
+                                    <Star
+                                        size={32}
+                                        className={`${rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                    />
+                                </button>
+                            ))}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="comment">Comment (Optional)</Label>
+                            <Textarea
+                                id="comment"
+                                placeholder="Add a note about this customer..."
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsRatingModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleRateCustomer} disabled={isSubmittingRating}>
+                            {isSubmittingRating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Rating"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }
 

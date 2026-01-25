@@ -20,7 +20,7 @@ export default function ProductsPage() {
     const fetchProducts = async () => {
         setIsLoading(true);
         try {
-            const params: any = {};
+            const params: any = { is_active: true };
             if (searchQuery) {
                 params.search = searchQuery;
             }

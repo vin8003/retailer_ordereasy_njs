@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api/';
+const BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://api.ordereasy.win/api/'
+  : (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api/');
 // const BASE_URL = 'http://127.0.0.1:8000/api/';
 
 const api = axios.create({
@@ -179,6 +181,8 @@ export const productService = {
   getSessionDetails: (id: number) => api.get(`products/upload/session/${id}/`),
   updateSessionItems: (sessionId: number, items: any[]) =>
     api.post('products/upload/session/update-items/', { session_id: sessionId, items }),
+  deleteSessionItem: (itemId: number) =>
+    api.delete(`products/upload/session/item/${itemId}/delete/`),
   commitSession: (sessionId: number) =>
     api.post('products/upload/session/commit/', { session_id: sessionId }),
 };
@@ -190,6 +194,11 @@ export const customerService = {
     api.post('customer/retailer/blacklist/toggle/', { customer_id: customerId, action, reason }),
   rateCustomer: (orderId: number, rating: number, comment?: string) =>
     api.post(`orders/${orderId}/rate-customer/`, { rating, comment }),
+};
+
+export const rewardService = {
+  getRewardConfig: () => api.get('retailer/reward-config/'),
+  updateRewardConfig: (data: any) => api.put('retailer/reward-config/', data),
 };
 
 export default api;
