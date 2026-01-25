@@ -101,6 +101,26 @@ export default function ProductsPage() {
                     products={products}
                     isLoading={isLoading}
                     onDelete={handleDelete}
+                    onToggleFeatured={async (product) => {
+                        try {
+                            // Optimistic update
+                            const updatedProducts: any = products.map((p: any) =>
+                                p.id === product.id ? { ...p, is_featured: !p.is_featured } : p
+                            );
+                            setProducts(updatedProducts);
+
+                            const formData = new FormData();
+                            // Convert boolean to string for FormData (Python handles 'true'/'false')
+                            formData.append('is_featured', String(!product.is_featured));
+
+                            await productService.updateProduct(product.id, formData);
+                            toast.success(`Product ${!product.is_featured ? 'featured' : 'unfeatured'} successfully`);
+                        } catch (error) {
+                            console.error("Failed to update product", error);
+                            toast.error("Failed to update status");
+                            fetchProducts(); // Revert on failure
+                        }
+                    }}
                 />
             </div>
         </div>

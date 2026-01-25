@@ -46,6 +46,8 @@ interface RetailerProfile {
     offersPickup: boolean;
     deliveryRadius: number;
     minimumOrderAmount: number;
+    deliveryCharge: number;
+    freeDeliveryThreshold: number;
     serviceablePincodes: string[];
 
     // Images
@@ -99,6 +101,8 @@ export default function ProfilePage() {
                     offersPickup: data.offers_pickup,
                     deliveryRadius: data.delivery_radius,
                     minimumOrderAmount: data.minimum_order_amount,
+                    deliveryCharge: data.delivery_charge || 0,
+                    freeDeliveryThreshold: data.free_delivery_threshold || 0,
                     serviceablePincodes: data.serviceable_pincodes || [],
                     shopImage: data.shop_image,
                 };
@@ -459,6 +463,37 @@ export default function ProfilePage() {
                                     value={Array.isArray(formData.serviceablePincodes) ? formData.serviceablePincodes.join(', ') : ''}
                                     onChange={e => setFormData({ ...formData, serviceablePincodes: e.target.value.split(',').map(s => s.trim()) })}
                                 />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Delivery Charges</CardTitle>
+                            <CardDescription>Configure delivery fees and free delivery thresholds</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Delivery Charge</Label>
+                                    <Input
+                                        type="number"
+                                        disabled={!isEditing}
+                                        value={formData.deliveryCharge || 0}
+                                        onChange={e => setFormData({ ...formData, deliveryCharge: parseFloat(e.target.value) })}
+                                    />
+                                    <p className="text-xs text-muted-foreground">Standard delivery fee</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Free Delivery Above</Label>
+                                    <Input
+                                        type="number"
+                                        disabled={!isEditing}
+                                        value={formData.freeDeliveryThreshold || 0}
+                                        onChange={e => setFormData({ ...formData, freeDeliveryThreshold: parseFloat(e.target.value) })}
+                                    />
+                                    <p className="text-xs text-muted-foreground">Order amount to waive delivery fee</p>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Edit, Trash2, MoreHorizontal, ImageIcon } from "lucide-react";
+import { Edit, Trash2, MoreHorizontal, ImageIcon, Star } from "lucide-react";
 
 import {
     Table,
@@ -32,15 +32,17 @@ interface Product {
     quantity: number;
     image?: string;
     is_active: boolean;
+    is_featured: boolean;
 }
 
 interface ProductTableProps {
     products: Product[];
     isLoading: boolean;
     onDelete?: (product: Product) => void;
+    onToggleFeatured?: (product: Product) => void;
 }
 
-export function ProductTable({ products, isLoading, onDelete }: ProductTableProps) {
+export function ProductTable({ products, isLoading, onDelete, onToggleFeatured }: ProductTableProps) {
     const router = useRouter();
 
     if (isLoading) {
@@ -61,6 +63,7 @@ export function ProductTable({ products, isLoading, onDelete }: ProductTableProp
                         <TableHead>Category</TableHead>
                         <TableHead>Stock</TableHead>
                         <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-center w-[100px]">Featured</TableHead>
                         <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                 </TableHeader>
@@ -106,6 +109,16 @@ export function ProductTable({ products, isLoading, onDelete }: ProductTableProp
                                         ₹{Number(product.original_price).toFixed(2)}
                                     </div>
                                 )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onToggleFeatured?.(product)}
+                                    className={`${product.is_featured ? "text-yellow-500" : "text-gray-300"} hover:text-yellow-600 hover:bg-transparent`}
+                                >
+                                    <Star className="h-5 w-5" fill={product.is_featured ? "currentColor" : "none"} />
+                                </Button>
                             </TableCell>
                             <TableCell>
                                 <DropdownMenu>
