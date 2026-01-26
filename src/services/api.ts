@@ -131,6 +131,7 @@ export const orderService = {
   fetchOrders: (params?: any) => api.get('orders/history/', { params }),
   fetchOrderDetails: (id: number) => api.get(`orders/${id}/`),
   updateStatus: (id: number, status: string) => api.patch(`orders/${id}/status/`, { status }),
+  modifyOrder: (id: number, data: any) => api.post(`orders/${id}/modify/`, data),
 
   // Chat
   fetchOrderChat: (id: number) => api.get(`orders/${id}/chat/`),

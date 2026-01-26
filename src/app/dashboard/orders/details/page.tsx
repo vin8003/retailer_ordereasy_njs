@@ -118,6 +118,16 @@ function OrderDetailContent() {
                         <MessageCircle className="h-4 w-4 mr-2" />
                         Chat with Customer
                     </Button>
+                    {order.status.toLowerCase() === 'pending' && (
+                        <Button
+                            variant="default"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            onClick={() => router.push(`/dashboard/orders/edit?id=${order.id}`)}
+                        >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Edit Order
+                        </Button>
+                    )}
                 </div>
             </div>
 
