@@ -59,15 +59,6 @@ export default function NewOfferPage() {
                 const token = localStorage.getItem('access_token');
                 const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '');
 
-                // Fetch Products
-                const prodRes = await fetch(`${apiBase}/products/`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (prodRes.ok) {
-                    const data = await prodRes.json();
-                    setAvailableProducts(data.results || data);
-                }
-
                 // Fetch Categories
                 const catRes = await fetch(`${apiBase}/products/categories/`, {
                     headers: { 'Authorization': `Bearer ${token}` }

@@ -63,17 +63,11 @@ function EditOfferContent() {
 
                 if (!offerId) return;
 
-                // Fetch Products & Categories First
-                const [prodRes, catRes, offerRes] = await Promise.all([
-                    fetch(`${apiBase}/products/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                // Fetch Categories First
+                const [catRes, offerRes] = await Promise.all([
                     fetch(`${apiBase}/products/categories/`, { headers: { 'Authorization': `Bearer ${token}` } }),
                     fetch(`${apiBase}/offers/${offerId}/`, { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
-
-                if (prodRes.ok) {
-                    const data = await prodRes.json();
-                    setAvailableProducts(data.results || data);
-                }
                 if (catRes.ok) {
                     const data = await catRes.json();
                     setAvailableCategories(data.results || data);

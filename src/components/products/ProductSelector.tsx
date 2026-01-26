@@ -36,7 +36,7 @@ export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorPr
     const handleSearch = async () => {
         setIsLoading(true);
         try {
-            const response = await productService.fetchProducts({ search });
+            const response = await productService.searchProducts(search);
             setProducts(response.data.results || response.data);
         } catch (error) {
             console.error("Failed to fetch products", error);

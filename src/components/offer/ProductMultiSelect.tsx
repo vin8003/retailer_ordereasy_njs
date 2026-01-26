@@ -79,8 +79,8 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, apiBase, to
         const searchProducts = async () => {
             setLoading(true);
             try {
-                const query = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : '';
-                const res = await fetch(`${apiBase}/products/${query}`, {
+                const query = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
+                const res = await fetch(`${apiBase}/products/search/?${query}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
