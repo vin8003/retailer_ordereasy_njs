@@ -67,7 +67,11 @@ export function SessionList() {
                                     <QrCode className="h-6 w-6 text-primary" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-base">Session #{session.id}</CardTitle>
+                                    <CardTitle className="text-base">
+                                        {session.name && session.name !== "Untitled Session"
+                                            ? session.name
+                                            : `Session #${session.id}`}
+                                    </CardTitle>
                                     <CardDescription className="flex items-center gap-1 mt-1">
                                         <Clock className="h-3 w-3" />
                                         {new Date(session.created_at).toLocaleString()}

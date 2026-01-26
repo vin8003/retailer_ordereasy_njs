@@ -198,7 +198,11 @@ function SessionReviewContent() {
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Session #{session.id}</h2>
+                        <h2 className="text-2xl font-bold tracking-tight">
+                            {session.name && session.name !== "Untitled Session"
+                                ? session.name
+                                : `Session #${session.id}`}
+                        </h2>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Smartphone className="h-4 w-4" />
                             <span>Scanner Upload</span>
