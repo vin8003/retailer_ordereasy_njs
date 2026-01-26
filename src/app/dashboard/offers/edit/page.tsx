@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 
+import { productService, offerService } from '@/services/api';
 import { ProductMultiSelect } from '@/components/offer/ProductMultiSelect';
 
 function EditOfferContent() {
@@ -58,94 +59,84 @@ function EditOfferContent() {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const token = localStorage.getItem('access_token');
-                const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '');
-
                 if (!offerId) return;
 
                 // Fetch Categories First
                 const [catRes, offerRes] = await Promise.all([
-                    fetch(`${apiBase}/products/categories/`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch(`${apiBase}/offers/${offerId}/`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    productService.fetchAllCategories(),
+                    offerService.fetchOfferDetails(offerId)
                 ]);
-                if (catRes.ok) {
-                    const data = await catRes.json();
-                    setAvailableCategories(data.results || data);
+
+                setAvailableCategories(catRes.data.results || catRes.data);
+                const offer = offerRes.data;
+
+                // Populate Form Data
+                setFormData({
+                    name: offer.name,
+                    description: offer.description || '',
+                    benefit_type: offer.benefit_type || 'discount',
+                    offer_type: offer.offer_type,
+                    value_type: offer.value_type,
+                    value: offer.value,
+                    min_order_value: offer.min_order_value,
+                    max_discount_amount: offer.max_discount_amount,
+                    buy_quantity: offer.buy_quantity,
+                    get_quantity: offer.get_quantity,
+                    is_cheapest_free: offer.is_cheapest_free,
+                    start_date: offer.start_date ? offer.start_date.split('T')[0] : '',
+                    end_date: offer.end_date ? offer.end_date.split('T')[0] : '',
+                    is_active: offer.is_active,
+                    is_stackable: offer.is_stackable,
+                    priority: offer.priority,
+                    usage_limit_total: offer.usage_limit_total,
+                    usage_limit_per_user: offer.usage_limit_per_user
+                });
+
+                // Populate Targets logic
+                const mergedTargets: any[] = [];
+                const productIdsIncluded: string[] = [];
+                const productIdsExcluded: string[] = [];
+
+                offer.targets.forEach((t: any) => {
+                    if (t.target_type === 'product' && t.product) {
+                        if (t.is_excluded) productIdsExcluded.push(String(t.product));
+                        else productIdsIncluded.push(String(t.product));
+                    } else if (t.target_type === 'all_products') {
+                        mergedTargets.push({ target_type: 'all_products', is_excluded: t.is_excluded });
+                    } else if (t.target_type === 'category') {
+                        mergedTargets.push({
+                            target_type: 'category',
+                            category_id: String(t.category),
+                            is_excluded: t.is_excluded
+                        });
+                    }
+                });
+
+                if (productIdsIncluded.length > 0) {
+                    mergedTargets.push({
+                        target_type: 'product',
+                        product_ids: productIdsIncluded,
+                        is_excluded: false
+                    });
+                }
+                if (productIdsExcluded.length > 0) {
+                    mergedTargets.push({
+                        target_type: 'product',
+                        product_ids: productIdsExcluded,
+                        is_excluded: true
+                    });
                 }
 
-                if (offerRes.ok) {
-                    const offer = await offerRes.json();
+                if (mergedTargets.length > 0) {
+                    setTargets(mergedTargets);
+                }
 
-                    // Populate Form Data
-                    setFormData({
-                        name: offer.name,
-                        description: offer.description || '',
-                        benefit_type: offer.benefit_type || 'discount',
-                        offer_type: offer.offer_type,
-                        value_type: offer.value_type,
-                        value: offer.value,
-                        min_order_value: offer.min_order_value,
-                        max_discount_amount: offer.max_discount_amount,
-                        buy_quantity: offer.buy_quantity,
-                        get_quantity: offer.get_quantity,
-                        is_cheapest_free: offer.is_cheapest_free,
-                        start_date: offer.start_date ? offer.start_date.split('T')[0] : '',
-                        end_date: offer.end_date ? offer.end_date.split('T')[0] : '',
-                        is_active: offer.is_active,
-                        is_stackable: offer.is_stackable,
-                        priority: offer.priority,
-                        usage_limit_total: offer.usage_limit_total,
-                        usage_limit_per_user: offer.usage_limit_per_user
-                    });
-
-                    // Populate Targets logic (same as before)
-                    const mergedTargets: any[] = [];
-                    const productIdsIncluded: string[] = [];
-                    const productIdsExcluded: string[] = [];
-
-                    offer.targets.forEach((t: any) => {
-                        if (t.target_type === 'product' && t.product) {
-                            if (t.is_excluded) productIdsExcluded.push(String(t.product));
-                            else productIdsIncluded.push(String(t.product));
-                        } else if (t.target_type === 'all_products') {
-                            mergedTargets.push({ target_type: 'all_products', is_excluded: t.is_excluded });
-                        } else if (t.target_type === 'category') {
-                            mergedTargets.push({
-                                target_type: 'category',
-                                category_id: String(t.category),
-                                is_excluded: t.is_excluded
-                            });
-                        }
-                    });
-
-                    if (productIdsIncluded.length > 0) {
-                        mergedTargets.push({
-                            target_type: 'product',
-                            product_ids: productIdsIncluded,
-                            is_excluded: false
-                        });
-                    }
-                    if (productIdsExcluded.length > 0) {
-                        mergedTargets.push({
-                            target_type: 'product',
-                            product_ids: productIdsExcluded,
-                            is_excluded: true
-                        });
-                    }
-
-                    if (mergedTargets.length > 0) {
-                        setTargets(mergedTargets);
-                    } else if (offer.targets.length === 0) {
-                        // Keep empty if explicitly empty (though rare)
-                    }
-
-                } else {
+            } catch (e: any) {
+                console.error("Failed to load data", e);
+                if (e.response?.status === 404) {
                     alert('Offer not found');
                     router.push('/dashboard/offers');
                 }
-
-            } catch (e) {
-                console.error("Failed to load data", e);
             } finally {
                 setIsLoading(false);
             }
@@ -193,8 +184,7 @@ function EditOfferContent() {
         setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem('access_token');
-            const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '');
+            if (!offerId) throw new Error("Missing Offer ID");
 
             // Clean up payload and flatten targets
             const finalTargets: any[] = [];
@@ -229,24 +219,11 @@ function EditOfferContent() {
                 targets: finalTargets
             };
 
-            const response = await fetch(`${apiBase}/offers/${offerId}/`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                router.push('/dashboard/offers');
-            } else {
-                const err = await response.json();
-                alert(`Failed to update offer: ${JSON.stringify(err)}`);
-            }
-        } catch (error) {
+            await offerService.updateOffer(offerId, payload);
+            router.push('/dashboard/offers');
+        } catch (error: any) {
             console.error('Error updating offer:', error);
-            alert('Something went wrong');
+            alert(error.response?.data ? `Failed to update offer: ${JSON.stringify(error.response.data)}` : 'Something went wrong');
         } finally {
             setIsSubmitting(false);
         }
@@ -483,8 +460,6 @@ function EditOfferContent() {
                                             <ProductMultiSelect
                                                 selectedIds={target.product_ids || (target.product_id ? [String(target.product_id)] : [])}
                                                 onSelectionChange={(ids) => updateTarget(index, 'product_ids', ids)}
-                                                apiBase={(process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '')}
-                                                token={localStorage.getItem('access_token') || ''}
                                                 initialProducts={availableProducts}
                                             />
                                         </div>

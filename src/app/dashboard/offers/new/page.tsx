@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 
+import { productService, offerService } from '@/services/api';
 import { ProductMultiSelect } from '@/components/offer/ProductMultiSelect';
 
 export default function NewOfferPage() {
@@ -56,17 +57,9 @@ export default function NewOfferPage() {
     useEffect(() => {
         const fetchMetadata = async () => {
             try {
-                const token = localStorage.getItem('access_token');
-                const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '');
-
                 // Fetch Categories
-                const catRes = await fetch(`${apiBase}/products/categories/`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (catRes.ok) {
-                    const data = await catRes.json();
-                    setAvailableCategories(data.results || data);
-                }
+                const catRes = await productService.fetchAllCategories();
+                setAvailableCategories(catRes.data.results || catRes.data);
             } catch (e) {
                 console.error("Failed to load products/categories", e);
             }
@@ -111,9 +104,6 @@ export default function NewOfferPage() {
         setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem('access_token');
-            const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '');
-
             // Clean up payload and flatten targets
             const finalTargets: any[] = [];
             targets.forEach(t => {
@@ -151,24 +141,11 @@ export default function NewOfferPage() {
                 targets: finalTargets
             };
 
-            const response = await fetch(`${apiBase}/offers/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                router.push('/dashboard/offers');
-            } else {
-                const err = await response.json();
-                alert(`Failed to create offer: ${JSON.stringify(err)}`);
-            }
-        } catch (error) {
+            await offerService.createOffer(payload);
+            router.push('/dashboard/offers');
+        } catch (error: any) {
             console.error('Error creating offer:', error);
-            alert('Something went wrong');
+            alert(error.response?.data ? `Failed to create offer: ${JSON.stringify(error.response.data)}` : 'Something went wrong');
         } finally {
             setIsSubmitting(false);
         }
@@ -401,8 +378,6 @@ export default function NewOfferPage() {
                                             <ProductMultiSelect
                                                 selectedIds={target.product_ids || (target.product_id ? [String(target.product_id)] : [])}
                                                 onSelectionChange={(ids) => updateTarget(index, 'product_ids', ids)}
-                                                apiBase={(process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '')}
-                                                token={localStorage.getItem('access_token') || ''}
                                                 initialProducts={availableProducts}
                                             />
                                         </div>

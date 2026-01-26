@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, Check, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { productService } from '@/services/api';
 // import { useDebounce } from '@/hooks/use-debounce'; 
 
 // We'll implement inline debounce for simplicity since we don't know if hooks exist
@@ -27,12 +28,10 @@ interface Product {
 interface ProductMultiSelectProps {
     selectedIds: string[];
     onSelectionChange: (ids: string[]) => void;
-    apiBase: string;
-    token: string;
     initialProducts?: { id: number; name: string }[];
 }
 
-export function ProductMultiSelect({ selectedIds, onSelectionChange, apiBase, token, initialProducts = [] }: ProductMultiSelectProps) {
+export function ProductMultiSelect({ selectedIds, onSelectionChange, initialProducts = [] }: ProductMultiSelectProps) {
     const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearch = useDebounceValue(searchTerm, 300);
@@ -79,22 +78,16 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, apiBase, to
         const searchProducts = async () => {
             setLoading(true);
             try {
-                const query = debouncedSearch ? `search=${encodeURIComponent(debouncedSearch)}` : '';
-                const res = await fetch(`${apiBase}/products/search/?${query}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const products: Product[] = data.results || data;
-                    setResults(products);
+                const response = await productService.searchProducts(debouncedSearch);
+                const products: Product[] = response.data.results || response.data;
+                setResults(products);
 
-                    // Update cache
-                    setSelectedProductsInfo(prev => {
-                        const newMap = new Map(prev);
-                        products.forEach(p => newMap.set(String(p.id), p.name));
-                        return newMap;
-                    });
-                }
+                // Update cache
+                setSelectedProductsInfo(prev => {
+                    const newMap = new Map(prev);
+                    products.forEach(p => newMap.set(String(p.id), p.name));
+                    return newMap;
+                });
             } catch (error) {
                 console.error("Search failed", error);
             } finally {
@@ -105,7 +98,7 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, apiBase, to
         if (open) {
             searchProducts();
         }
-    }, [debouncedSearch, open, apiBase, token]);
+    }, [debouncedSearch, open]);
 
     // Cleanup or specialized fetch logic - removed empty useEffect
 

@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 
-import { rewardService } from "@/services/api";
+import { rewardService, offerService } from "@/services/api";
 
 // --- Types ---
 
@@ -85,17 +85,9 @@ export default function OffersPage() {
     const fetchOffers = async () => {
         setIsLoadingOffers(true);
         try {
-            const token = localStorage.getItem('access_token');
-            const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api').replace(/\/$/, '');
-
-            const response = await fetch(`${apiBase}/offers/`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setOffers(data.results || data);
-            }
+            const response = await offerService.fetchOffers();
+            const data = response.data;
+            setOffers(data.results || data);
         } catch (error) {
             console.error('Failed to fetch offers:', error);
         } finally {

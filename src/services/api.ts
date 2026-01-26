@@ -205,4 +205,11 @@ export const rewardService = {
   updateRewardConfig: (data: any) => api.put('retailer/reward-config/', data),
 };
 
+export const offerService = {
+  fetchOffers: () => api.get('offers/'),
+  fetchOfferDetails: (id: string | number) => api.get(`offers/${id}/`),
+  createOffer: (data: any) => api.post('offers/', data),
+  updateOffer: (id: string | number, data: any) => api.put(`offers/${id}/`, data),
+};
+
 export default api;
