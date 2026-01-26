@@ -27,7 +27,7 @@ const Sidebar = () => {
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },
-        { label: 'Rewards', icon: Award, href: '/dashboard/rewards' },
+        { label: 'Offers', icon: Award, href: '/dashboard/offers' },
         { label: 'Profile', icon: User, href: '/dashboard/profile' },
     ];
 
@@ -45,8 +45,8 @@ const Sidebar = () => {
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-3 px-4 py-3 rounded-md transition-colors ${isActive
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                ? 'bg-primary/10 text-primary font-medium'
+                                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 }`}
                         >
                             <item.icon size={20} />

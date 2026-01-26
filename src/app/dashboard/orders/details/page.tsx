@@ -140,10 +140,44 @@ function OrderDetailContent() {
                                 <span className="text-muted-foreground">Delivery Fee</span>
                                 <span>+ ₹{Number(order.delivery_fee || 0).toFixed(2)}</span>
                             </div>
-                            {Number(order.discount_amount || 0) > 0 && (
+                            {/* Points Redeemed */}
+                            {Number(order.discount_from_points || 0) > 0 && (
+                                <div className="flex justify-between text-sm text-green-600">
+                                    <span>Points Redeemed ({Number(order.points_redeemed)})</span>
+                                    <span>- ₹{Number(order.discount_from_points).toFixed(2)}</span>
+                                </div>
+                            )}
+
+                            {/* Offers */}
+                            {order.applied_offers && order.applied_offers.length > 0 && (
+                                <div className="space-y-1 py-1">
+                                    {order.applied_offers.map((offer: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between text-sm text-green-600">
+                                            <span className="flex items-center gap-1">
+                                                <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 border-green-200 text-green-700 bg-green-50">OFFER</Badge>
+                                                {offer.name}
+                                            </span>
+                                            <span>- ₹{Number(offer.discount).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Generic Discount Fallback (if no specific offers but amount exists) */}
+                            {!order.applied_offers?.length && Number(order.discount_amount || 0) > 0 && (
                                 <div className="flex justify-between text-sm text-green-600">
                                     <span>Discount</span>
                                     <span>- ₹{Number(order.discount_amount).toFixed(2)}</span>
+                                </div>
+                            )}
+
+                            {/* Points Earned Info */}
+                            {Number(order.points_earned || 0) > 0 && (
+                                <div className="mt-2 pt-2 border-t border-dashed">
+                                    <div className="flex justify-between text-sm text-blue-600 font-medium">
+                                        <span>Points Earned</span>
+                                        <span>+{Number(order.points_earned)} pts</span>
+                                    </div>
                                 </div>
                             )}
                             <Separator />
