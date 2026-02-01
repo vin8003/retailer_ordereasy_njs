@@ -22,7 +22,7 @@ import { productService } from "@/services/api";
 
 export default function ProductsPage() {
     const router = useRouter();
-    const [products, setProducts] = useState([]);
+    const [products, setProducts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -72,7 +72,7 @@ export default function ProductsPage() {
                 setTotalPages(Math.ceil(response.data.count / 20) || 1);
             } else if (Array.isArray(response.data)) {
                 // Fallback for non-paginated response
-                setProducts(response.data);
+                setProducts(response.data); ``
                 setTotalCount(response.data.length);
                 setTotalPages(1);
             } else {
