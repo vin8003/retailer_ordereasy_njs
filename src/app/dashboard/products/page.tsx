@@ -35,6 +35,7 @@ export default function ProductsPage() {
     // Filter States
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [inStockOnly, setInStockOnly] = useState(false);
+    const [statusFilter, setStatusFilter] = useState("active");
     const [showFilters, setShowFilters] = useState(false);
 
     useEffect(() => {
@@ -54,9 +55,11 @@ export default function ProductsPage() {
         setIsLoading(true);
         try {
             const params: any = {
-                is_active: true,
                 page: page
             };
+
+            if (statusFilter === 'active') params.is_active = true;
+            if (statusFilter === 'inactive') params.is_active = false;
 
             if (searchQuery) params.search = searchQuery;
             if (selectedCategory && selectedCategory !== "all") params.category = selectedCategory;
@@ -93,13 +96,14 @@ export default function ProductsPage() {
         }
     };
 
+
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchProducts(1); // Reset to page 1 on search/filter change
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, selectedCategory, inStockOnly]);
+    }, [searchQuery, selectedCategory, inStockOnly, statusFilter]);
 
     // Handle manual page change
     const handlePageChange = (newPage: number) => {
@@ -188,6 +192,19 @@ export default function ProductsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-2">
+                            <Label>Status</Label>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                    <SelectItem value="all">All</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="flex items-center space-x-2 pt-8">
                             <Switch
                                 id="stock-mode"
@@ -203,6 +220,7 @@ export default function ProductsPage() {
                                 onClick={() => {
                                     setSelectedCategory("all");
                                     setInStockOnly(false);
+                                    setStatusFilter("active");
                                     setSearchQuery("");
                                 }}
                             >
@@ -267,3 +285,4 @@ export default function ProductsPage() {
         </div>
     );
 }
+
