@@ -41,10 +41,24 @@ export default function ProductsPage() {
         fetchCategories();
     }, []);
 
+    // Helper to flatten nested categories
+    const flattenCategories = (categories: any[], parentName = ''): any[] => {
+        let flat: any[] = [];
+        categories.forEach(cat => {
+            const fullName = parentName ? `${parentName} > ${cat.name}` : cat.name;
+            flat.push({ ...cat, name: fullName });
+            if (cat.children && cat.children.length > 0) {
+                flat = flat.concat(flattenCategories(cat.children, fullName));
+            }
+        });
+        return flat;
+    };
+
     const fetchCategories = async () => {
         try {
             const response = await productService.fetchCategories(); // Gets categories with products
-            setCategories(Array.isArray(response.data) ? response.data : []);
+            const rawData = Array.isArray(response.data) ? response.data : [];
+            setCategories(flattenCategories(rawData));
         } catch (error) {
             console.error("Failed to fetch categories", error);
         }
@@ -181,7 +195,7 @@ export default function ProductsPage() {
                                 <SelectContent>
                                     <SelectItem value="all">All Categories</SelectItem>
                                     {categories.map((cat: any) => (
-                                        <SelectItem key={cat.id} value={cat.name}>
+                                        <SelectItem key={cat.id} value={String(cat.id)}>
                                             {cat.name}
                                         </SelectItem>
                                     ))}
