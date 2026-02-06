@@ -128,6 +128,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
             if (categoryId) formData.append("category", categoryId);
             formData.append("is_active", String(isActive));
+            // Explicitly set is_available to true so it shows up in Customer App
+            formData.append("is_available", "true");
 
             if (imageFile) {
                 formData.append("image", imageFile);
