@@ -37,7 +37,8 @@ export default function NewOfferPage() {
         is_stackable: false,
         priority: 0,
         usage_limit_total: null,
-        usage_limit_per_user: null
+        usage_limit_per_user: null,
+        bxgy_strategy: 'mixed'
     });
 
     // Targets state
@@ -288,7 +289,23 @@ export default function NewOfferPage() {
                                         onChange={handleInputChange}
                                     />
                                 </div>
-                                <div className="flex items-center space-x-2 pt-8">
+                                <div className="space-y-2">
+                                    <Label>Strategy</Label>
+                                    <Select
+                                        value={formData.bxgy_strategy}
+                                        onValueChange={(val) => handleSelectChange('bxgy_strategy', val)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="mixed">Mix & Match (Pool)</SelectItem>
+                                            <SelectItem value="same_product">Same Product Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2 pt-2">
                                     <Switch
                                         id="cheapest_free"
                                         checked={formData.is_cheapest_free}
@@ -299,192 +316,192 @@ export default function NewOfferPage() {
                             </div>
                         )}
 
-                        {formData.offer_type === 'cart_value' && (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label>Min Order Value</Label>
-                                    <Input
-                                        type="number"
-                                        name="min_order_value"
-                                        required
-                                        min="0"
-                                        value={formData.min_order_value}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>
-                                        {formData.benefit_type === 'credit_points' ? 'Points Value / Percent' : 'Discount Amount / Percent'}
-                                    </Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            type="number"
-                                            name="value"
-                                            required
-                                            value={formData.value}
-                                            onChange={handleInputChange}
-                                        />
-                                        <Select
-                                            value={formData.value_type}
-                                            onValueChange={(val) => handleSelectChange('value_type', val)}
-                                        >
-                                            <SelectTrigger className="w-[100px]">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="percent">%</SelectItem>
-                                                <SelectItem value="amount">Flat</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Eligibility / Targets */}
-                {formData.offer_type !== 'cart_value' && (
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Eligible Products</CardTitle>
-                            <Button type="button" variant="outline" size="sm" onClick={addTarget} className="gap-2">
-                                <Plus size={16} /> Add Rule
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {targets.map((target, index) => (
-                                <div key={index} className="flex gap-4 items-end bg-accent/20 p-3 rounded-md">
-                                    <div className="flex-1 space-y-2">
-                                        <Label>Target Type</Label>
-                                        <Select
-                                            value={target.target_type}
-                                            onValueChange={(val) => updateTarget(index, 'target_type', val)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all_products">All Products</SelectItem>
-                                                <SelectItem value="product">Specific Product</SelectItem>
-                                                <SelectItem value="category">Specific Category</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {target.target_type === 'product' && (
-                                        <div className="flex-1 space-y-2">
-                                            <Label>Select Products</Label>
-                                            <ProductMultiSelect
-                                                selectedIds={target.product_ids || (target.product_id ? [String(target.product_id)] : [])}
-                                                onSelectionChange={(ids) => updateTarget(index, 'product_ids', ids)}
-                                                initialProducts={availableProducts}
-                                            />
-                                        </div>
-                                    )}
-
-                                    {target.target_type === 'category' && (
-                                        <div className="flex-1 space-y-2">
-                                            <Label>Select Category</Label>
-                                            <Select
-                                                value={target.category_id ? String(target.category_id) : undefined}
-                                                onValueChange={(val) => updateTarget(index, 'category_id', val)}
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Choose Category" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {availableCategories.map(c => (
-                                                        <SelectItem key={c.id} value={String(c.id)}>
-                                                            {c.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    )}
-
-                                    <div className="flex items-center space-x-2 pb-3">
-                                        <Switch
-                                            checked={target.is_excluded}
-                                            onCheckedChange={(checked) => updateTarget(index, 'is_excluded', checked)}
-                                        />
-                                        <Label>Exclude</Label>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="text-red-500"
-                                            onClick={() => removeTarget(index)}
-                                        >
-                                            <Trash2 size={16} />
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Availability */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Validity & Limits</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                    {formData.offer_type === 'cart_value' && (
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
-                                <Label>Start Date</Label>
+                                <Label>Min Order Value</Label>
                                 <Input
-                                    type="date"
-                                    name="start_date"
+                                    type="number"
+                                    name="min_order_value"
                                     required
-                                    value={formData.start_date}
+                                    min="0"
+                                    value={formData.min_order_value}
                                     onChange={handleInputChange}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>End Date</Label>
-                                <Input
-                                    type="date"
-                                    name="end_date"
-                                    value={formData.end_date}
-                                    onChange={handleInputChange}
-                                />
+                                <Label>
+                                    {formData.benefit_type === 'credit_points' ? 'Points Value / Percent' : 'Discount Amount / Percent'}
+                                </Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        type="number"
+                                        name="value"
+                                        required
+                                        value={formData.value}
+                                        onChange={handleInputChange}
+                                    />
+                                    <Select
+                                        value={formData.value_type}
+                                        onValueChange={(val) => handleSelectChange('value_type', val)}
+                                    >
+                                        <SelectTrigger className="w-[100px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="percent">%</SelectItem>
+                                            <SelectItem value="amount">Flat</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="is_active"
-                                checked={formData.is_active}
-                                onCheckedChange={(checked) => handleSwitchChange('is_active', checked)}
-                            />
-                            <Label htmlFor="is_active">Offer is Active</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="is_stackable"
-                                checked={formData.is_stackable}
-                                onCheckedChange={(checked) => handleSwitchChange('is_stackable', checked)}
-                            />
-                            <Label htmlFor="is_stackable">Allow Stacking</Label>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            If enabled, this offer can be applied along with other offers on the same item.
-                        </p>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Eligibility / Targets */}
+            {formData.offer_type !== 'cart_value' && (
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Eligible Products</CardTitle>
+                        <Button type="button" variant="outline" size="sm" onClick={addTarget} className="gap-2">
+                            <Plus size={16} /> Add Rule
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {targets.map((target, index) => (
+                            <div key={index} className="flex gap-4 items-end bg-accent/20 p-3 rounded-md">
+                                <div className="flex-1 space-y-2">
+                                    <Label>Target Type</Label>
+                                    <Select
+                                        value={target.target_type}
+                                        onValueChange={(val) => updateTarget(index, 'target_type', val)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all_products">All Products</SelectItem>
+                                            <SelectItem value="product">Specific Product</SelectItem>
+                                            <SelectItem value="category">Specific Category</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {target.target_type === 'product' && (
+                                    <div className="flex-1 space-y-2">
+                                        <Label>Select Products</Label>
+                                        <ProductMultiSelect
+                                            selectedIds={target.product_ids || (target.product_id ? [String(target.product_id)] : [])}
+                                            onSelectionChange={(ids) => updateTarget(index, 'product_ids', ids)}
+                                            initialProducts={availableProducts}
+                                        />
+                                    </div>
+                                )}
+
+                                {target.target_type === 'category' && (
+                                    <div className="flex-1 space-y-2">
+                                        <Label>Select Category</Label>
+                                        <Select
+                                            value={target.category_id ? String(target.category_id) : undefined}
+                                            onValueChange={(val) => updateTarget(index, 'category_id', val)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Choose Category" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availableCategories.map(c => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center space-x-2 pb-3">
+                                    <Switch
+                                        checked={target.is_excluded}
+                                        onCheckedChange={(checked) => updateTarget(index, 'is_excluded', checked)}
+                                    />
+                                    <Label>Exclude</Label>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-red-500"
+                                        onClick={() => removeTarget(index)}
+                                    >
+                                        <Trash2 size={16} />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
+            )}
 
-                <div className="flex justify-end gap-4">
-                    <Link href="/dashboard/offers">
-                        <Button variant="outline" type="button">Cancel</Button>
-                    </Link>
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Saving...' : 'Create Offer'}
-                        <Save className="w-4 h-4 ml-2" />
-                    </Button>
-                </div>
-            </form>
-        </div>
+            {/* Availability */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Validity & Limits</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label>Start Date</Label>
+                            <Input
+                                type="date"
+                                name="start_date"
+                                required
+                                value={formData.start_date}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>End Date</Label>
+                            <Input
+                                type="date"
+                                name="end_date"
+                                value={formData.end_date}
+                                onChange={handleInputChange}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="is_active"
+                            checked={formData.is_active}
+                            onCheckedChange={(checked) => handleSwitchChange('is_active', checked)}
+                        />
+                        <Label htmlFor="is_active">Offer is Active</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="is_stackable"
+                            checked={formData.is_stackable}
+                            onCheckedChange={(checked) => handleSwitchChange('is_stackable', checked)}
+                        />
+                        <Label htmlFor="is_stackable">Allow Stacking</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        If enabled, this offer can be applied along with other offers on the same item.
+                    </p>
+                </CardContent>
+            </Card>
+
+            <div className="flex justify-end gap-4">
+                <Link href="/dashboard/offers">
+                    <Button variant="outline" type="button">Cancel</Button>
+                </Link>
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : 'Create Offer'}
+                    <Save className="w-4 h-4 ml-2" />
+                </Button>
+            </div>
+        </form>
+        </div >
     );
 }
