@@ -133,7 +133,7 @@ function OrderEditContent() {
 
     const calculateSummary = () => {
         const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-        const deliveryFee = deliveryMode === 'delivery' ? 50 : 0;
+        const deliveryFee = deliveryMode === 'delivery' ? Number(order?.delivery_fee || 0) : 0;
         const totalBeforePoints = Math.max(0, subtotal + deliveryFee - discountAmount);
 
         let pointsRefundValue = 0;
