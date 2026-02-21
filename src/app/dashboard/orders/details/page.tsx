@@ -251,6 +251,36 @@ function OrderDetailContent() {
                         </CardContent>
                     </Card>
 
+                    {/* Customer Feedback Card */}
+                    {order.feedback && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" /> Customer Feedback
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-1">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                                key={star}
+                                                size={16}
+                                                className={order.feedback.overall_rating >= star ? 'text-yellow-400' : 'text-gray-300'}
+                                                fill={order.feedback.overall_rating >= star ? '#facc15' : 'none'}
+                                            />
+                                        ))}
+                                    </div>
+                                    {order.feedback.comment && (
+                                        <p className="text-sm italic text-muted-foreground p-3 bg-muted/50 rounded-md">
+                                            "{order.feedback.comment}"
+                                        </p>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     {/* Rate Customer Card */}
                     {['delivered', 'cancelled', 'returned'].includes(order.status) && (
                         <Card>
@@ -352,7 +382,8 @@ function OrderDetailContent() {
                                 >
                                     <Star
                                         size={32}
-                                        className={`${rating >= star ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                        className={rating >= star ? 'text-yellow-400' : 'text-gray-300'}
+                                        fill={rating >= star ? '#facc15' : 'none'}
                                     />
                                 </button>
                             ))}

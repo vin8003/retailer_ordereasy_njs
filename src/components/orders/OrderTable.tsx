@@ -32,6 +32,10 @@ interface Order {
     status: string;
     created_at: string;
     items_count?: number;
+    feedback?: {
+        overall_rating: number;
+        comment: string;
+    };
 }
 
 interface OrderTableProps {
@@ -94,9 +98,17 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     : order.customer_name || 'Customer'}
                             </TableCell>
                             <TableCell>
-                                <Badge className={getStatusColor(order.status)}>
-                                    {order.status.toUpperCase()}
-                                </Badge>
+                                <div className="flex flex-col gap-1 items-start">
+                                    <Badge className={getStatusColor(order.status)}>
+                                        {order.status.toUpperCase()}
+                                    </Badge>
+                                    {order.feedback && (
+                                        <div className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
+                                            <span>{order.feedback.overall_rating}</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#facc15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                        </div>
+                                    )}
+                                </div>
                             </TableCell>
                             <TableCell className="text-right">
                                 ₹{Number(order.total_amount).toLocaleString('en-IN')}

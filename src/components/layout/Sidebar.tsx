@@ -7,7 +7,8 @@ import {
     Users,
     Award,
     User,
-    LogOut
+    LogOut,
+    Star
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -26,6 +27,7 @@ const Sidebar = () => {
         { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
+        { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },
         { label: 'Offers', icon: Award, href: '/dashboard/offers' },
         { label: 'Profile', icon: User, href: '/dashboard/profile' },

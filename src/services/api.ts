@@ -137,6 +137,9 @@ export const orderService = {
   fetchOrderChat: (id: number) => api.get(`orders/${id}/chat/`),
   sendChatMessage: (id: number, message: string) => api.post(`orders/${id}/chat/send/`, { message }),
   markChatRead: (id: number) => api.post(`orders/${id}/chat/read/`),
+
+  // Reviews
+  getRetailerReviews: (params?: any) => api.get('orders/retailer-reviews/', { params }),
 };
 
 export const productService = {
