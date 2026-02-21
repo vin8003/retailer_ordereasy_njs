@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -32,6 +32,13 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
+    const [isMounted, setIsMounted] = useState(false);
+
+    // Prevent hydration errors by only rendering the form after component has mounted on client
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -58,6 +65,18 @@ export default function LoginPage() {
         } finally {
             setIsLoading(false);
         }
+    }
+
+    if (!isMounted) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+                <Card className="w-full max-w-md">
+                    <CardContent className="flex justify-center p-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     return (
