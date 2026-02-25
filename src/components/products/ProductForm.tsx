@@ -46,6 +46,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [categoryId, setCategoryId] = useState<string>(getInitialCategoryId());
 
     const [isActive, setIsActive] = useState(initialData?.is_active ?? true);
+    const [isSeasonal, setIsSeasonal] = useState(initialData?.is_seasonal ?? false);
 
     // Image State
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -128,6 +129,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
             if (categoryId) formData.append("category", categoryId);
             formData.append("is_active", String(isActive));
+            formData.append("is_seasonal", String(isSeasonal));
             // Explicitly set is_available to true so it shows up in Customer App
             formData.append("is_available", "true");
 
@@ -350,6 +352,21 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         Is Active
                         <span className="block text-xs font-normal text-muted-foreground">
                             When inactive, this product will be hidden from customers.
+                        </span>
+                    </Label>
+                </div>
+
+                {/* Seasonal Status */}
+                <div className="md:col-span-2 flex items-center space-x-2 rounded-md border p-4">
+                    <Switch
+                        id="isSeasonal"
+                        checked={isSeasonal}
+                        onCheckedChange={setIsSeasonal}
+                    />
+                    <Label htmlFor="isSeasonal" className="flex-1 cursor-pointer">
+                        Seasonal Pick
+                        <span className="block text-xs font-normal text-muted-foreground">
+                            When active, this product will be featured in the "Seasonal Picks" lane on the customer home page.
                         </span>
                     </Label>
                 </div>
