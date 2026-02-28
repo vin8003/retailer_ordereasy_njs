@@ -8,7 +8,8 @@ import {
     Award,
     User,
     LogOut,
-    Star
+    Star,
+    Clock
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -31,6 +32,7 @@ const Sidebar = () => {
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },
         { label: 'Offers', icon: Award, href: '/dashboard/offers' },
         { label: 'Profile', icon: User, href: '/dashboard/profile' },
+        { label: 'Operating Hours', icon: Clock, href: '/dashboard/operating-hours' },
     ];
 
     return (

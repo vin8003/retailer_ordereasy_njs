@@ -127,10 +127,23 @@ export const authService = {
   },
 };
 
+export const reviewsService = {
+  fetchCustomerReviews: (params?: any) => api.get('customer/reviews/', { params }),
+  createReview: (data: any) => api.post('customer/reviews/', data),
+};
+
+export const operatingHoursService = {
+  getOperatingHours: () => api.get('retailer/operating-hours/'),
+  updateOperatingHours: (data: { operating_hours: any[] }) => api.post('retailer/operating-hours/', data),
+};
+
 export const orderService = {
   fetchOrders: (params?: any) => api.get('orders/history/', { params }),
   fetchOrderDetails: (id: number) => api.get(`orders/${id}/`),
-  updateStatus: (id: number, status: string) => api.patch(`orders/${id}/status/`, { status }),
+  updateStatus: (id: number, status: string, preparation_time_minutes?: number) =>
+    api.patch(`orders/${id}/status/`, { status, preparation_time_minutes }),
+  updateEstimatedTime: (id: number, preparation_time_minutes: number) =>
+    api.patch(`orders/${id}/estimated-time/`, { preparation_time_minutes }),
   modifyOrder: (id: number, data: any) => api.post(`orders/${id}/modify/`, data),
 
   // Chat

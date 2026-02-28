@@ -4,6 +4,16 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { orderService } from "@/services/api";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface OrderStatusUpdateProps {
     orderId: number;
@@ -19,6 +29,9 @@ export function OrderStatusUpdate({
     onStatusUpdate
 }: OrderStatusUpdateProps) {
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [prepTime, setPrepTime] = useState("30");
+    const [selectedStatus, setSelectedStatus] = useState("");
 
     const getNextStatuses = (status: string, mode: string = 'delivery') => {
         const s = status.toLowerCase();
@@ -32,11 +45,21 @@ export function OrderStatusUpdate({
 
     const nextStatuses = getNextStatuses(currentStatus, deliveryMode);
 
-    const handleUpdate = async (status: string) => {
+    const handleStatusClick = (status: string) => {
+        if (status === 'confirmed') {
+            setSelectedStatus(status);
+            setIsDialogOpen(true);
+        } else {
+            handleUpdate(status);
+        }
+    };
+
+    const handleUpdate = async (status: string, prepTimeMinutes?: number) => {
         setIsUpdating(true);
         try {
-            await orderService.updateStatus(orderId, status);
+            await orderService.updateStatus(orderId, status, prepTimeMinutes);
             toast.success(`Order status updated to ${status}`);
+            setIsDialogOpen(false);
             onStatusUpdate();
         } catch (error) {
             console.error("Failed to update status", error);
@@ -69,13 +92,48 @@ export function OrderStatusUpdate({
                 return (
                     <Button
                         key={status}
-                        onClick={() => handleUpdate(status)}
+                        onClick={() => handleStatusClick(status)}
                         disabled={isUpdating}
                     >
                         {label}
                     </Button>
                 );
             })}
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Order</DialogTitle>
+                        <DialogDescription>
+                            Enter the estimated preparation time to notify the customer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="prepTime" className="text-right">
+                                Time (min)
+                            </Label>
+                            <Input
+                                id="prepTime"
+                                type="number"
+                                value={prepTime}
+                                onChange={(e) => setPrepTime(e.target.value)}
+                                className="col-span-3"
+                                min="1"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            disabled={isUpdating || !prepTime || parseInt(prepTime) <= 0}
+                            onClick={() => handleUpdate(selectedStatus, parseInt(prepTime))}
+                        >
+                            Confirm Order
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

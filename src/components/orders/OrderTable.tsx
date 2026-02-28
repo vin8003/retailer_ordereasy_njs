@@ -32,6 +32,7 @@ interface Order {
     status: string;
     created_at: string;
     items_count?: number;
+    expected_processing_start?: string;
     feedback?: {
         overall_rating: number;
         comment: string;
@@ -90,7 +91,15 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                         >
                             <TableCell className="font-medium">{order.order_number}</TableCell>
                             <TableCell>
-                                {format(new Date(order.created_at), "MMM d, yyyy")}
+                                <div className="flex flex-col">
+                                    <span>{format(new Date(order.created_at), "MMM d, yyyy")}</span>
+                                    {order.expected_processing_start && order.status === 'pending' && (
+                                        <span className="text-xs text-orange-600 flex items-center font-medium mt-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                            Process later
+                                        </span>
+                                    )}
+                                </div>
                             </TableCell>
                             <TableCell>
                                 {order.customer?.first_name

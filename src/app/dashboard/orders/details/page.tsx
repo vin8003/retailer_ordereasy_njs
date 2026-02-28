@@ -14,9 +14,11 @@ import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 
 import { orderService, customerService } from "@/services/api";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 function OrderDetailContent() {
     const searchParams = useSearchParams();
@@ -30,6 +32,11 @@ function OrderDetailContent() {
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState("");
     const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+
+    // ETA State
+    const [isEtaModalOpen, setIsEtaModalOpen] = useState(false);
+    const [etaMinutes, setEtaMinutes] = useState("");
+    const [isUpdatingEta, setIsUpdatingEta] = useState(false);
 
     const fetchOrderDetails = async () => {
         setIsLoading(true);
@@ -57,6 +64,22 @@ function OrderDetailContent() {
             console.error("Failed to rate customer", err);
         } finally {
             setIsSubmittingRating(false);
+        }
+    };
+
+    const handleUpdateEta = async () => {
+        if (!etaMinutes || parseInt(etaMinutes) <= 0) return;
+        setIsUpdatingEta(true);
+        try {
+            await orderService.updateEstimatedTime(order.id, parseInt(etaMinutes));
+            toast.success("Estimated time updated");
+            setIsEtaModalOpen(false);
+            fetchOrderDetails();
+        } catch (err: any) {
+            console.error("Failed to update ETA", err);
+            toast.error("Failed to update estimated time");
+        } finally {
+            setIsUpdatingEta(false);
         }
     };
 
@@ -112,6 +135,14 @@ function OrderDetailContent() {
                     <p className="text-muted-foreground">
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
                     </p>
+                    {order.expected_processing_start && order.status === 'pending' && (
+                        <div className="flex items-center gap-2 text-orange-600 bg-orange-50 border border-orange-200 px-3 py-2 rounded-md mt-1 w-fit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                            <span className="text-sm font-medium">
+                                Received outside business hours. Processing starts {format(new Date(order.expected_processing_start), "MMM d, h:mm a")}.
+                            </span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.push(`/dashboard/orders/chat?id=${order.id}`)}>
@@ -216,6 +247,25 @@ function OrderDetailContent() {
                                     onStatusUpdate={fetchOrderDetails}
                                 />
                             </div>
+
+                            {/* Update ETA Button */}
+                            {['confirmed', 'processing'].includes(order.status.toLowerCase()) && (
+                                <>
+                                    <Separator className="my-4" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground mb-2">Estimated Ready Time:</p>
+                                        <p className="text-sm font-medium mb-3">
+                                            {order.preparation_time_minutes ? `${order.preparation_time_minutes} min` : 'Not set'}
+                                        </p>
+                                        <Button variant="outline" className="w-full" onClick={() => {
+                                            setEtaMinutes(order.preparation_time_minutes?.toString() || "30");
+                                            setIsEtaModalOpen(true);
+                                        }}>
+                                            Update Time
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -402,6 +452,36 @@ function OrderDetailContent() {
                         <Button variant="outline" onClick={() => setIsRatingModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleRateCustomer} disabled={isSubmittingRating}>
                             {isSubmittingRating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Rating"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isEtaModalOpen} onOpenChange={setIsEtaModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Estimated Time</DialogTitle>
+                        <DialogDescription>
+                            Enter the new estimated preparation time in minutes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="etaMinutes" className="text-right">Time (min)</Label>
+                            <Input
+                                id="etaMinutes"
+                                type="number"
+                                value={etaMinutes}
+                                onChange={(e) => setEtaMinutes(e.target.value)}
+                                className="col-span-3"
+                                min="1"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEtaModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpdateEta} disabled={isUpdatingEta || !etaMinutes || parseInt(etaMinutes) <= 0}>
+                            {isUpdatingEta ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Time"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
