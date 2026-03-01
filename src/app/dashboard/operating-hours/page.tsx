@@ -85,7 +85,7 @@ export default function OperatingHoursPage() {
         setIsSaving(true);
         try {
             const formattedData = hours.map(h => ({
-                day: h.day_of_week,
+                day_of_week: h.day_of_week,
                 is_open: h.is_open,
                 opening_time: h.opening_time,
                 closing_time: h.closing_time

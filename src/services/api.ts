@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://api.ordereasy.win/api/'
@@ -99,6 +100,13 @@ api.interceptors.response.use(
         }
       }
     }
+
+    // Global Error Toasting
+    if (typeof window !== 'undefined' && error.response && error.response.status >= 400 && error.response.status !== 401) {
+      const errorMsg = error.response.data?.error || error.response.data?.detail || "An error occurred";
+      toast.error(errorMsg);
+    }
+
     return Promise.reject(error);
   }
 );
