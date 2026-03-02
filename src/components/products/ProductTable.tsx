@@ -40,9 +40,11 @@ interface ProductTableProps {
     isLoading: boolean;
     onDelete?: (product: Product) => void;
     onToggleFeatured?: (product: Product) => void;
+    onEdit?: (product: Product) => void;
+    highlightedProductId?: number | null;
 }
 
-export function ProductTable({ products, isLoading, onDelete, onToggleFeatured }: ProductTableProps) {
+export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, onEdit, highlightedProductId }: ProductTableProps) {
     const router = useRouter();
 
     if (isLoading) {
@@ -69,7 +71,10 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured }
                 </TableHeader>
                 <TableBody>
                     {products.map((product) => (
-                        <TableRow key={product.id}>
+                        <TableRow
+                            key={product.id}
+                            className={highlightedProductId === product.id ? "bg-green-100/50 dark:bg-green-900/30 transition-colors duration-500" : "transition-colors duration-500"}
+                        >
                             <TableCell>
                                 <div className="h-12 w-12 rounded bg-muted flex items-center justify-center overflow-hidden">
                                     {product.image ? (
@@ -131,7 +136,13 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured }
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                         <DropdownMenuItem
-                                            onClick={() => router.push(`/dashboard/products/edit?id=${product.id}`)}
+                                            onClick={() => {
+                                                if (onEdit) {
+                                                    onEdit(product);
+                                                } else {
+                                                    router.push(`/dashboard/products/edit?id=${product.id}`);
+                                                }
+                                            }}
                                         >
                                             <Edit className="mr-2 h-4 w-4" />
                                             Edit

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Plus, Search, MoreHorizontal, FileEdit, Trash2, Box, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -38,8 +38,56 @@ export default function ProductsPage() {
     const [statusFilter, setStatusFilter] = useState("active");
     const [showFilters, setShowFilters] = useState(false);
 
+    const isRestoringState = useRef(false);
+    const [highlightedProductId, setHighlightedProductId] = useState<number | null>(null);
+
     useEffect(() => {
         fetchCategories();
+
+        const savedStateStr = sessionStorage.getItem('productsPageState');
+        if (savedStateStr) {
+            isRestoringState.current = true;
+            try {
+                const savedState = JSON.parse(savedStateStr);
+
+                let updatedProducts = savedState.products;
+                const editedProductStr = sessionStorage.getItem('editedProduct');
+                let editedId: number | null = null;
+                if (editedProductStr) {
+                    const editedProduct = JSON.parse(editedProductStr);
+                    editedId = editedProduct.id;
+                    updatedProducts = updatedProducts.map((p: any) => p.id === editedId ? editedProduct : p);
+                    sessionStorage.removeItem('editedProduct');
+                }
+
+                setProducts(updatedProducts);
+                setCurrentPage(savedState.currentPage);
+                setSearchQuery(savedState.searchQuery);
+                setSelectedCategory(savedState.selectedCategory);
+                setInStockOnly(savedState.inStockOnly);
+                setStatusFilter(savedState.statusFilter);
+                setTotalPages(savedState.totalPages);
+                setTotalCount(savedState.totalCount);
+                setShowFilters(savedState.showFilters);
+                setIsLoading(false);
+
+                if (editedId) {
+                    setHighlightedProductId(editedId);
+                    setTimeout(() => setHighlightedProductId(null), 3000);
+                }
+
+                setTimeout(() => {
+                    window.scrollTo({ top: savedState.scrollPosition, behavior: 'instant' });
+                    // Provide a slight delay before enabling normal fetches
+                    setTimeout(() => { isRestoringState.current = false; }, 200);
+                }, 50);
+
+                sessionStorage.removeItem('productsPageState');
+            } catch (e) {
+                console.error("Failed to restore state", e);
+                isRestoringState.current = false;
+            }
+        }
     }, []);
 
     // Helper to flatten nested categories
@@ -112,6 +160,7 @@ export default function ProductsPage() {
 
 
     useEffect(() => {
+        if (isRestoringState.current) return;
         const timer = setTimeout(() => {
             fetchProducts(1); // Reset to page 1 on search/filter change
         }, 300);
@@ -137,6 +186,23 @@ export default function ProductsPage() {
             console.error("Failed to delete product", error);
             toast.error("Failed to delete product");
         }
+    };
+
+    const handleEdit = (product: any) => {
+        const stateToSave = {
+            products,
+            currentPage,
+            searchQuery,
+            selectedCategory,
+            inStockOnly,
+            statusFilter,
+            totalPages,
+            totalCount,
+            showFilters,
+            scrollPosition: window.scrollY
+        };
+        sessionStorage.setItem('productsPageState', JSON.stringify(stateToSave));
+        router.push(`/dashboard/products/edit?id=${product.id}`);
     };
 
     return (
@@ -249,6 +315,8 @@ export default function ProductsPage() {
                     products={products}
                     isLoading={isLoading}
                     onDelete={handleDelete}
+                    onEdit={handleEdit}
+                    highlightedProductId={highlightedProductId}
                     onToggleFeatured={async (product) => {
                         try {
                             const updatedProducts: any = products.map((p: any) =>

@@ -138,10 +138,15 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             }
 
             if (isEditing && initialData?.id) {
-                await productService.updateProduct(initialData.id, formData);
+                const response = await productService.updateProduct(initialData.id, formData);
+                if (response?.data) {
+                    sessionStorage.setItem('editedProduct', JSON.stringify(response.data));
+                }
                 toast.success("Product updated successfully");
             } else {
                 await productService.addProduct(formData);
+                // Clear any saved list state so new product appears on page 1
+                sessionStorage.removeItem('productsPageState');
                 toast.success("Product created successfully");
             }
             router.push("/dashboard/products");
