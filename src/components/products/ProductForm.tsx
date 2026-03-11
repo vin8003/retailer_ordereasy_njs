@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Barcode, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { productService } from "@/services/api";
+import { BarcodeScanner } from "@/components/products/BarcodeScanner";
 
 interface ProductFormProps {
     initialData?: any;
@@ -36,6 +37,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [minOrderQty, setMinOrderQty] = useState(initialData?.minimum_order_quantity || "1");
     const [maxOrderQty, setMaxOrderQty] = useState(initialData?.maximum_order_quantity || "");
     const [productGroup, setProductGroup] = useState(initialData?.product_group || "");
+    const [barcode, setBarcode] = useState(initialData?.barcode || "");
+    const [masterProductId, setMasterProductId] = useState(initialData?.master_product || "");
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isSearchingMaster, setIsSearchingMaster] = useState(false);
 
     // Handle category: could be ID (create) or Object (edit)
     const getInitialCategoryId = () => {
@@ -105,6 +110,39 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
         }
     };
 
+    const handleScanSuccess = async (decodedText: string) => {
+        setIsScannerOpen(false);
+        setBarcode(decodedText);
+
+        setIsSearchingMaster(true);
+        try {
+            const res = await productService.searchMasterProduct(decodedText);
+            if (res.data) {
+                const master = res.data;
+                toast.success(`Found in Global Catalog: ${master.name}`);
+
+                // Auto-fill form
+                setName(master.name);
+                if (master.description) setDescription(master.description);
+                if (master.mrp) setOriginalPrice(master.mrp);
+                if (master.product_group) setProductGroup(master.product_group);
+                if (master.image_url) setImagePreview(master.image_url);
+                if (master.category_name) setCategorySearch(master.category_name);
+                if (master.category) setCategoryId(master.category.toString());
+
+                setMasterProductId(master.id.toString());
+            }
+        } catch (error: any) {
+            if (error.response?.status === 404) {
+                toast.info("Barcode not found in global catalog. You can still add it manually.");
+            } else {
+                toast.error("Failed to search barcode.");
+            }
+        } finally {
+            setIsSearchingMaster(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -126,6 +164,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("minimum_order_quantity", minOrderQty);
             if (maxOrderQty) formData.append("maximum_order_quantity", maxOrderQty);
             if (productGroup) formData.append("product_group", productGroup);
+            if (barcode) formData.append("barcode", barcode);
+            if (masterProductId) formData.append("master_product", masterProductId);
 
             if (categoryId) formData.append("category", categoryId);
             formData.append("is_active", String(isActive));
@@ -219,6 +259,37 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                             </div>
                             <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
                         </div>
+                    )}
+                </div>
+
+                {/* Barcode & Scan */}
+                <div className="md:col-span-2 space-y-2">
+                    <Label htmlFor="barcode" className="flex items-center justify-between">
+                        <span>Barcode (Optional)</span>
+                    </Label>
+                    <div className="flex gap-2">
+                        <Input
+                            id="barcode"
+                            placeholder="Scan or enter barcode"
+                            value={barcode}
+                            onChange={(e) => setBarcode(e.target.value)}
+                            className="flex-1"
+                            disabled={isSearchingMaster}
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsScannerOpen(true)}
+                            disabled={isSearchingMaster}
+                        >
+                            {isSearchingMaster ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Barcode className="w-4 h-4 mr-2" />}
+                            Scan
+                        </Button>
+                    </div>
+                    {masterProductId && (
+                        <p className="text-xs text-green-600 flex items-center gap-1 mt-1 font-medium">
+                            <CheckCircle2 className="w-3 h-3" /> Linked to Global Catalog
+                        </p>
                     )}
                 </div>
 
@@ -387,6 +458,13 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     {isEditing ? "Update Product" : "Create Product"}
                 </Button>
             </div>
+
+            {isScannerOpen && (
+                <BarcodeScanner
+                    onClose={() => setIsScannerOpen(false)}
+                    onScanSuccess={handleScanSuccess}
+                />
+            )}
         </form>
     );
 }

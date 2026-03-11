@@ -186,6 +186,8 @@ export const productService = {
   fetchAllCategories: (query?: string) => api.get('products/categories/all/', { params: { search: query } }),
   fetchProductGroups: (query?: string) => api.get('products/product-groups/', { params: { search: query } }),
   fetchProductDetails: (id: number) => api.get(`products/${id}/`),
+  bulkUpdateProducts: (items: any[]) => api.patch('products/bulk-update/', { items }),
+  searchMasterProduct: (barcode: string) => api.get('products/master/search/', { params: { barcode } }),
 
   // Bulk Upload (Excel)
   checkBulkUpload: (file: File) => {

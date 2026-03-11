@@ -8,7 +8,9 @@ import Link from "next/link";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ProductTable } from "@/components/products/ProductTable";
+import { VirtualProductList } from "@/components/products/VirtualProductList";
+import { BulkActionBar } from "@/components/products/BulkActionBar";
+import { BulkEditMatrix } from "@/components/products/BulkEditMatrix";
 import {
     Select,
     SelectContent,
@@ -24,6 +26,7 @@ export default function ProductsPage() {
     const router = useRouter();
     const [products, setProducts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Pagination & Filters
@@ -34,12 +37,17 @@ export default function ProductsPage() {
 
     // Filter States
     const [selectedCategory, setSelectedCategory] = useState("all");
-    const [inStockOnly, setInStockOnly] = useState(false);
+    const [stockFilter, setStockFilter] = useState("all"); // 'all', 'in', 'out', 'low'
     const [statusFilter, setStatusFilter] = useState("active");
     const [showFilters, setShowFilters] = useState(false);
 
     const isRestoringState = useRef(false);
     const [highlightedProductId, setHighlightedProductId] = useState<number | null>(null);
+
+    // Bulk Operations
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
+    const [isBulkMatrixOpen, setIsBulkMatrixOpen] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -64,7 +72,7 @@ export default function ProductsPage() {
                 setCurrentPage(savedState.currentPage);
                 setSearchQuery(savedState.searchQuery);
                 setSelectedCategory(savedState.selectedCategory);
-                setInStockOnly(savedState.inStockOnly);
+                setStockFilter(savedState.stockFilter);
                 setStatusFilter(savedState.statusFilter);
                 setTotalPages(savedState.totalPages);
                 setTotalCount(savedState.totalCount);
@@ -113,8 +121,10 @@ export default function ProductsPage() {
         }
     };
 
-    const fetchProducts = async (page = 1) => {
-        setIsLoading(true);
+    const fetchProducts = async (page = 1, append = false) => {
+        if (page === 1) setIsLoading(true);
+        else setIsFetchingMore(true);
+
         try {
             const params: any = {
                 page: page
@@ -125,23 +135,25 @@ export default function ProductsPage() {
 
             if (searchQuery) params.search = searchQuery;
             if (selectedCategory && selectedCategory !== "all") params.category = selectedCategory;
-            if (inStockOnly) params.in_stock = "true";
+            if (stockFilter === "in") params.in_stock = "true";
+            if (stockFilter === "out") params.in_stock = "false";
+            if (stockFilter === "low") params.low_stock = "true";
 
             const response = await productService.fetchProducts(params);
 
             // Handle standard DRF pagination response { count: 100, next: "...", previous: "...", results: [...] }
             if (response.data && response.data.results) {
-                setProducts(response.data.results);
+                setProducts(prev => append ? [...prev, ...response.data.results] : response.data.results);
                 setTotalCount(response.data.count);
                 // Calculate total pages (assuming default page size 20 from backend view)
                 setTotalPages(Math.ceil(response.data.count / 20) || 1);
             } else if (Array.isArray(response.data)) {
                 // Fallback for non-paginated response
-                setProducts(response.data); ``
+                setProducts(prev => append ? [...prev, ...response.data] : response.data);
                 setTotalCount(response.data.length);
                 setTotalPages(1);
             } else {
-                setProducts([]);
+                if (!append) setProducts([]);
             }
             setCurrentPage(page);
         } catch (error: any) {
@@ -151,10 +163,11 @@ export default function ProductsPage() {
                 fetchProducts(1);
             } else {
                 toast.error("Failed to load products");
-                setProducts([]);
+                if (!append) setProducts([]);
             }
         } finally {
             setIsLoading(false);
+            setIsFetchingMore(false);
         }
     };
 
@@ -166,12 +179,12 @@ export default function ProductsPage() {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, selectedCategory, inStockOnly, statusFilter]);
+    }, [searchQuery, selectedCategory, stockFilter, statusFilter]);
 
-    // Handle manual page change
-    const handlePageChange = (newPage: number) => {
-        if (newPage >= 1 && newPage <= totalPages) {
-            fetchProducts(newPage);
+    // Handle load more
+    const handleLoadMore = () => {
+        if (currentPage < totalPages && !isFetchingMore && !isLoading) {
+            fetchProducts(currentPage + 1, true);
         }
     };
 
@@ -194,7 +207,7 @@ export default function ProductsPage() {
             currentPage,
             searchQuery,
             selectedCategory,
-            inStockOnly,
+            stockFilter,
             statusFilter,
             totalPages,
             totalCount,
@@ -215,109 +228,154 @@ export default function ProductsPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Link href="/dashboard/products/bulk">
-                        <Button variant="outline">
-                            <Box className="mr-2 h-4 w-4" />
-                            Bulk Add
-                        </Button>
-                    </Link>
                     <Link href="/dashboard/products/add">
-                        <Button>
+                        <Button variant="default" className="w-full sm:w-auto">
                             <Plus className="mr-2 h-4 w-4" />
                             Add Product
+                        </Button>
+                    </Link>
+                    <Link href="/dashboard/products/bulk">
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <Box className="mr-2 h-4 w-4" />
+                            Bulk Upload
                         </Button>
                     </Link>
                 </div>
             </div>
 
+            {/* Insight Cards (Hub & Spoke Dashboard) */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div
+                    onClick={() => setStockFilter("all")}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${stockFilter === "all" ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-muted"}`}
+                >
+                    <div className="text-sm font-medium mb-1 opacity-80">All Products</div>
+                    <div className="text-2xl font-bold">{totalCount}</div>
+                </div>
+                <div
+                    onClick={() => setStockFilter("low")}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${stockFilter === "low" ? "bg-amber-500 text-white border-amber-500" : "bg-card hover:bg-muted"}`}
+                >
+                    <div className="text-sm font-medium mb-1 opacity-80 text-amber-500">Low Stock</div>
+                    <div className="text-2xl font-bold">Filters</div>
+                </div>
+                <div
+                    onClick={() => setStockFilter("out")}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${stockFilter === "out" ? "bg-destructive text-destructive-foreground border-destructive" : "bg-card hover:bg-muted"}`}
+                >
+                    <div className="text-sm font-medium mb-1 opacity-80 text-destructive">Out of Stock</div>
+                    <div className="text-2xl font-bold">Filters</div>
+                </div>
+            </div>
+
             <div className="flex flex-col gap-4">
-                {/* Search and Filters Bar */}
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search products..."
-                            className="pl-8"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Button
-                        variant={showFilters ? "secondary" : "outline"}
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="md:w-auto w-full"
-                    >
-                        <Filter className="mr-2 h-4 w-4" />
-                        Filters
-                    </Button>
+                {/* Omnibar & Filter Pills */}
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search products by name, barcode, or category..."
+                        className="pl-10 py-6 text-lg rounded-xl shadow-sm border-2 bg-background md:w-2/3"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
 
-                {/* Expanded Filters */}
-                {showFilters && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
-                        <div className="space-y-2">
-                            <Label>Category</Label>
-                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="All Categories" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Categories</SelectItem>
-                                    {categories.map((cat: any) => (
-                                        <SelectItem key={cat.id} value={String(cat.id)}>
-                                            {cat.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Status</Label>
-                            <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="inactive">Inactive</SelectItem>
-                                    <SelectItem value="all">All</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex items-center space-x-2 pt-8">
-                            <Switch
-                                id="stock-mode"
-                                checked={inStockOnly}
-                                onCheckedChange={setInStockOnly}
-                            />
-                            <Label htmlFor="stock-mode">In Stock Only</Label>
-                        </div>
-                        <div className="pt-8 text-right">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setSelectedCategory("all");
-                                    setInStockOnly(false);
-                                    setStatusFilter("active");
-                                    setSearchQuery("");
-                                }}
-                            >
-                                <X className="mr-2 h-4 w-4" />
-                                Clear Filters
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <div className="flex flex-wrap gap-2 items-center">
+                    <Button
+                        variant={stockFilter === "all" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setStockFilter("all")}
+                        className="rounded-full"
+                    >
+                        All
+                    </Button>
+                    <Button
+                        variant={stockFilter === "in" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setStockFilter("in")}
+                        className="rounded-full"
+                    >
+                        In Stock
+                    </Button>
+                    <Button
+                        variant={stockFilter === "out" ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => setStockFilter("out")}
+                        className="rounded-full"
+                    >
+                        Out of Stock
+                    </Button>
+                    <Button
+                        variant={stockFilter === "low" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setStockFilter("low")}
+                        className="rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200"
+                    >
+                        Low Stock (&lt;=10)
+                    </Button>
 
-                <ProductTable
+                    <div className="h-4 w-px bg-border mx-2 hidden sm:block"></div>
+
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger className="w-auto h-8 rounded-full border-dashed text-xs">
+                            <Filter className="w-3 h-3 mr-2" />
+                            <SelectValue placeholder="Category" />
+                            {selectedCategory !== "all" && (
+                                <div
+                                    className="ml-2 bg-muted rounded-full p-0.5 hover:bg-muted-foreground/20"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setSelectedCategory("all");
+                                    }}
+                                >
+                                    <X className="w-3 h-3" />
+                                </div>
+                            )}
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            {categories.map((cat: any) => (
+                                <SelectItem key={cat.id} value={String(cat.id)}>
+                                    {cat.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-auto h-8 rounded-full border-dashed text-xs">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="all">All Status</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <VirtualProductList
                     products={products}
-                    isLoading={isLoading}
+                    isLoading={isLoading && !isFetchingMore}
                     onDelete={handleDelete}
                     onEdit={handleEdit}
                     highlightedProductId={highlightedProductId}
-                    onToggleFeatured={async (product) => {
+                    loadMore={handleLoadMore}
+                    hasMore={currentPage < totalPages}
+                    selectionMode={selectionMode}
+                    selectedIds={selectedProductIds}
+                    onToggleSelectionMode={() => setSelectionMode(prev => !prev)}
+                    onToggleSelect={(id) => {
+                        setSelectedProductIds(prev => {
+                            const newSet = new Set(prev);
+                            if (newSet.has(id)) newSet.delete(id);
+                            else newSet.add(id);
+                            return newSet;
+                        });
+                    }}
+                    onToggleFeatured={async (product: any) => {
                         try {
                             const updatedProducts: any = products.map((p: any) =>
                                 p.id === product.id ? { ...p, is_featured: !p.is_featured } : p
@@ -332,37 +390,79 @@ export default function ProductsPage() {
                         } catch (error) {
                             console.error("Failed to update product", error);
                             toast.error("Failed to update status");
-                            fetchProducts(currentPage);
+                            fetchProducts(1);
+                        }
+                    }}
+                    onUpdateStock={async (product: any, newStock: number) => {
+                        try {
+                            setProducts(products.map(p => p.id === product.id ? { ...p, quantity: newStock } : p));
+                            const formData = new FormData();
+                            formData.append('quantity', String(newStock));
+                            await productService.updateProduct(product.id, formData);
+                            toast.success(`Stock updated to ${newStock} for ${product.name}`);
+                        } catch (e) {
+                            toast.error("Failed to update stock");
+                            setProducts([...products]);
+                            throw e;
+                        }
+                    }}
+                    onUpdatePrice={async (product: any, newPrice: number) => {
+                        try {
+                            setProducts(products.map(p => p.id === product.id ? { ...p, price: newPrice } : p));
+                            const formData = new FormData();
+                            formData.append('price', String(newPrice));
+                            await productService.updateProduct(product.id, formData);
+                            toast.success(`Price updated to ${newPrice} for ${product.name}`);
+                        } catch (e) {
+                            toast.error("Failed to update price");
+                            setProducts([...products]);
+                            throw e;
                         }
                     }}
                 />
 
-                {/* Pagination Controls */}
-                <div className="flex items-center justify-between border-t pt-4">
-                    <div className="text-sm text-muted-foreground">
-                        Page {currentPage} of {totalPages}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage <= 1 || isLoading}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage >= totalPages || isLoading}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                    </div>
-                </div>
+                {/* Bulk Actions UI */}
+                <BulkActionBar
+                    selectedCount={selectedProductIds.size}
+                    onCancel={() => {
+                        setSelectionMode(false);
+                        setSelectedProductIds(new Set());
+                    }}
+                    onEditSelected={() => setIsBulkMatrixOpen(true)}
+                />
+
+                <BulkEditMatrix
+                    open={isBulkMatrixOpen}
+                    products={products.filter(p => selectedProductIds.has(p.id))}
+                    onClose={() => setIsBulkMatrixOpen(false)}
+                    onSave={async (changes) => {
+                        try {
+                            // Optimistically update local state
+                            setProducts(prevProducts => prevProducts.map(p => {
+                                const modification = changes.find((c: any) => c.id === p.id);
+                                if (modification) {
+                                    return {
+                                        ...p,
+                                        ...(modification.price !== undefined ? { price: modification.price } : {}),
+                                        ...(modification.quantity !== undefined ? { quantity: modification.quantity } : {})
+                                    };
+                                }
+                                return p;
+                            }));
+
+                            await productService.bulkUpdateProducts(changes);
+                            toast.success(`Successfully updated ${changes.length} products.`);
+
+                            // Reset selections and close
+                            setSelectionMode(false);
+                            setSelectedProductIds(new Set());
+                        } catch (e) {
+                            toast.error("Bulk update failed.");
+                            fetchProducts(currentPage); // Revert optimistic changes
+                            throw e;
+                        }
+                    }}
+                />
             </div>
         </div>
     );
