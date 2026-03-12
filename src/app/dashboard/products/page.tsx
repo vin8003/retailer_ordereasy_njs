@@ -37,12 +37,15 @@ export default function ProductsPage() {
 
     // Filter States
     const [selectedCategory, setSelectedCategory] = useState("all");
+    const [selectedBrand, setSelectedBrand] = useState("all");
     const [stockFilter, setStockFilter] = useState("all"); // 'all', 'in', 'out', 'low'
     const [statusFilter, setStatusFilter] = useState("active");
+    const [facets, setFacets] = useState<{ categories: any[], brands: any[] }>({ categories: [], brands: [] });
     const [showFilters, setShowFilters] = useState(false);
 
     const isRestoringState = useRef(false);
     const [highlightedProductId, setHighlightedProductId] = useState<number | null>(null);
+    const [initialScrollOffset, setInitialScrollOffset] = useState(0);
 
     // Bulk Operations
     const [selectionMode, setSelectionMode] = useState(false);
@@ -72,6 +75,7 @@ export default function ProductsPage() {
                 setCurrentPage(savedState.currentPage);
                 setSearchQuery(savedState.searchQuery);
                 setSelectedCategory(savedState.selectedCategory);
+                if (savedState.selectedBrand) setSelectedBrand(savedState.selectedBrand);
                 setStockFilter(savedState.stockFilter);
                 setStatusFilter(savedState.statusFilter);
                 setTotalPages(savedState.totalPages);
@@ -85,7 +89,9 @@ export default function ProductsPage() {
                 }
 
                 setTimeout(() => {
-                    window.scrollTo({ top: savedState.scrollPosition, behavior: 'instant' });
+                    if (savedState.scrollPosition) {
+                        setInitialScrollOffset(savedState.scrollPosition);
+                    }
                     // Provide a slight delay before enabling normal fetches
                     setTimeout(() => { isRestoringState.current = false; }, 200);
                 }, 50);
@@ -135,6 +141,7 @@ export default function ProductsPage() {
 
             if (searchQuery) params.search = searchQuery;
             if (selectedCategory && selectedCategory !== "all") params.category = selectedCategory;
+            if (selectedBrand && selectedBrand !== "all") params.brand = selectedBrand;
             if (stockFilter === "in") params.in_stock = "true";
             if (stockFilter === "out") params.in_stock = "false";
             if (stockFilter === "low") params.low_stock = "true";
@@ -176,10 +183,31 @@ export default function ProductsPage() {
         if (isRestoringState.current) return;
         const timer = setTimeout(() => {
             fetchProducts(1); // Reset to page 1 on search/filter change
+
+            // Also fetch facets for search query for "Zero-Result Fallback" and smart filtering
+            if (searchQuery.trim().length >= 2) {
+                productService.searchProducts(searchQuery)
+                    .then((res: any) => {
+                        if (res.data?.facets) {
+                            setFacets(res.data.facets);
+                        }
+                    }).catch(console.error);
+            } else {
+                setFacets({ categories: [], brands: [] });
+            }
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, selectedCategory, stockFilter, statusFilter]);
+    }, [searchQuery, selectedCategory, selectedBrand, stockFilter, statusFilter]);
+
+    const handleClearFilters = () => {
+        setSearchQuery("");
+        setSelectedCategory("all");
+        setSelectedBrand("all");
+        setStockFilter("all");
+        setStatusFilter("active");
+        setFacets({ categories: [], brands: [] });
+    };
 
     // Handle load more
     const handleLoadMore = () => {
@@ -201,18 +229,19 @@ export default function ProductsPage() {
         }
     };
 
-    const handleEdit = (product: any) => {
+    const handleEdit = (product: any, scrollOffset: number = 0) => {
         const stateToSave = {
             products,
             currentPage,
             searchQuery,
             selectedCategory,
+            selectedBrand,
             stockFilter,
             statusFilter,
             totalPages,
             totalCount,
             showFilters,
-            scrollPosition: window.scrollY
+            scrollPosition: scrollOffset
         };
         sessionStorage.setItem('productsPageState', JSON.stringify(stateToSave));
         router.push(`/dashboard/products/edit?id=${product.id}`);
@@ -356,12 +385,48 @@ export default function ProductsPage() {
                     </Select>
                 </div>
 
+                {/* Faceted Search Suggestions */}
+                {(facets.categories.length > 0 || facets.brands.length > 0) && (
+                    <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/40 rounded-lg animate-in slide-in-from-top-2">
+                        <span className="text-xs font-semibold text-muted-foreground mr-2">Suggested Filters:</span>
+
+                        {facets.categories.slice(0, 3).map((cat: any) => (
+                            <Button
+                                key={`facet-cat-${cat.category__id}`}
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs rounded-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+                                onClick={() => {
+                                    setSelectedCategory(cat.category__id.toString());
+                                }}
+                            >
+                                {cat.category__name} ({cat.count})
+                            </Button>
+                        ))}
+
+                        {facets.brands.slice(0, 3).map((brand: any) => (
+                            <Button
+                                key={`facet-brand-${brand.brand__id}`}
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs rounded-full border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-300"
+                                onClick={() => {
+                                    setSelectedBrand(brand.brand__id.toString());
+                                }}
+                            >
+                                {brand.brand__name} ({brand.count})
+                            </Button>
+                        ))}
+                    </div>
+                )}
+
                 <VirtualProductList
                     products={products}
                     isLoading={isLoading && !isFetchingMore}
                     onDelete={handleDelete}
                     onEdit={handleEdit}
                     highlightedProductId={highlightedProductId}
+                    initialScrollOffset={initialScrollOffset}
                     loadMore={handleLoadMore}
                     hasMore={currentPage < totalPages}
                     selectionMode={selectionMode}
@@ -419,6 +484,8 @@ export default function ProductsPage() {
                             throw e;
                         }
                     }}
+                    searchQuery={searchQuery}
+                    onClearFilters={handleClearFilters}
                 />
 
                 {/* Bulk Actions UI */}

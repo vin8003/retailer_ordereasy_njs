@@ -3,7 +3,7 @@
 import { useRef, useCallback, useEffect, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRouter } from "next/navigation";
-import { Edit, Trash2, MoreHorizontal, ImageIcon, Star } from "lucide-react";
+import { Edit, Trash2, MoreHorizontal, ImageIcon, Star, Search } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,9 @@ interface VirtualProductListProps {
     isLoading: boolean;
     onDelete?: (product: Product) => void;
     onToggleFeatured?: (product: Product) => void;
-    onEdit?: (product: Product) => void;
+    onEdit?: (product: Product, scrollOffset: number) => void;
     highlightedProductId?: number | null;
+    initialScrollOffset?: number;
     loadMore?: () => void;
     hasMore?: boolean;
     onUpdateStock?: (product: Product, newStock: number) => Promise<void>;
@@ -47,6 +48,8 @@ interface VirtualProductListProps {
     selectedIds?: Set<number>;
     onToggleSelect?: (productId: number) => void;
     onToggleSelectionMode?: () => void;
+    searchQuery?: string;
+    onClearFilters?: () => void;
 }
 
 export function VirtualProductList({
@@ -56,6 +59,7 @@ export function VirtualProductList({
     onToggleFeatured,
     onEdit,
     highlightedProductId,
+    initialScrollOffset,
     loadMore,
     hasMore,
     onUpdateStock,
@@ -63,7 +67,9 @@ export function VirtualProductList({
     selectionMode = false,
     selectedIds = new Set(),
     onToggleSelect,
-    onToggleSelectionMode
+    onToggleSelectionMode,
+    searchQuery = "",
+    onClearFilters
 }: VirtualProductListProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -75,7 +81,14 @@ export function VirtualProductList({
         getScrollElement: () => parentRef.current,
         estimateSize: () => 80, // Approximate row height
         overscan: 5,
+        initialOffset: initialScrollOffset,
     });
+
+    useEffect(() => {
+        if (parentRef.current && initialScrollOffset !== undefined && initialScrollOffset > 0) {
+            parentRef.current.scrollTop = initialScrollOffset;
+        }
+    }, [initialScrollOffset, parentRef.current]);
 
     const items = rowVirtualizer.getVirtualItems();
 
@@ -116,7 +129,26 @@ export function VirtualProductList({
     }
 
     if (!isLoading && products.length === 0) {
-        return <div className="p-8 text-center text-muted-foreground border rounded-lg">No products found.</div>;
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-center border rounded-lg bg-card/50 min-h-[400px]">
+                <div className="w-16 h-16 mb-4 rounded-full bg-muted flex items-center justify-center">
+                    <Search className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">
+                    {searchQuery ? `No results for "${searchQuery}"` : "No products found"}
+                </h3>
+                <p className="text-muted-foreground max-w-sm mb-6">
+                    {searchQuery
+                        ? "Try checking for typos or searching with different keywords."
+                        : "Your product catalog is currently empty matching these filters."}
+                </p>
+                {(searchQuery || onClearFilters) && (
+                    <Button variant="outline" onClick={onClearFilters}>
+                        Clear search & filters
+                    </Button>
+                )}
+            </div>
+        );
     }
 
     return (
@@ -179,7 +211,7 @@ export function VirtualProductList({
                                 isHighlighted={isHighlighted}
                                 measureElement={rowVirtualizer.measureElement}
                                 onDelete={onDelete}
-                                onEdit={onEdit}
+                                onEdit={(p: any) => onEdit?.(p, parentRef.current?.scrollTop || 0)}
                                 onToggleFeatured={onToggleFeatured}
                                 onStockClick={() => setEditingProduct({ product, type: 'stock' })}
                                 onPriceClick={() => setEditingProduct({ product, type: 'price' })}
