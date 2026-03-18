@@ -60,6 +60,8 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [profile, setProfile] = useState<RetailerProfile | null>(null);
+    const [allCategories, setAllCategories] = useState<{ id: number; name: string }[]>([]);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
 
     // Form States (controlled inputs for simplicity)
     const [formData, setFormData] = useState<Partial<RetailerProfile>>({});
@@ -108,6 +110,7 @@ export default function ProfilePage() {
                 };
                 setProfile(mappedProfile);
                 setFormData(mappedProfile);
+                setSelectedCategoryIds(data.categories?.map((c: any) => c.id) || []);
             }
         } catch (error) {
             console.error(error);
@@ -118,7 +121,18 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        fetchProfile();
+        const loadPageData = async () => {
+             await fetchProfile();
+             try {
+                 const res = await authService.fetchRetailerCategories();
+                 if (res.status === 200) {
+                     setAllCategories(res.data);
+                 }
+             } catch (error) {
+                 console.error("Error fetching categories:", error);
+             }
+        };
+        loadPageData();
     }, []);
 
     const handleLogout = () => {
@@ -142,6 +156,8 @@ export default function ProfilePage() {
                     formDataToSend.append(snakeKey, value.toString());
                 }
             });
+
+            selectedCategoryIds.forEach(id => formDataToSend.append('categories', id.toString()));
 
             if (shopImageFile) {
                 formDataToSend.append('shop_image', shopImageFile);
@@ -306,6 +322,43 @@ export default function ProfilePage() {
                             <div className="space-y-2">
                                 <Label>Description</Label>
                                 <Textarea disabled={!isEditing} value={formData.shopDescription || ''} onChange={e => setFormData({ ...formData, shopDescription: e.target.value })} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Store Categories</Label>
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    {[...allCategories].sort((a, b) => {
+                                        const order = ['Grocery', 'Food', 'Customize Gift', 'Others'];
+                                        const indexA = order.indexOf(a.name);
+                                        const indexB = order.indexOf(b.name);
+                                        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                                    }).map(cat => {
+                                        const isSelected = selectedCategoryIds.includes(cat.id);
+                                        return (
+                                            <Button
+                                                key={cat.id}
+                                                type="button"
+                                                variant={isSelected ? "default" : "outline"}
+                                                size="sm"
+                                                className={`rounded-full transition-all ${
+                                                    isSelected 
+                                                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm' 
+                                                        : 'hover:bg-slate-50'
+                                                }`}
+                                                disabled={!isEditing}
+                                                onClick={() => {
+                                                    const newIds = isSelected 
+                                                        ? selectedCategoryIds.filter(id => id !== cat.id) 
+                                                        : [...selectedCategoryIds, cat.id];
+                                                    setSelectedCategoryIds(newIds);
+                                                }}
+                                            >
+                                                {cat.name}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-xs text-muted-foreground">Select all that apply to your store</p>
                             </div>
                         </CardContent>
                     </Card>

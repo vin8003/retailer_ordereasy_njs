@@ -125,6 +125,7 @@ export const authService = {
     const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
     return api.put('retailer/profile/update/', data, { headers });
   },
+  fetchRetailerCategories: () => api.get('retailer/categories/'),
   fetchStats: () => api.get('orders/stats/'),
   verifyPhoneWithFirebase: async (phone: string, token: string) => {
     const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`;
