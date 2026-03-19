@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Search, MoreHorizontal, FileEdit, Trash2, Box, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
+import { Plus, Search, MoreHorizontal, FileEdit, Trash2, Box, ChevronLeft, ChevronRight, Filter, X, Star, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -40,6 +40,8 @@ export default function ProductsPage() {
     const [selectedBrand, setSelectedBrand] = useState("all");
     const [stockFilter, setStockFilter] = useState("all"); // 'all', 'in', 'out', 'low'
     const [statusFilter, setStatusFilter] = useState("active");
+    const [isFeaturedFilter, setIsFeaturedFilter] = useState(false);
+    const [isSeasonalFilter, setIsSeasonalFilter] = useState(false);
     const [facets, setFacets] = useState<{ categories: any[], brands: any[] }>({ categories: [], brands: [] });
     const [showFilters, setShowFilters] = useState(false);
 
@@ -77,7 +79,10 @@ export default function ProductsPage() {
                 setSelectedCategory(savedState.selectedCategory);
                 if (savedState.selectedBrand) setSelectedBrand(savedState.selectedBrand);
                 setStockFilter(savedState.stockFilter);
+                setStockFilter(savedState.stockFilter);
                 setStatusFilter(savedState.statusFilter);
+                if (savedState.isFeaturedFilter !== undefined) setIsFeaturedFilter(savedState.isFeaturedFilter);
+                if (savedState.isSeasonalFilter !== undefined) setIsSeasonalFilter(savedState.isSeasonalFilter);
                 setTotalPages(savedState.totalPages);
                 setTotalCount(savedState.totalCount);
                 setShowFilters(savedState.showFilters);
@@ -146,6 +151,9 @@ export default function ProductsPage() {
             if (stockFilter === "out") params.in_stock = "false";
             if (stockFilter === "low") params.low_stock = "true";
 
+            if (isFeaturedFilter) params.is_featured = "true";
+            if (isSeasonalFilter) params.is_seasonal = "true";
+
             const response = await productService.fetchProducts(params);
 
             // Handle standard DRF pagination response { count: 100, next: "...", previous: "...", results: [...] }
@@ -198,7 +206,7 @@ export default function ProductsPage() {
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [searchQuery, selectedCategory, selectedBrand, stockFilter, statusFilter]);
+    }, [searchQuery, selectedCategory, selectedBrand, stockFilter, statusFilter, isFeaturedFilter, isSeasonalFilter]);
 
     const handleClearFilters = () => {
         setSearchQuery("");
@@ -206,6 +214,8 @@ export default function ProductsPage() {
         setSelectedBrand("all");
         setStockFilter("all");
         setStatusFilter("active");
+        setIsFeaturedFilter(false);
+        setIsSeasonalFilter(false);
         setFacets({ categories: [], brands: [] });
     };
 
@@ -238,6 +248,8 @@ export default function ProductsPage() {
             selectedBrand,
             stockFilter,
             statusFilter,
+            isFeaturedFilter,
+            isSeasonalFilter,
             totalPages,
             totalCount,
             showFilters,
@@ -342,6 +354,25 @@ export default function ProductsPage() {
                         className="rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-200"
                     >
                         Low Stock (&lt;=10)
+                    </Button>
+
+                    <div className="h-4 w-px bg-border mx-2 hidden sm:block"></div>
+
+                    <Button
+                        variant={isFeaturedFilter ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsFeaturedFilter(!isFeaturedFilter)}
+                        className="rounded-full"
+                    >
+                        <Star className="w-3 h-3 mr-1.5" /> Featured
+                    </Button>
+                    <Button
+                        variant={isSeasonalFilter ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsSeasonalFilter(!isSeasonalFilter)}
+                        className="rounded-full flex items-center"
+                    >
+                        <Sun className="w-3 h-3 mr-1.5" /> Seasonal
                     </Button>
 
                     <div className="h-4 w-px bg-border mx-2 hidden sm:block"></div>
@@ -511,14 +542,22 @@ export default function ProductsPage() {
                                     return {
                                         ...p,
                                         ...(modification.price !== undefined ? { price: modification.price } : {}),
-                                        ...(modification.quantity !== undefined ? { quantity: modification.quantity } : {})
+                                        ...(modification.quantity !== undefined ? { quantity: modification.quantity } : {}),
+                                        ...(modification.is_active !== undefined ? { is_active: modification.is_active } : {}),
+                                        ...(modification.is_seasonal !== undefined ? { is_seasonal: modification.is_seasonal } : {})
                                     };
                                 }
                                 return p;
                             }));
 
-                            await productService.bulkUpdateProducts(changes);
-                            toast.success(`Successfully updated ${changes.length} products.`);
+                            const response = await productService.bulkUpdateProducts(changes);
+                            const updatedCount = response.data?.updated_count ?? changes.length;
+                            
+                            if (updatedCount > 0) {
+                                toast.success(`Successfully updated ${updatedCount} products.`);
+                            } else {
+                                toast.info(`No changes were made.`);
+                            }
 
                             // Reset selections and close
                             setSelectionMode(false);

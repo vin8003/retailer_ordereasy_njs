@@ -15,6 +15,7 @@ interface Product {
     original_price?: string | number;
     barcode?: string;
     is_active?: boolean;
+    is_seasonal?: boolean;
     image?: string;
 }
 
@@ -33,7 +34,8 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
         name?: string,
         original_price?: string,
         barcode?: string,
-        is_active?: boolean
+        is_active?: boolean,
+        is_seasonal?: boolean
     }>>({});
     const [isSaving, setIsSaving] = useState(false);
 
@@ -86,6 +88,9 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
             if (changeData.is_active !== undefined) {
                 payloadItem.is_active = changeData.is_active;
             }
+            if (changeData.is_seasonal !== undefined) {
+                payloadItem.is_seasonal = changeData.is_seasonal;
+            }
             return payloadItem;
         }).filter(item => Object.keys(item).length > 1);
 
@@ -127,13 +132,14 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
 
             {/* Matrix Header Columns */}
             <div className="overflow-x-auto w-full">
-                <div className="grid grid-cols-[200px_100px_100px_100px_150px_80px] min-w-[730px] gap-2 p-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground sticky top-0 md:px-6">
+                <div className="grid grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px] gap-2 p-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground sticky top-0 md:px-6">
                     <div>Product Name</div>
                     <div className="text-right">Original Price (₹)</div>
                     <div className="text-right">Sell Price (₹)</div>
                     <div className="text-right">Stock</div>
                     <div>Barcode</div>
                     <div className="text-center">Active</div>
+                    <div className="text-center">Seasonal Pick</div>
                 </div>
 
                 {/* Virtualized List Body */}
@@ -158,6 +164,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                             const currentQuantity = productChanges?.quantity !== undefined ? productChanges.quantity : product.quantity;
                             const currentBarcode = productChanges?.barcode !== undefined ? productChanges.barcode : (product.barcode || "");
                             const currentIsActive = productChanges?.is_active !== undefined ? productChanges.is_active : (product.is_active !== false);
+                            const currentIsSeasonal = productChanges?.is_seasonal !== undefined ? productChanges.is_seasonal : (product.is_seasonal === true);
 
                             const isEdited = productChanges !== undefined && Object.keys(productChanges).length > 0;
 
@@ -173,7 +180,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                     className={`
-                                    grid grid-cols-[200px_100px_100px_100px_150px_80px] min-w-[730px] gap-2 items-center 
+                                    grid grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px] gap-2 items-center 
                                     p-2 border-b bg-background
                                     ${isEdited ? 'border-l-2 border-l-blue-500 bg-blue-50/20' : ''}
                                 `}
@@ -228,6 +235,12 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                         <Switch
                                             checked={currentIsActive}
                                             onCheckedChange={(checked) => handleInputChange(product.id, 'is_active', checked)}
+                                        />
+                                    </div>
+                                    <div className="flex justify-center">
+                                        <Switch
+                                            checked={currentIsSeasonal}
+                                            onCheckedChange={(checked) => handleInputChange(product.id, 'is_seasonal', checked)}
                                         />
                                     </div>
                                 </div>
