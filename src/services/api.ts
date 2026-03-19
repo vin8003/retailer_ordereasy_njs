@@ -154,6 +154,7 @@ export const orderService = {
   updateEstimatedTime: (id: number, preparation_time_minutes: number) =>
     api.patch(`orders/${id}/estimated-time/`, { preparation_time_minutes }),
   modifyOrder: (id: number, data: any) => api.post(`orders/${id}/modify/`, data),
+  cancelOrder: (id: number, reason?: string) => api.post(`orders/${id}/cancel/`, { reason }),
 
   // Chat
   fetchOrderChat: (id: number) => api.get(`orders/${id}/chat/`),

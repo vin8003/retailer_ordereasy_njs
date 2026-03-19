@@ -30,6 +30,7 @@ export function OrderStatusUpdate({
 }: OrderStatusUpdateProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
     const [prepTime, setPrepTime] = useState("30");
     const [selectedStatus, setSelectedStatus] = useState("");
 
@@ -69,7 +70,24 @@ export function OrderStatusUpdate({
         }
     };
 
-    if (nextStatuses.length === 0) {
+    const handleCancel = async () => {
+        setIsUpdating(true);
+        try {
+            await orderService.cancelOrder(orderId, "Cancelled by retailer");
+            toast.success("Order cancelled successfully");
+            setIsCancelDialogOpen(false);
+            onStatusUpdate();
+        } catch (error) {
+            console.error("Failed to cancel order", error);
+            toast.error("Failed to cancel order");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const canCancel = ['pending', 'confirmed', 'processing', 'waiting_for_customer_approval'].includes(currentStatus.toLowerCase());
+
+    if (nextStatuses.length === 0 && !canCancel) {
         if (['cancelled', 'delivered'].includes(currentStatus.toLowerCase())) {
             return (
                 <div className="text-muted-foreground italic text-sm">
@@ -99,6 +117,16 @@ export function OrderStatusUpdate({
                     </Button>
                 );
             })}
+
+            {canCancel && (
+                <Button 
+                    variant="destructive" 
+                    onClick={() => setIsCancelDialogOpen(true)}
+                    disabled={isUpdating}
+                >
+                    CANCEL ORDER
+                </Button>
+            )}
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-[425px]">
@@ -130,6 +158,27 @@ export function OrderStatusUpdate({
                             onClick={() => handleUpdate(selectedStatus, parseInt(prepTime))}
                         >
                             Confirm Order
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Cancel Order</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to cancel this order? This action cannot be undone and product stock will be restored.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" disabled={isUpdating} onClick={() => setIsCancelDialogOpen(false)}>Go Back</Button>
+                        <Button
+                            variant="destructive"
+                            disabled={isUpdating}
+                            onClick={handleCancel}
+                        >
+                            Yes, Cancel Order
                         </Button>
                     </DialogFooter>
                 </DialogContent>

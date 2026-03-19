@@ -128,9 +128,14 @@ function OrderDetailContent() {
                     <Button variant="ghost" className="w-fit pl-0 hover:bg-transparent" onClick={() => router.back()}>
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Orders
                     </Button>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-3xl font-bold tracking-tight">Order #{order.order_number}</h1>
                         <Badge className={getStatusColor(order.status)}>{order.status.toUpperCase()}</Badge>
+                        {order.status.toLowerCase() === 'cancelled' && order.cancelled_by && (
+                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
+                                By {order.cancelled_by.charAt(0).toUpperCase() + order.cancelled_by.slice(1)}
+                            </Badge>
+                        )}
                     </div>
                     <p className="text-muted-foreground">
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
