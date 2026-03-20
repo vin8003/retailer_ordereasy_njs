@@ -190,6 +190,11 @@ export const productService = {
   fetchProductDetails: (id: number) => api.get(`products/${id}/`),
   bulkUpdateProducts: (items: any[]) => api.patch('products/bulk-update/', { items }),
   searchMasterProduct: (barcode: string) => api.get('products/master/search/', { params: { barcode } }),
+  updateCategory: (id: number, data: any) => {
+    return api.patch(`products/categories/${id}/update/`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 
   // Bulk Upload (Excel)
   checkBulkUpload: (file: File) => {

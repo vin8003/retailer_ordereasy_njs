@@ -9,7 +9,8 @@ import {
     User,
     LogOut,
     Star,
-    Clock
+    Clock,
+    Layers
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -27,6 +28,7 @@ const Sidebar = () => {
     const navItems = [
         { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
+        { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
         { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },
