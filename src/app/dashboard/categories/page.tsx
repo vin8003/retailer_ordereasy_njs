@@ -84,7 +84,11 @@ export default function CategoriesPage() {
                         <CardHeader className="pb-4">
                             <CardTitle className="text-lg flex items-center justify-between">
                                 {cat.name}
-                                {cat.icon && <HelpCircle className="h-4 w-4 text-muted-foreground" title={`Icon: ${cat.icon}`} />}
+                                {cat.icon && (
+                                    <span title={`Icon: ${cat.icon}`}>
+                                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                    </span>
+                                )}
                             </CardTitle>
                             {cat.description && <CardDescription>{cat.description}</CardDescription>}
                         </CardHeader>
