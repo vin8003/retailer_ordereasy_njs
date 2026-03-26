@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ShoppingCart, IndianRupee, Package, Star, TrendingUp } from "lucide-react";
+import { Loader2, ShoppingCart, IndianRupee, Package, Star, TrendingUp, Search } from "lucide-react";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { authService } from "@/services/api";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { authService, productService } from "@/services/api";
 
 interface DashboardStats {
     total_orders: number;
@@ -21,6 +21,7 @@ export default function DashboardPage() {
     const router = useRouter();
     const [profile, setProfile] = useState<any>(null);
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [demandInsights, setDemandInsights] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +29,7 @@ export default function DashboardPage() {
         // Auth check is now handled by layout, but good to keep safe incase of direct access issues
         // or we can remove it if layout is reliable. Layout is reliable.
         // Fetch data
-        Promise.all([fetchProfile(), fetchStats()]).finally(() => {
+        Promise.all([fetchProfile(), fetchStats(), loadDemandInsights()]).finally(() => {
             setIsLoading(false);
         });
     }, []);
@@ -51,6 +52,15 @@ export default function DashboardPage() {
             const message = `Failed to load stats: ${error.response?.status} ${error.response?.statusText || error.message}`;
             toast.error(message);
             setError(message);
+        }
+    };
+
+    const loadDemandInsights = async () => {
+        try {
+            const res = await productService.fetchDemandInsights();
+            setDemandInsights(res.data);
+        } catch (error) {
+            console.error("Failed to load demand insights", error);
         }
     };
 
@@ -123,6 +133,40 @@ export default function DashboardPage() {
                         </div>
                     </CardContent>
                 </Card>
+                <Card className="col-span-1 md:col-span-2 lg:col-span-3 hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Search className="h-5 w-5 text-primary" />
+                            Unmet Demand
+                        </CardTitle>
+                        <CardDescription>What customers searched for but couldn't find (Last 30 Days)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {demandInsights && demandInsights.length > 0 ? (
+                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                                {demandInsights.map((insight: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-semibold capitalize">{insight.query}</span>
+                                        </div>
+                                        <div className="flex items-center text-xs px-2 py-1 bg-muted rounded-full font-medium text-muted-foreground">
+                                            {insight.count} searches
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center text-center py-8 text-muted-foreground bg-muted/20 rounded-lg p-6">
+                                <Search className="h-8 w-8 mb-2 opacity-20" />
+                                <p className="text-sm font-medium">No Unmet Demand!</p>
+                                <p className="text-xs mt-1">Customers found everything they searched for recently.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1">
                 <Card className="col-span-1 md:col-span-2 lg:col-span-3">
                     <CardHeader>
                         <CardTitle>Recent Reviews</CardTitle>

@@ -167,6 +167,7 @@ export const orderService = {
 
 export const productService = {
   fetchProducts: (params?: any) => api.get('products/', { params }),
+  fetchDemandInsights: () => api.get('products/demand-insights/'),
   searchProducts: (query: string) => api.get('products/search/', { params: { search: query } }),
   addProduct: (data: any) => {
     return api.post('products/create/', data, {
