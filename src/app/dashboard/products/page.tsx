@@ -322,7 +322,7 @@ export default function ProductsPage() {
                     />
                 </div>
 
-                <div className="flex flex-wrap gap-2 items-center">
+                <div className="flex gap-2 items-center overflow-x-auto whitespace-nowrap pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <Button
                         variant={stockFilter === "all" ? "default" : "outline"}
                         size="sm"
@@ -570,6 +570,12 @@ export default function ProductsPage() {
                     }}
                 />
             </div>
+
+            {/* Mobile FAB for Add Product */}
+            <Link href="/dashboard/products/add" className="md:hidden fixed bottom-[88px] right-4 z-40 rounded-full h-14 w-14 shadow-lg bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 border border-primary-foreground/10">
+                <Plus className="h-6 w-6" />
+                <span className="sr-only">Add Product</span>
+            </Link>
         </div>
     );
 }
