@@ -15,6 +15,7 @@ interface DashboardStats {
     average_rating: number;
     average_order_value: number;
     recent_reviews?: any[];
+    recent_orders?: any[];
 }
 
 export default function DashboardPage() {
@@ -25,14 +26,24 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [timeRange, setTimeRange] = useState("all_time");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+
     useEffect(() => {
-        // Auth check is now handled by layout, but good to keep safe incase of direct access issues
-        // or we can remove it if layout is reliable. Layout is reliable.
-        // Fetch data
-        Promise.all([fetchProfile(), fetchStats(), loadDemandInsights()]).finally(() => {
+        // Fetch profile and demand insights only once
+        Promise.all([fetchProfile(), loadDemandInsights()]);
+    }, []);
+
+    useEffect(() => {
+        if (timeRange === 'custom' && (!startDate || !endDate)) {
+            return;
+        }
+        setIsLoading(true);
+        fetchStats().finally(() => {
             setIsLoading(false);
         });
-    }, []);
+    }, [timeRange, startDate, endDate]);
 
     const fetchProfile = async () => {
         try {
@@ -45,7 +56,15 @@ export default function DashboardPage() {
 
     const fetchStats = async () => {
         try {
-            const response = await authService.fetchStats();
+            const params: any = {};
+            if (timeRange !== 'all_time') {
+                params.time_range = timeRange;
+            }
+            if (timeRange === 'custom') {
+                params.start_date = startDate;
+                params.end_date = endDate;
+            }
+            const response = await authService.fetchStats(params);
             setStats(response.data);
         } catch (error: any) {
             console.error("Failed to fetch stats", error);
@@ -86,13 +105,52 @@ export default function DashboardPage() {
         );
     }
 
+    const timeLabel = timeRange === 'today' ? "Today" :
+                      timeRange === 'this_week' ? "This Week" :
+                      timeRange === 'this_month' ? "This Month" :
+                      timeRange === 'custom' ? "Custom Range" : "All Time";
+
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
-                <p className="text-muted-foreground">
-                    Welcome back, {profile?.shop_name || profile?.username || "Retailer"}!
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
+                    <p className="text-muted-foreground">
+                        Welcome back, {profile?.shop_name || profile?.username || "Retailer"}!
+                    </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <select
+                        value={timeRange}
+                        onChange={(e) => setTimeRange(e.target.value)}
+                        className="p-2 border rounded-md bg-background text-sm"
+                    >
+                        <option value="all_time">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="this_week">This Week</option>
+                        <option value="this_month">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+
+                    {timeRange === 'custom' && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="p-2 border rounded-md bg-background text-sm"
+                            />
+                            <span className="text-muted-foreground">to</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="p-2 border rounded-md bg-background text-sm"
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -100,13 +158,13 @@ export default function DashboardPage() {
                     title="Total Orders"
                     value={stats?.total_orders ?? 0}
                     icon={ShoppingCart}
-                    description="All time orders"
+                    description={`${timeLabel} orders`}
                 />
                 <StatCard
                     title="Total Revenue"
                     value={`₹${Number(stats?.total_revenue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                     icon={IndianRupee}
-                    description="Lifetime revenue"
+                    description={`${timeLabel} revenue`}
                 />
                 <StatCard
                     title="Total Products"
@@ -118,19 +176,36 @@ export default function DashboardPage() {
                     title="Avg Order Value"
                     value={`₹${Number(stats?.average_order_value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                     icon={TrendingUp}
-                    description="Average per order"
+                    description={`Average per order (${timeLabel})`}
                 />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-1 md:col-span-2 lg:col-span-4">
+                <Card className="col-span-1 md:col-span-2 lg:col-span-4 hover:shadow-md transition-shadow">
                     <CardHeader>
                         <CardTitle>Recent Sales</CardTitle>
                     </CardHeader>
-                    <CardContent className="pl-2">
-                        <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                            Chart Placeholder
-                        </div>
+                    <CardContent>
+                        {stats?.recent_orders && stats.recent_orders.length > 0 ? (
+                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                                {stats.recent_orders.map((order: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                                        <div>
+                                            <p className="text-sm font-medium">Order #{order.order_number}</p>
+                                            <p className="text-xs text-muted-foreground">{order.customer_name || 'Customer'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold text-primary">₹{Number(order.total_amount).toLocaleString('en-IN')}</p>
+                                            <p className="text-xs text-muted-foreground capitalize">{order.status}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                                No recent sales for this period.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
                 <Card className="col-span-1 md:col-span-2 lg:col-span-3 hover:shadow-md transition-shadow">

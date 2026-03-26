@@ -24,14 +24,24 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [timeRange, setTimeRange] = useState("all_time");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+
     useEffect(() => {
-        // Auth check is now handled by layout, but good to keep safe incase of direct access issues
-        // or we can remove it if layout is reliable. Layout is reliable.
-        // Fetch data
-        Promise.all([fetchProfile(), fetchStats()]).finally(() => {
+        // Fetch profile only once
+        fetchProfile();
+    }, []);
+
+    useEffect(() => {
+        if (timeRange === 'custom' && (!startDate || !endDate)) {
+            return;
+        }
+        setIsLoading(true);
+        fetchStats().finally(() => {
             setIsLoading(false);
         });
-    }, []);
+    }, [timeRange, startDate, endDate]);
 
     const fetchProfile = async () => {
         try {
@@ -44,7 +54,15 @@ export default function DashboardPage() {
 
     const fetchStats = async () => {
         try {
-            const response = await authService.fetchStats();
+            const params: any = {};
+            if (timeRange !== 'all_time') {
+                params.time_range = timeRange;
+            }
+            if (timeRange === 'custom') {
+                params.start_date = startDate;
+                params.end_date = endDate;
+            }
+            const response = await authService.fetchStats(params);
             setStats(response.data);
         } catch (error: any) {
             console.error("Failed to fetch stats", error);
@@ -76,13 +94,52 @@ export default function DashboardPage() {
         );
     }
 
+    const timeLabel = timeRange === 'today' ? "Today" :
+                      timeRange === 'this_week' ? "This Week" :
+                      timeRange === 'this_month' ? "This Month" :
+                      timeRange === 'custom' ? "Custom Range" : "All Time";
+
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
-                <p className="text-muted-foreground">
-                    Welcome back, {profile?.shop_name || profile?.username || "Retailer"}!
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
+                    <p className="text-muted-foreground">
+                        Welcome back, {profile?.shop_name || profile?.username || "Retailer"}!
+                    </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <select
+                        value={timeRange}
+                        onChange={(e) => setTimeRange(e.target.value)}
+                        className="p-2 border rounded-md bg-background text-sm"
+                    >
+                        <option value="all_time">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="this_week">This Week</option>
+                        <option value="this_month">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+
+                    {timeRange === 'custom' && (
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="p-2 border rounded-md bg-background text-sm"
+                            />
+                            <span className="text-muted-foreground">to</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="p-2 border rounded-md bg-background text-sm"
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -90,13 +147,13 @@ export default function DashboardPage() {
                     title="Total Orders"
                     value={stats?.total_orders ?? 0}
                     icon={ShoppingCart}
-                    description="All time orders"
+                    description={`${timeLabel} orders`}
                 />
                 <StatCard
                     title="Total Revenue"
                     value={`₹${Number(stats?.total_revenue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                     icon={IndianRupee}
-                    description="Lifetime revenue"
+                    description={`${timeLabel} revenue`}
                 />
                 <StatCard
                     title="Total Products"
@@ -108,7 +165,7 @@ export default function DashboardPage() {
                     title="Avg Order Value"
                     value={`₹${Number(stats?.average_order_value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
                     icon={TrendingUp}
-                    description="Average per order"
+                    description={`Average per order (${timeLabel})`}
                 />
             </div>
 
