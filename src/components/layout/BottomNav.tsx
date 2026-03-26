@@ -51,11 +51,8 @@ const BottomNav = () => {
     };
 
     return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 flex items-center justify-around pb-safe">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-border z-50 flex items-center justify-around pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
             {mainNavItems.map((item) => {
-                const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href) && item.href !== '/dashboard');
-                // The above logic needs a slight fix since '/dashboard/products'.startsWith('/dashboard') is true. 
-                // We ensure it exact matches /dashboard, but prefix matches others.
                 const isItemActive = item.href === '/dashboard' 
                     ? pathname === '/dashboard' 
                     : pathname.startsWith(item.href);
@@ -64,12 +61,15 @@ const BottomNav = () => {
                     <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex flex-col items-center justify-center py-2 space-y-1 transition-colors w-1/4 ${
-                            isItemActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                        className={`flex flex-col items-center justify-center py-3 space-y-1 transition-all duration-300 w-1/4 relative ${
+                            isItemActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                         }`}
                     >
-                        <item.icon className="h-5 w-5" />
-                        <span className="text-[10px] font-medium">{item.label}</span>
+                        {isItemActive && (
+                            <div className="absolute top-0 w-8 h-1 bg-primary rounded-b-full shadow-lg shadow-primary/40 transition-all animate-in slide-in-from-top-1" />
+                        )}
+                        <item.icon className={`h-5 w-5 transition-transform duration-300 ${isItemActive ? 'scale-110' : ''}`} />
+                        <span className={`text-[10px] font-semibold tracking-wide ${isItemActive ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
                     </Link>
                 );
             })}

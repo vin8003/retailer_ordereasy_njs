@@ -70,61 +70,68 @@ export default function CategoriesPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 pb-8">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">Category Images</h1>
-                <p className="text-muted-foreground">
+                <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Category Images</h1>
+                <p className="text-muted-foreground mt-2 text-lg">
                     Set primary images for your top-level categories to show on the Customer App home page.
                 </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {categories.map((cat) => (
-                    <Card key={cat.id} className="overflow-hidden">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                {cat.name}
+                    <Card key={cat.id} className="overflow-hidden border-none shadow-xl shadow-primary/5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 group">
+                        <CardHeader className="pb-4 border-b border-border/30 bg-muted/20">
+                            <CardTitle className="text-xl font-bold flex items-center justify-between">
+                                <span className="group-hover:text-primary transition-colors">{cat.name}</span>
                                 {cat.icon && (
-                                    <span title={`Icon: ${cat.icon}`}>
+                                    <span title={`Icon: ${cat.icon}`} className="p-1.5 rounded-lg bg-white/50 border border-border/50">
                                         <HelpCircle className="h-4 w-4 text-muted-foreground" />
                                     </span>
                                 )}
                             </CardTitle>
-                            {cat.description && <CardDescription>{cat.description}</CardDescription>}
+                            {cat.description && <CardDescription className="line-clamp-1">{cat.description}</CardDescription>}
                         </CardHeader>
-                        <CardContent>
-                            <div className="aspect-video relative rounded-md border-2 border-dashed flex flex-col items-center justify-center bg-muted/10 overflow-hidden">
+                        <CardContent className="pt-6">
+                            <div className="aspect-[4/3] relative rounded-2xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group-hover:border-primary/30 transition-colors">
                                 {cat.image ? (
                                     <div className="relative w-full h-full">
                                         <img 
                                             src={cat.image} 
                                             alt={cat.name} 
-                                            className="w-full h-full object-cover"
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                         />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                                            <p className="text-white text-xs font-bold uppercase tracking-widest translate-y-2 group-hover:translate-y-0 transition-transform">Edit Image</p>
                                             <Button 
-                                                variant="secondary" 
+                                                variant="default" 
                                                 size="sm"
                                                 onClick={() => triggerFileInput(cat.id)}
                                                 disabled={uploadingId === cat.id}
+                                                className="shadow-xl shadow-primary/40 rounded-full px-6"
                                             >
-                                                {uploadingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                                                {uploadingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                                 Change
                                             </Button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center p-4">
-                                        <ImageIcon className="mx-auto h-10 w-10 text-muted-foreground" />
-                                        <p className="mt-2 text-xs text-muted-foreground">No image set</p>
+                                    <div className="text-center p-6 space-y-4">
+                                        <div className="size-16 mx-auto rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner">
+                                            <ImageIcon className="h-8 w-8 text-primary/40" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-foreground">No image set</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">Recommended: 800x600px</p>
+                                        </div>
                                         <Button 
                                             variant="outline" 
                                             size="sm" 
-                                            className="mt-4"
+                                            className="rounded-full px-6 border-primary/20 hover:border-primary/50 text-primary"
                                             onClick={() => triggerFileInput(cat.id)}
                                             disabled={uploadingId === cat.id}
                                         >
-                                            {uploadingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                                            {uploadingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                             Upload Image
                                         </Button>
                                     </div>
@@ -143,8 +150,9 @@ export default function CategoriesPage() {
             </div>
 
             {categories.length === 0 && (
-                <div className="text-center py-12">
-                    <p className="text-muted-foreground">No top-level categories found.</p>
+                <div className="text-center py-20 bg-muted/5 rounded-3xl border border-dashed border-border/50">
+                    <ImageIcon className="size-12 mx-auto mb-4 opacity-10" />
+                    <p className="text-muted-foreground font-medium">No top-level categories found.</p>
                 </div>
             )}
         </div>

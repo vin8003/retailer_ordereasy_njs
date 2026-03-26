@@ -15,6 +15,7 @@ import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,14 +110,15 @@ function OrderDetailContent() {
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'pending': return 'bg-yellow-500';
-            case 'confirmed': return 'bg-blue-500';
-            case 'processing': return 'bg-indigo-500';
-            case 'packed': return 'bg-teal-500';
-            case 'out_for_delivery': return 'bg-purple-500';
-            case 'delivered': return 'bg-green-500';
-            case 'cancelled': return 'bg-red-500';
-            default: return 'bg-gray-500';
+            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100';
+            case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
+            case 'processing': return 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100';
+            case 'packed': return 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100';
+            case 'out_for_delivery': return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100';
+            case 'delivered': return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100';
+            case 'cancelled': return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+            case 'returned': return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100';
+            default: return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
         }
     };
 
@@ -125,12 +127,12 @@ function OrderDetailContent() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <Button variant="ghost" className="w-fit pl-0 hover:bg-transparent" onClick={() => router.back()}>
+                    <Button variant="ghost" className="w-fit pl-0 hover:bg-transparent hover:text-primary hover:underline transition-all" onClick={() => router.back()}>
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Orders
                     </Button>
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-3xl font-bold tracking-tight">Order #{order.order_number}</h1>
-                        <Badge className={getStatusColor(order.status)}>{order.status.toUpperCase()}</Badge>
+                        <Badge variant="outline" className={cn("font-bold border shadow-none", getStatusColor(order.status))}>{order.status.toUpperCase()}</Badge>
                         {order.status.toLowerCase() === 'cancelled' && order.cancelled_by && (
                             <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
                                 By {order.cancelled_by.charAt(0).toUpperCase() + order.cancelled_by.slice(1)}

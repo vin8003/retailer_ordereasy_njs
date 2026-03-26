@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Eye, MoreHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import {
     Table,
@@ -49,15 +50,15 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'pending': return 'bg-yellow-500 hover:bg-yellow-600';
-            case 'confirmed': return 'bg-blue-500 hover:bg-blue-600';
-            case 'processing': return 'bg-indigo-500 hover:bg-indigo-600';
-            case 'packed': return 'bg-teal-500 hover:bg-teal-600';
-            case 'out_for_delivery': return 'bg-purple-500 hover:bg-purple-600';
-            case 'delivered': return 'bg-green-500 hover:bg-green-600';
-            case 'cancelled': return 'bg-red-500 hover:bg-red-600';
-            case 'returned': return 'bg-orange-800 hover:bg-orange-900';
-            default: return 'bg-gray-500 hover:bg-gray-600';
+            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100';
+            case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
+            case 'processing': return 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100';
+            case 'packed': return 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100';
+            case 'out_for_delivery': return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100';
+            case 'delivered': return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100';
+            case 'cancelled': return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+            case 'returned': return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100';
+            default: return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
         }
     };
 
@@ -108,7 +109,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col gap-1 items-start">
-                                    <Badge className={getStatusColor(order.status)}>
+                                    <Badge variant="outline" className={cn("font-bold border shadow-none", getStatusColor(order.status))}>
                                         {order.status.toUpperCase()}
                                     </Badge>
                                     {order.feedback && (
