@@ -163,6 +163,9 @@ export const orderService = {
 
   // Reviews
   getRetailerReviews: (params?: any) => api.get('orders/retailer-reviews/', { params }),
+
+  // Payment Verification
+  verifyOrderPayment: (id: number, action: 'verify' | 'fail') => api.post(`orders/${id}/verify_payment/`, { action }),
 };
 
 export const productService = {
