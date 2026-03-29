@@ -199,6 +199,8 @@ export const productService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  deleteCategory: (id: number) => api.delete(`products/categories/${id}/delete/`),
+  createCategory: (data: any) => api.post('products/categories/create/', data),
 
   // Bulk Upload (Excel)
   checkBulkUpload: (file: File) => {

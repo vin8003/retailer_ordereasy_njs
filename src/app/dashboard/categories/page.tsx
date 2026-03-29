@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ImageIcon, HelpCircle } from "lucide-react";
+import { Upload, X, Loader2, ImageIcon, HelpCircle, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { productService } from "@/services/api";
 
@@ -11,6 +12,9 @@ export default function CategoriesPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [uploadingId, setUploadingId] = useState<number | null>(null);
+    const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
     const fileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
 
     useEffect(() => {
@@ -61,6 +65,38 @@ export default function CategoriesPage() {
         fileInputRefs.current[catId]?.click();
     };
 
+    const handleCreateCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newCategoryName.trim()) return;
+
+        setIsCreating(true);
+        try {
+            await productService.createCategory({ name: newCategoryName.trim(), is_active: true });
+            toast.success("Category created successfully");
+            setNewCategoryName("");
+            fetchCategories();
+        } catch (error: any) {
+            console.error("Failed to create category", error);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleDeleteCategory = async (catId: number, catName: string) => {
+        if (!window.confirm(`Are you sure you want to delete the category "${catName}"?`)) return;
+
+        setDeletingId(catId);
+        try {
+            await productService.deleteCategory(catId);
+            toast.success("Category deleted successfully");
+            fetchCategories();
+        } catch (error: any) {
+            console.error("Failed to delete category", error);
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
@@ -71,11 +107,26 @@ export default function CategoriesPage() {
 
     return (
         <div className="space-y-8 pb-8">
-            <div>
-                <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Category Images</h1>
-                <p className="text-muted-foreground mt-2 text-lg">
-                    Set primary images for your top-level categories to show on the Customer App home page.
-                </p>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Category Images</h1>
+                    <p className="text-muted-foreground mt-2 text-lg">
+                        Manage your store's categories and set primary images to show on the Customer App home page.
+                    </p>
+                </div>
+                <form onSubmit={handleCreateCategory} className="flex items-center gap-2 w-full md:w-auto">
+                    <Input 
+                        placeholder="New category name" 
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        className="w-full md:w-64"
+                        disabled={isCreating}
+                    />
+                    <Button type="submit" disabled={isCreating || !newCategoryName.trim()}>
+                        {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                        Create
+                    </Button>
+                </form>
             </div>
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -83,12 +134,24 @@ export default function CategoriesPage() {
                     <Card key={cat.id} className="overflow-hidden border-none shadow-xl shadow-primary/5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 group">
                         <CardHeader className="pb-4 border-b border-border/30 bg-muted/20">
                             <CardTitle className="text-xl font-bold flex items-center justify-between">
-                                <span className="group-hover:text-primary transition-colors">{cat.name}</span>
-                                {cat.icon && (
-                                    <span title={`Icon: ${cat.icon}`} className="p-1.5 rounded-lg bg-white/50 border border-border/50">
-                                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    <span className="group-hover:text-primary transition-colors">{cat.name}</span>
+                                    {cat.icon && (
+                                        <span title={`Icon: ${cat.icon}`} className="p-1.5 rounded-lg bg-white/50 border border-border/50">
+                                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                        </span>
+                                    )}
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                    disabled={deletingId === cat.id}
+                                    title="Delete category"
+                                >
+                                    {deletingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                </Button>
                             </CardTitle>
                             {cat.description && <CardDescription className="line-clamp-1">{cat.description}</CardDescription>}
                         </CardHeader>
