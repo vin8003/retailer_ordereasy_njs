@@ -28,6 +28,7 @@ const formSchema = z.object({
     phone_number: z.string().length(10, "Phone number must be 10 digits"),
     password: z.string().min(1, "Password is required"),
     confirm_password: z.string().min(1, "Confirm password is required"),
+    access_code: z.string().min(1, "Access code is required"),
 }).refine((data) => data.password === data.confirm_password, {
     message: "Passwords do not match",
     path: ["confirm_password"],
@@ -47,6 +48,7 @@ export default function SignupPage() {
             phone_number: "",
             password: "",
             confirm_password: "",
+            access_code: "",
         },
     });
 
@@ -60,6 +62,7 @@ export default function SignupPage() {
                 phone_number: `+91${values.phone_number}`,
                 password: values.password,
                 password_confirm: values.confirm_password,
+                access_code: values.access_code,
             };
 
             const response = await authService.signup(payload);
@@ -147,6 +150,19 @@ export default function SignupPage() {
                                                     maxLength={10}
                                                 />
                                             </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="access_code"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Access Code</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Enter Admin Access Code" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
