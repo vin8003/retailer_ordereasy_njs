@@ -6,8 +6,16 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
     Plus, Search, Tag, Calendar, Percent, ShoppingBag, LayoutGrid,
-    Loader2, Save, Award, Users, Settings
+    Loader2, Save, Award, Users, Settings, Coins
 } from 'lucide-react';
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +49,9 @@ interface RewardConfig {
     max_reward_usage_percent: string;
     max_reward_usage_flat: string;
     conversion_rate: string;
+    earning_type: 'percentage' | 'points_per_amount';
+    loyalty_earning_value: string;
+    loyalty_min_order_value: string;
     is_referral_enabled: boolean;
     referral_reward_points: string;
     referee_reward_points: string;
@@ -68,6 +79,9 @@ export default function OffersPage() {
         defaultValues: {
             is_active: true,
             is_referral_enabled: false,
+            earning_type: 'percentage',
+            loyalty_earning_value: "1.0",
+            loyalty_min_order_value: "0.0",
         }
     });
 
@@ -108,6 +122,9 @@ export default function OffersPage() {
                 referral_reward_points: data.referral_reward_points?.toString() || "",
                 referee_reward_points: data.referee_reward_points?.toString() || "",
                 min_referral_order_amount: data.min_referral_order_amount?.toString() || "",
+                earning_type: data.earning_type || "percentage",
+                loyalty_earning_value: data.loyalty_earning_value?.toString() || "1.0",
+                loyalty_min_order_value: data.loyalty_min_order_value?.toString() || "0.0",
             });
         } catch (error) {
             console.error("Failed to fetch reward config:", error);
@@ -131,6 +148,9 @@ export default function OffersPage() {
                 referral_reward_points: parseFloat(data.referral_reward_points) || 0,
                 referee_reward_points: parseFloat(data.referee_reward_points) || 0,
                 min_referral_order_amount: parseFloat(data.min_referral_order_amount) || 0,
+                earning_type: data.earning_type,
+                loyalty_earning_value: parseFloat(data.loyalty_earning_value) || 0,
+                loyalty_min_order_value: parseFloat(data.loyalty_min_order_value) || 0,
             });
             toast.success("Settings saved successfully");
             fetchConfig();
@@ -290,29 +310,76 @@ export default function OffersPage() {
                                 </CardHeader>
                                 {isLoyaltyActive && (
                                     <CardContent className="space-y-4">
-                                        <div className="bg-muted p-4 rounded-md border text-sm text-muted-foreground mb-4 flex gap-3">
-                                            <Settings className="w-5 h-5 mt-0.5 shrink-0" />
-                                            <div>
-                                                <p className="font-semibold text-foreground">Points Earning Config</p>
-                                                <p className="mt-1">
-                                                    To award points (Cashback), please create a new <strong>Cashback Offer</strong> in the "All Offers" tab.
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <div className="grid gap-6 md:grid-cols-2">
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="earning_type">Earning Rule Type</Label>
+                                                    <Select 
+                                                        value={watch("earning_type")} 
+                                                        onValueChange={(val: any) => setValue("earning_type", val)}
+                                                    >
+                                                        <SelectTrigger id="earning_type">
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="percentage">Percentage Cashback (%)</SelectItem>
+                                                            <SelectItem value="points_per_amount">Points per Order Amount (₹)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
 
-                                        <div className="grid gap-4 md:grid-cols-2">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="conversion">Conversion Rate (₹ per Point)</Label>
-                                                <Input
-                                                    id="conversion"
-                                                    type="number"
-                                                    step="0.01"
-                                                    placeholder="e.g. 1"
-                                                    {...register("conversion_rate", { required: true, min: 0.1 })}
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    Value of 1 reward point in currency.
-                                                </p>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="earning_value">
+                                                        {watch("earning_type") === 'percentage' 
+                                                            ? "Cashback Percentage (%)" 
+                                                            : "Earn 1 Point for every (₹)"}
+                                                    </Label>
+                                                    <div className="relative">
+                                                        {watch("earning_type") === 'percentage' ? (
+                                                            <Percent className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                        ) : (
+                                                            <Coins className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                        )}
+                                                        <Input
+                                                            id="earning_value"
+                                                            type="number"
+                                                            step="0.01"
+                                                            className="pl-9"
+                                                            placeholder={watch("earning_type") === 'percentage' ? "e.g. 2" : "e.g. 100"}
+                                                            {...register("loyalty_earning_value", { required: true, min: 0 })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="min_order">Min Order Value to Earn (₹)</Label>
+                                                    <Input
+                                                        id="min_order"
+                                                        type="number"
+                                                        step="1"
+                                                        placeholder="e.g. 200"
+                                                        {...register("loyalty_min_order_value", { required: true, min: 0 })}
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Minimum subtotal required to award points.
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="conversion">Point Conversion Value (₹ per Point)</Label>
+                                                    <Input
+                                                        id="conversion"
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="e.g. 1"
+                                                        {...register("conversion_rate", { required: true, min: 0.01 })}
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        How much 1 point is worth when redeeming.
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 
