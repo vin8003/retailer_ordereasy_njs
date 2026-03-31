@@ -386,9 +386,22 @@ function OrderDetailContent() {
                         <CardContent className="space-y-4">
                             <div>
                                 <p className="font-medium">{order.customer_name || order.customer?.first_name}</p>
-                                <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
                                     <Badge variant="outline" className="text-xs">Verified Customer</Badge>
-                                </p>
+                                    {order.customer_average_rating !== undefined && order.customer_average_rating > 0 ? (
+                                        <Badge variant="outline" className={cn(
+                                            "text-xs flex items-center gap-1",
+                                            order.customer_average_rating > 4 ? "text-green-700 border-green-200 bg-green-50" :
+                                            order.customer_average_rating > 2.5 ? "text-yellow-700 border-yellow-200 bg-yellow-50" :
+                                            "text-red-700 border-red-200 bg-red-50"
+                                        )}>
+                                            <Star className="h-3 w-3 fill-current" />
+                                            {Number(order.customer_average_rating).toFixed(1)} Rating
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="text-xs text-muted-foreground bg-muted/50 font-medium">No rating yet</Badge>
+                                    )}
+                                </div>
                             </div>
                             <Separator />
                             <div className="space-y-2 text-sm">

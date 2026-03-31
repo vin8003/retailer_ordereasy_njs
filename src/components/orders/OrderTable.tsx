@@ -38,6 +38,7 @@ interface Order {
         overall_rating: number;
         comment: string;
     };
+    customer_average_rating?: number;
 }
 
 interface OrderTableProps {
@@ -103,9 +104,24 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                 </div>
                             </TableCell>
                             <TableCell>
-                                {order.customer?.first_name
-                                    ? `${order.customer.first_name} ${order.customer.last_name || ''}`
-                                    : order.customer_name || 'Customer'}
+                                <div className="font-medium">
+                                    {order.customer?.first_name
+                                        ? `${order.customer.first_name} ${order.customer.last_name || ''}`
+                                        : order.customer_name || 'Customer'}
+                                </div>
+                                {order.customer_average_rating !== undefined && order.customer_average_rating > 0 ? (
+                                    <div className={cn(
+                                        "flex items-center gap-1 text-xs font-semibold mt-1",
+                                        order.customer_average_rating > 4 ? "text-green-600" :
+                                        order.customer_average_rating > 2.5 ? "text-yellow-600" :
+                                        "text-red-600"
+                                    )}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                        {Number(order.customer_average_rating).toFixed(1)}
+                                    </div>
+                                ) : (
+                                    <div className="text-[10px] text-muted-foreground mt-1 font-medium italic">No rating yet</div>
+                                )}
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-col gap-1 items-start">
