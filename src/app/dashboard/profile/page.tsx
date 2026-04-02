@@ -40,6 +40,8 @@ interface RetailerProfile {
     panNumber?: string;
     upiId?: string;
     upiQrCode?: string; // URL
+    acceptsCod: boolean;
+    acceptsUpi: boolean;
 
     // Settings
     offersDelivery: boolean;
@@ -99,6 +101,8 @@ export default function ProfilePage() {
                     panNumber: data.pan_number,
                     upiId: data.upi_id,
                     upiQrCode: data.upi_qr_code,
+                    acceptsCod: data.accepts_cod,
+                    acceptsUpi: data.accepts_upi,
                     offersDelivery: data.offers_delivery,
                     offersPickup: data.offers_pickup,
                     deliveryRadius: data.delivery_radius,
@@ -423,6 +427,31 @@ export default function ProfilePage() {
                             <div className="space-y-2">
                                 <Label>UPI ID</Label>
                                 <Input disabled={!isEditing} value={formData.upiId || ''} onChange={e => setFormData({ ...formData, upiId: e.target.value })} />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6 pt-2">
+                                <div className="flex items-center justify-between border rounded-lg p-3 bg-slate-50">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm">Accept Cash (COD)</Label>
+                                        <div className="text-[10px] text-muted-foreground">Enable at-door/store cash</div>
+                                    </div>
+                                    <Switch
+                                        disabled={!isEditing}
+                                        checked={formData.acceptsCod}
+                                        onCheckedChange={val => setFormData({ ...formData, acceptsCod: val })}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between border rounded-lg p-3 bg-slate-50">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-sm">Accept UPI</Label>
+                                        <div className="text-[10px] text-muted-foreground">Enable digital payments</div>
+                                    </div>
+                                    <Switch
+                                        disabled={!isEditing}
+                                        checked={formData.acceptsUpi}
+                                        onCheckedChange={val => setFormData({ ...formData, acceptsUpi: val })}
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-2 border rounded-lg p-4">
