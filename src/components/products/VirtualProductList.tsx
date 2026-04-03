@@ -27,6 +27,7 @@ interface Product {
     price: string | number;
     original_price?: string | number;
     quantity: number;
+    track_inventory: boolean;
     image?: string;
     is_active: boolean;
     is_featured: boolean;
@@ -400,10 +401,23 @@ function SwipeableRow({
                 </div>
 
                 <div
-                    className={`text-sm md:text-left text-left w-full md:w-auto cursor-pointer p-2 -ml-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 ${product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}`}
-                    onClick={(e) => { e.stopPropagation(); onStockClick?.(); }}
+                    className={`text-sm md:text-left text-left w-full md:w-auto cursor-pointer p-2 -ml-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10`}
+                    onClick={(e) => { 
+                        if (product.track_inventory) {
+                            e.stopPropagation(); 
+                            onStockClick?.(); 
+                        }
+                    }}
                 >
-                    {product.quantity} {product.unit}
+                    {product.track_inventory ? (
+                        <span className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
+                            {product.quantity} {product.unit}
+                        </span>
+                    ) : (
+                        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800">
+                            Available
+                        </Badge>
+                    )}
                 </div>
 
                 <div className="text-right w-full md:w-auto flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end">

@@ -52,6 +52,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
     const [isActive, setIsActive] = useState(initialData?.is_active ?? true);
     const [isSeasonal, setIsSeasonal] = useState(initialData?.is_seasonal ?? false);
+    const [trackInventory, setTrackInventory] = useState(initialData?.track_inventory ?? true);
 
     // Image State
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -146,8 +147,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name || !price || !quantity) {
-            toast.error("Please fill in all required fields (Name, Price, Quantity)");
+        if (!name || !price || (trackInventory && !quantity)) {
+            toast.error(`Please fill in all required fields (Name, Price${trackInventory ? ", Quantity" : ""})`);
             return;
         }
 
@@ -159,7 +160,12 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (description) formData.append("description", description);
             formData.append("price", price);
             if (originalPrice) formData.append("original_price", originalPrice);
-            formData.append("quantity", quantity);
+            if (trackInventory) {
+                formData.append("quantity", quantity);
+            } else {
+                formData.append("quantity", "0");
+            }
+            formData.append("track_inventory", String(trackInventory));
             formData.append("unit", unit);
             formData.append("minimum_order_quantity", minOrderQty);
             if (maxOrderQty) formData.append("maximum_order_quantity", maxOrderQty);
@@ -343,18 +349,35 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     />
                 </div>
 
-                {/* Quantity */}
-                <div className="space-y-2">
-                    <Label htmlFor="quantity">Stock Quantity *</Label>
-                    <Input
-                        id="quantity"
-                        type="number"
-                        placeholder="0"
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        required
+                {/* Track Inventory Toggle */}
+                <div className="md:col-span-2 flex items-center space-x-2 rounded-md border p-4 bg-muted/5">
+                    <Switch
+                        id="trackInventory"
+                        checked={trackInventory}
+                        onCheckedChange={setTrackInventory}
                     />
+                    <Label htmlFor="trackInventory" className="flex-1 cursor-pointer">
+                        Track Inventory Stock
+                        <span className="block text-xs font-normal text-muted-foreground">
+                            If OFF, this item will always be "Available" for order regardless of stock count. Ideal for prepared food.
+                        </span>
+                    </Label>
                 </div>
+
+                {/* Quantity */}
+                {trackInventory && (
+                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                        <Label htmlFor="quantity">Stock Quantity *</Label>
+                        <Input
+                            id="quantity"
+                            type="number"
+                            placeholder="0"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            required={trackInventory}
+                        />
+                    </div>
+                )}
 
                 {/* Unit */}
                 <div className="space-y-2">
