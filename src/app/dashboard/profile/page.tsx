@@ -156,7 +156,7 @@ export default function ProfilePage() {
 
                 if (key === 'serviceablePincodes' && Array.isArray(value)) {
                     value.forEach(p => formDataToSend.append('serviceable_pincodes', p));
-                } else if (value !== undefined && value !== null && key !== 'isPhoneVerified') {
+                } else if (value !== undefined && value !== null && key !== 'isPhoneVerified' && key !== 'shopImage' && key !== 'upiQrCode') {
                     formDataToSend.append(snakeKey, value.toString());
                 }
             });
