@@ -170,7 +170,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("minimum_order_quantity", minOrderQty);
             if (maxOrderQty) formData.append("maximum_order_quantity", maxOrderQty);
             if (productGroup) formData.append("product_group", productGroup);
-            if (barcode) formData.append("barcode", barcode);
+            formData.append("barcode", barcode || "");
             if (masterProductId) formData.append("master_product", masterProductId);
 
             if (categoryId) formData.append("category", categoryId);

@@ -20,6 +20,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Printer } from "lucide-react";
+import { useReactToPrint } from "react-to-print";
+import { useRef } from "react";
+import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
+import { authService } from "@/services/api";
 
 function OrderDetailContent() {
     const searchParams = useSearchParams();
@@ -39,6 +44,13 @@ function OrderDetailContent() {
     const [etaMinutes, setEtaMinutes] = useState("");
     const [isUpdatingEta, setIsUpdatingEta] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+    const [retailerProfile, setRetailerProfile] = useState<any>(null);
+
+    // Print Logic
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const handlePrint = useReactToPrint({
+        contentRef: receiptRef,
+    });
 
     const fetchOrderDetails = async () => {
         setIsLoading(true);
@@ -99,10 +111,20 @@ function OrderDetailContent() {
         }
     };
 
+    const fetchRetailerProfile = async () => {
+        try {
+            const response = await authService.fetchProfile();
+            setRetailerProfile(response.data);
+        } catch (err) {
+            console.error("Failed to fetch retailer profile", err);
+        }
+    };
+
     useEffect(() => {
         const id = searchParams.get('id');
         if (id) {
             fetchOrderDetails();
+            fetchRetailerProfile();
         }
 
         const handleFcmUpdate = (event: any) => {
@@ -148,6 +170,9 @@ function OrderDetailContent() {
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-3xl font-bold tracking-tight">Order #{order.order_number}</h1>
                         <Badge variant="outline" className={cn("font-bold border shadow-none", getStatusColor(order.status))}>{order.status.toUpperCase()}</Badge>
+                        <Badge variant="outline" className={cn("font-bold border shadow-none", order.source === 'pos' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-primary/10 text-primary border-primary/20')}>
+                            {order.source === 'pos' ? 'STORE ORDER' : 'ONLINE ORDER'}
+                        </Badge>
                         {order.status.toLowerCase() === 'cancelled' && order.cancelled_by && (
                             <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
                                 By {order.cancelled_by.charAt(0).toUpperCase() + order.cancelled_by.slice(1)}
@@ -167,6 +192,10 @@ function OrderDetailContent() {
                     )}
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => handlePrint()}>
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print Bill
+                    </Button>
                     <Button variant="outline" onClick={() => router.push(`/dashboard/orders/chat?id=${order.id}`)}>
                         <MessageCircle className="h-4 w-4 mr-2" />
                         Chat with Customer
@@ -187,6 +216,40 @@ function OrderDetailContent() {
             <div className="grid gap-6 md:grid-cols-3">
                 {/* Main Content (Items & Summary) */}
                 <div className="md:col-span-2 space-y-6">
+                    {/* Hidden Receipt for Printing */}
+                    {order && retailerProfile && (
+                        <ThermalReceipt 
+                            ref={receiptRef}
+                            order={{
+                                order_number: order.order_number,
+                                created_at: order.created_at,
+                                items: order.items.map((item: any) => ({
+                                    product_name: item.product_name,
+                                    quantity: item.quantity,
+                                    unit_price: item.price || (item.total_price / item.quantity),
+                                    total_price: item.total_price
+                                })),
+                                subtotal: order.subtotal,
+                                discount_amount: order.discount_amount || 0,
+                                total_amount: order.total_amount,
+                                payment_mode: order.payment_mode || 'COD',
+                                payment_status: order.payment_status === 'paid' ? 'PAID' : 'COD/UNPAID',
+                                customer_name: order.customer_name || order.user?.name || order.guest_name,
+                                customer_phone: order.user?.phone || order.customer_mobile || order.guest_mobile,
+                                retailer_name: retailerProfile?.shop_name || order.retailer_name,
+                                retailer_address: retailerProfile ? `${retailerProfile.address_line1}, ${retailerProfile.city}` : order.retailer_address,
+                                retailer_phone: retailerProfile?.contact_phone || order.retailer_phone,
+                                retailer_gst_number: order.retailer_gst_number || retailerProfile?.gst_number,
+                                retailer_receipt_footer: order.retailer_receipt_footer || retailerProfile?.receipt_footer,
+                                retailer_show_gst: order.retailer_show_gst ?? (retailerProfile?.show_gst_on_receipt || false),
+                                order_source: order.source === 'pos' ? 'Store Order' : 'Online Order',
+                                delivery_address: order.order_type === 'delivery' || order.delivery_mode === 'delivery'
+                                    ? (order.shipping_address?.address_line1 || order.delivery_address_text || 'Address not provided') 
+                                    : 'Self Pickup'
+                            }}
+                        />
+                    )}
+
                     <OrderItems items={order.items} />
 
                     {/* Financial Summary */}
@@ -385,7 +448,7 @@ function OrderDetailContent() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <p className="font-medium">{order.customer_name || order.customer?.first_name}</p>
+                                <p className="font-medium">{order.customer_name || (order.customer?.first_name ? `${order.customer.first_name} ${order.customer.last_name || ''}` : 'Customer')}</p>
                                 <div className="flex flex-wrap items-center gap-2 mt-2">
                                     <Badge variant="outline" className="text-xs">Verified Customer</Badge>
                                     {order.customer_average_rating !== undefined && order.customer_average_rating > 0 ? (
@@ -538,7 +601,7 @@ function OrderDetailContent() {
                     <DialogHeader>
                         <DialogTitle>Rate Customer</DialogTitle>
                         <DialogDescription>
-                            How was your experience with {order.customer?.first_name || "this customer"}?
+                            How was your experience with {order.customer_name || "this customer"}?
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">

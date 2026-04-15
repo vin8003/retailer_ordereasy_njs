@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 const BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://api.ordereasy.win/api/'
-  : (process.env.NEXT_PUBLIC_API_URL || 'https://api.ordereasy.win/api/');
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/');
 // const BASE_URL = 'http://127.0.0.1:8000/api/';
 
 const api = axios.create({
@@ -123,7 +123,7 @@ export const authService = {
   updateProfile: (data: any) => {
     // Determine content type based on data (FormData vs JSON)
     const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
-    return api.put('retailer/profile/update/', data, { headers });
+    return api.patch('retailer/profile/update/', data, { headers });
   },
   fetchRetailerCategories: () => api.get('retailer/categories/'),
   fetchStats: (params?: any) => api.get('orders/stats/', { params }),
@@ -233,6 +233,8 @@ export const productService = {
 export const customerService = {
   getRetailerCustomers: () => api.get('customer/retailer/list/'),
   getRetailerCustomerDetail: (customerId: number) => api.get(`customer/retailer/details/${customerId}/`),
+  updateRetailerCustomerMapping: (customerId: number, data: { nickname?: string; notes?: string }) => 
+    api.patch(`customer/retailer/update/${customerId}/`, data),
   toggleRetailerBlacklist: (customerId: number, action: string, reason?: string) =>
     api.post('customer/retailer/blacklist/toggle/', { customer_id: customerId, action, reason }),
   rateCustomer: (orderId: number, rating: number, comment?: string) =>

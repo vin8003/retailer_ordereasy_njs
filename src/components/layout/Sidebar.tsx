@@ -10,7 +10,11 @@ import {
     LogOut,
     Star,
     Clock,
-    Layers
+    Layers,
+    Calculator,
+    Package,
+    BookOpen,
+    BarChart3
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -26,7 +30,11 @@ const Sidebar = () => {
     };
 
     const navItems = [
+
         { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
+        { label: 'POS Billing', icon: Calculator, href: '/dashboard/pos' },
+        { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
+        { label: 'Khata/Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
         { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },

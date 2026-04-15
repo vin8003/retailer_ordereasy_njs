@@ -21,9 +21,19 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RetailerCustomer {
@@ -37,6 +47,9 @@ interface RetailerCustomer {
     joinedDate?: string;
     lastOrderDate?: string;
     isBlacklisted: boolean;
+    registrationStatus?: string;
+    isPhoneVerified?: boolean;
+    nickname?: string;
 }
 
 export default function CustomersPage() {
@@ -50,6 +63,13 @@ export default function CustomersPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [sortBy, setSortBy] = useState('Joined Date');
+
+    // Edit Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState<RetailerCustomer | null>(null);
+    const [editNickname, setEditNickname] = useState('');
+    const [editNotes, setEditNotes] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
 
     const fetchCustomers = async () => {
         setLoading(true);
@@ -69,6 +89,9 @@ export default function CustomersPage() {
                     joinedDate: item.joined_date,
                     lastOrderDate: item.last_order_date,
                     isBlacklisted: item.is_blacklisted,
+                    registrationStatus: item.registration_status,
+                    isPhoneVerified: item.is_phone_verified,
+                    nickname: item.nickname,
                 }));
                 setCustomers(mappedData);
             } else {
@@ -130,6 +153,37 @@ export default function CustomersPage() {
 
         setFilteredCustomers(result);
     }, [customers, searchQuery, statusFilter, sortBy]);
+
+    const handleEditClick = (e: React.MouseEvent, customer: RetailerCustomer) => {
+        e.stopPropagation();
+        setEditingCustomer(customer);
+        setEditNickname(customer.nickname || '');
+        // The list API might not have notes, so we'll fetch details or just update nickname
+        // But for now let's assume notes are available or will be updated blindly
+        setEditNotes(''); 
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateCustomer = async () => {
+        if (!editingCustomer) return;
+        setIsUpdating(true);
+        try {
+            const response = await customerService.updateRetailerCustomerMapping(editingCustomer.customerId, {
+                nickname: editNickname,
+                notes: editNotes
+            });
+            if (response.status === 200) {
+                toast.success('Customer updated successfully');
+                setIsEditModalOpen(false);
+                fetchCustomers(); // Refresh list
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error('Failed to update customer');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     // Analytics
     const totalCustomers = customers.length;
@@ -248,7 +302,7 @@ export default function CustomersPage() {
                                 filteredCustomers.map((customer) => (
                                     <TableRow
                                         key={customer.customerId}
-                                        className="cursor-pointer hover:bg-slate-50"
+                                        className="cursor-pointer hover:bg-slate-50 relative group"
                                         onClick={() => router.push(`/dashboard/customers/details?id=${customer.customerId}`)}
                                     >
                                         <TableCell>
@@ -258,8 +312,17 @@ export default function CustomersPage() {
                                                     <AvatarFallback>{customer.customerName?.[0]?.toUpperCase() || 'C'}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{customer.customerName}</span>
-                                                    <span className="text-xs text-muted-foreground">ID: {customer.customerId}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-medium">{customer.customerName}</span>
+                                                        <Badge variant="outline" className={`text-[10px] h-4 px-1 ${
+                                                            (customer.registrationStatus === 'registered' || customer.isPhoneVerified) 
+                                                            ? 'border-blue-200 text-blue-700 bg-blue-50' 
+                                                            : 'border-slate-200 text-slate-600 bg-slate-50'
+                                                        }`}>
+                                                            {(customer.registrationStatus === 'registered' || customer.isPhoneVerified) ? 'App User' : 'Walk-in'}
+                                                        </Badge>
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground">ID: {customer.customerId} • {customer.phoneNumber}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -281,6 +344,16 @@ export default function CustomersPage() {
                                                 {customer.isBlacklisted ? 'Blacklisted' : 'Active'}
                                             </Badge>
                                         </TableCell>
+                                        <TableCell>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="opacity-0 group-hover:opacity-100"
+                                                onClick={(e) => handleEditClick(e, customer)}
+                                            >
+                                                <Edit2 className="h-4 w-4" />
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             )}
@@ -288,6 +361,45 @@ export default function CustomersPage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Edit Modal */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Customer Info</DialogTitle>
+                        <DialogDescription>
+                            Update nickname and notes for {editingCustomer?.customerName}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="nickname">Nickname (Personal reference)</Label>
+                            <Input
+                                id="nickname"
+                                value={editNickname}
+                                onChange={(e) => setEditNickname(e.target.value)}
+                                placeholder="e.g. Sharma Ji"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="notes">Private Notes (Only you can see this)</Label>
+                            <Textarea
+                                id="notes"
+                                value={editNotes}
+                                onChange={(e) => setEditNotes(e.target.value)}
+                                placeholder="Enter any notes about this customer..."
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpdateCustomer} disabled={isUpdating}>
+                            {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

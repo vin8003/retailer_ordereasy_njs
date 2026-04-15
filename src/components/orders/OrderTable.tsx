@@ -39,6 +39,7 @@ interface Order {
         comment: string;
     };
     customer_average_rating?: number;
+    source?: string;
 }
 
 interface OrderTableProps {
@@ -61,6 +62,13 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
             case 'returned': return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100';
             default: return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
         }
+    };
+
+    const getSourceBadge = (source?: string) => {
+        if (source === 'pos') {
+            return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shadow-none text-[10px] px-1.5 py-0 mt-1.5">Store Order 🏪</Badge>;
+        }
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 shadow-none text-[10px] px-1.5 py-0 mt-1.5">Online Order 📱</Badge>;
     };
 
     if (isLoading) {
@@ -91,7 +99,12 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                             className="cursor-pointer hover:bg-muted/50"
                             onClick={() => router.push(`/dashboard/orders/details?id=${order.id}`)}
                         >
-                            <TableCell className="font-medium">{order.order_number}</TableCell>
+                            <TableCell className="font-medium">
+                                <div className="flex flex-col items-start leading-tight">
+                                    <span>{order.order_number}</span>
+                                    {getSourceBadge(order.source)}
+                                </div>
+                            </TableCell>
                             <TableCell>
                                 <div className="flex flex-col">
                                     <span>{format(new Date(order.created_at), "MMM d, yyyy")}</span>
@@ -105,9 +118,10 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                             </TableCell>
                             <TableCell>
                                 <div className="font-medium">
-                                    {order.customer?.first_name
-                                        ? `${order.customer.first_name} ${order.customer.last_name || ''}`
-                                        : order.customer_name || 'Customer'}
+                                    {order.customer_name || 
+                                     (order.customer?.first_name 
+                                        ? `${order.customer.first_name} ${order.customer.last_name || ''}` 
+                                        : 'Customer')}
                                 </div>
                                 {order.customer_average_rating !== undefined && order.customer_average_rating > 0 ? (
                                     <div className={cn(

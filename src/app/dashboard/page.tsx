@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { 
     Search, ShoppingCart, User, Plus, Package, 
     ArrowUpRight, TrendingUp, Users, ShoppingBag, 
-    Loader2, IndianRupee, Star 
+    Loader2, IndianRupee, Star, Banknote, Smartphone,
+    MonitorIcon, Globe
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,10 @@ interface DashboardStats {
     average_order_value: number;
     recent_reviews?: any[];
     recent_orders?: any[];
+    cash_sales: number;
+    digital_sales: number;
+    pos_sales: number;
+    online_sales: number;
 }
 
 export default function DashboardPage() {
@@ -188,6 +193,83 @@ export default function DashboardPage() {
                     description={`Average per order (${timeLabel})`}
                     color="bg-purple-500"
                 />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                {/* Payment Breakdown */}
+                <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-gray-800">
+                    <CardHeader className="pb-2 border-b border-border/50 bg-muted/10">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <Banknote className="h-5 w-5 text-emerald-500" />
+                            Payment Breakdown
+                        </CardTitle>
+                        <CardDescription>Cash vs Digital split ({timeLabel})</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-end">
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Cash in Hand</p>
+                                    <p className="text-3xl font-black">₹{stats?.cash_sales?.toLocaleString() || 0}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Digital</p>
+                                    <p className="text-3xl font-black">₹{stats?.digital_sales?.toLocaleString() || 0}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="relative h-4 w-full bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden flex">
+                                <div 
+                                    className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
+                                    style={{ 
+                                        width: `${stats && stats.total_revenue > 0 ? (stats.cash_sales / stats.total_revenue) * 100 : 50}%` 
+                                    }}
+                                />
+                                <div className="h-full bg-blue-500 flex-1 transition-all duration-1000 ease-out" />
+                            </div>
+                            
+                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                    <div className="size-2 rounded-full bg-emerald-500" />
+                                    {stats && stats.total_revenue > 0 ? ((stats.cash_sales / stats.total_revenue) * 100).toFixed(0) : 0}% Cash
+                                </div>
+                                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                    {stats && stats.total_revenue > 0 ? ((stats.digital_sales / stats.total_revenue) * 100).toFixed(0) : 0}% Digital
+                                    <div className="size-2 rounded-full bg-blue-500" />
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Channel Performance */}
+                <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-gray-800">
+                    <CardHeader className="pb-2 border-b border-border/50 bg-muted/10">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-purple-500" />
+                            Channel Performance
+                        </CardTitle>
+                        <CardDescription>POS vs Online Store ({timeLabel})</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+                                <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm mb-3">
+                                    <MonitorIcon className="h-5 w-5 text-slate-600" />
+                                </div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">POS Sales</p>
+                                <p className="text-2xl font-black text-slate-900 dark:text-white">₹{stats?.pos_sales?.toLocaleString() || 0}</p>
+                            </div>
+                            <div className="p-4 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 flex flex-col items-center justify-center text-center">
+                                <div className="p-2 bg-white dark:bg-indigo-900/30 rounded-xl shadow-sm mb-3">
+                                    <Globe className="h-5 w-5 text-indigo-600" />
+                                </div>
+                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Online Store</p>
+                                <p className="text-2xl font-black text-indigo-900 dark:text-indigo-100">₹{stats?.online_sales?.toLocaleString() || 0}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">

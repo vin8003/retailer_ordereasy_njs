@@ -3,7 +3,7 @@
 import { useRef, useCallback, useEffect, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRouter } from "next/navigation";
-import { Edit, Trash2, MoreHorizontal, ImageIcon, Star, Search } from "lucide-react";
+import { Edit, Trash2, MoreHorizontal, ImageIcon, Star, Search, History } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 
 import { Badge } from "@/components/ui/badge";
@@ -465,6 +465,15 @@ function SwipeableRow({
                             >
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(`/dashboard/products/ledger?id=${product.id}`);
+                                }}
+                            >
+                                <History className="mr-2 h-4 w-4" />
+                                View History
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

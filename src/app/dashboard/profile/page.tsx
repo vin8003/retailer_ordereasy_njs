@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine, CheckCircle, Smartphone } from 'lucide-react';
+import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine, CheckCircle, Smartphone, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import PhoneVerification from '@/components/auth/PhoneVerification';
 
@@ -54,6 +54,10 @@ interface RetailerProfile {
 
     // Images
     shopImage?: string;
+
+    // Receipt Customization
+    receiptFooter?: string;
+    showGstOnReceipt: boolean;
 }
 
 export default function ProfilePage() {
@@ -111,6 +115,8 @@ export default function ProfilePage() {
                     freeDeliveryThreshold: data.free_delivery_threshold || 0,
                     serviceablePincodes: data.serviceable_pincodes || [],
                     shopImage: data.shop_image,
+                    receiptFooter: data.receipt_footer,
+                    showGstOnReceipt: data.show_gst_on_receipt ?? true,
                 };
                 setProfile(mappedProfile);
                 setFormData(mappedProfile);
@@ -151,34 +157,62 @@ export default function ProfilePage() {
         try {
             const formDataToSend = new FormData();
 
+            // Read-only or handled separately - skip these
+            const skipKeys = ['isPhoneVerified', 'shopImage', 'upiQrCode', 'username'];
+
             Object.entries(formData).forEach(([key, value]) => {
                 const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
                 if (key === 'serviceablePincodes' && Array.isArray(value)) {
                     value.forEach(p => formDataToSend.append('serviceable_pincodes', p));
-                } else if (value !== undefined && value !== null && key !== 'isPhoneVerified' && key !== 'shopImage' && key !== 'upiQrCode') {
+                } else if (!skipKeys.includes(key) && value !== undefined && value !== null) {
                     formDataToSend.append(snakeKey, value.toString());
                 }
             });
 
             selectedCategoryIds.forEach(id => formDataToSend.append('categories', id.toString()));
 
-            if (shopImageFile) {
-                formDataToSend.append('shop_image', shopImageFile);
-            }
-            if (qrCodeFile) {
-                formDataToSend.append('upi_qr_code', qrCodeFile);
-            }
+            if (shopImageFile) formDataToSend.append('shop_image', shopImageFile);
+            if (qrCodeFile) formDataToSend.append('upi_qr_code', qrCodeFile);
+
+            // Debug: log all fields being sent
+            console.log('Sending fields:', [...formDataToSend.entries()].map(([k, v]) => `${k}=${v}`));
 
             const response = await authService.updateProfile(formDataToSend);
             if (response.status === 200) {
                 toast.success("Profile updated successfully");
                 setIsEditing(false);
-                fetchProfile(); // Refresh
+                fetchProfile();
             }
         } catch (error: any) {
-            console.error(error);
-            toast.error(error.response?.data?.detail || "Failed to update profile");
+            console.error('Profile update error:', error.response?.data);
+            // Human-readable field name mapping
+            const fieldLabels: Record<string, string> = {
+                shop_name: 'Shop Name',
+                gst_number: 'GST Number',
+                pan_number: 'PAN Number',
+                pincode: 'Pincode',
+                contact_email: 'Email',
+                contact_phone: 'Phone Number',
+                whatsapp_number: 'WhatsApp Number',
+                address_line1: 'Address',
+                city: 'City',
+                state: 'State',
+                upi_id: 'UPI ID',
+                delivery_radius: 'Delivery Radius',
+                minimum_order_amount: 'Minimum Order Amount',
+            };
+            const errData = error.response?.data;
+            if (errData && typeof errData === 'object') {
+                // Show first error prominently as toast
+                const firstField = Object.keys(errData)[0];
+                const firstMsg = errData[firstField];
+                const label = fieldLabels[firstField] || firstField.replace(/_/g, ' ');
+                const msg = Array.isArray(firstMsg) ? firstMsg[0] : firstMsg;
+                toast.error(`${label}: ${msg}`);
+            } else {
+                toast.error(errData?.detail || errData?.error || "Failed to update profile");
+            }
         } finally {
             setSaving(false);
         }
@@ -576,6 +610,38 @@ export default function ProfilePage() {
                                     />
                                     <p className="text-xs text-muted-foreground">Order amount to waive delivery fee</p>
                                 </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center gap-2">
+                                <Printer className="h-5 w-5 text-gray-600" />
+                                <CardTitle>Receipt Customization</CardTitle>
+                            </div>
+                            <CardDescription>Configure how your printed receipts look</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between border rounded-lg p-4 bg-slate-50">
+                                <div className="space-y-0.5">
+                                    <Label>Show GST Number</Label>
+                                    <div className="text-sm text-muted-foreground">Print GSTIN on thermal receipts</div>
+                                </div>
+                                <Switch
+                                    disabled={!isEditing}
+                                    checked={formData.showGstOnReceipt}
+                                    onCheckedChange={val => setFormData({ ...formData, showGstOnReceipt: val })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Receipt Footer Message</Label>
+                                <Textarea 
+                                    disabled={!isEditing} 
+                                    placeholder="e.g. No Exchange Without Bill. Thank you!"
+                                    value={formData.receiptFooter || ''} 
+                                    onChange={e => setFormData({ ...formData, receiptFooter: e.target.value })} 
+                                />
+                                <p className="text-xs text-muted-foreground italic">Appears at the very bottom of the receipt.</p>
                             </div>
                         </CardContent>
                     </Card>
