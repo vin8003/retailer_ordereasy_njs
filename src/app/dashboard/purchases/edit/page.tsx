@@ -6,7 +6,7 @@ import api from '@/services/api';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
-    Info, AlertCircle, ShoppingCart, Receipt
+    Info, AlertCircle, ShoppingCart, IndianRupee, UserPlus
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
@@ -52,7 +52,40 @@ function EditPurchaseContent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     
+    // Add Supplier Modal State
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newSupplier, setNewSupplier] = useState({
+        company_name: '',
+        contact_person: '',
+        phone_number: '',
+        email: '',
+        address: ''
+    });
+    
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    const handleAddSupplier = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await api.post('/products/erp/suppliers/', newSupplier);
+            toast.success("Supplier added successfully");
+            setShowAddModal(false);
+            
+            const suppRes = await api.get('/products/erp/suppliers/');
+            setSuppliers(suppRes.data.results || suppRes.data);
+            setSelectedSupplier(res.data.id.toString());
+            
+            setNewSupplier({
+                company_name: '',
+                contact_person: '',
+                phone_number: '',
+                email: '',
+                address: ''
+            });
+        } catch (error) {
+            toast.error("Failed to add supplier");
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -155,7 +188,7 @@ function EditPurchaseContent() {
     const handleSubmit = async () => {
         if (!selectedSupplier) return toast.error("Please select a supplier");
         if (rows.length === 0) return toast.error("Please add at least one product");
-        if (!invoiceNumber) return toast.error("Invoice number is required");
+
 
         setIsSubmitting(true);
         try {
@@ -227,9 +260,18 @@ function EditPurchaseContent() {
                     {/* Invoice Meta */}
                     <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                <Truck size={14} /> Distributor / Supplier
-                            </label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Truck size={14} /> Distributor / Supplier
+                                </label>
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowAddModal(true)}
+                                    className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline"
+                                >
+                                    <UserPlus size={12} /> Add New
+                                </button>
+                            </div>
                             <select 
                                 value={selectedSupplier}
                                 onChange={(e) => setSelectedSupplier(e.target.value)}
@@ -391,7 +433,7 @@ function EditPurchaseContent() {
                 <div className="space-y-6">
                     <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-primary/5 sticky top-8">
                         <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                            <Receipt size={24} className="text-primary"/> Update Summary
+                            <IndianRupee size={24} className="text-primary"/> Update Summary
                         </h3>
                         
                         <div className="space-y-4 mb-8">
@@ -462,6 +504,93 @@ function EditPurchaseContent() {
                 </div>
 
             </div>
+
+            {/* Add Supplier Modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl p-10 animate-in zoom-in-95 duration-200">
+                        <h2 className="text-2xl font-black text-gray-900 mb-2">New Distributor</h2>
+                        <p className="text-gray-500 mb-8 font-medium">Create a record for your stock provider.</p>
+                        
+                        <form onSubmit={handleAddSupplier} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Company Name *</label>
+                                    <input 
+                                        required
+                                        type="text"
+                                        placeholder="e.g. ABC Foods Ltd"
+                                        value={newSupplier.company_name}
+                                        onChange={e => setNewSupplier({...newSupplier, company_name: e.target.value})}
+                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Contact Person</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="John Doe"
+                                        value={newSupplier.contact_person}
+                                        onChange={e => setNewSupplier({...newSupplier, contact_person: e.target.value})}
+                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Phone Number *</label>
+                                    <input 
+                                        required
+                                        type="tel"
+                                        placeholder="10-digit mobile"
+                                        value={newSupplier.phone_number}
+                                        onChange={e => setNewSupplier({...newSupplier, phone_number: e.target.value})}
+                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Email Address</label>
+                                    <input 
+                                        type="email"
+                                        placeholder="distributor@mail.com"
+                                        value={newSupplier.email}
+                                        onChange={e => setNewSupplier({...newSupplier, email: e.target.value})}
+                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Office Address</label>
+                                <textarea 
+                                    rows={3}
+                                    placeholder="Full office or warehouse address..."
+                                    value={newSupplier.address}
+                                    onChange={e => setNewSupplier({...newSupplier, address: e.target.value})}
+                                    className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 focus:ring-2 focus:ring-primary/20 resize-none"
+                                />
+                            </div>
+
+                            <div className="flex gap-4 pt-6">
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowAddModal(false)}
+                                    className="flex-1 px-6 py-4 rounded-2xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="flex-[2] bg-primary text-white px-6 py-4 rounded-2xl font-bold hover:bg-primary/90 shadow-xl shadow-primary/20 transition-all"
+                                >
+                                    Register Distributor
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

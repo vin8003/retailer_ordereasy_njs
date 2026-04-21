@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/services/api';
 import Link from 'next/link';
-import { Package, Plus, Receipt, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown } from 'lucide-react';
+import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
@@ -29,13 +29,14 @@ function getDateRange(filter: FilterType): { start: string; end: string } | null
 
 export default function PurchasesPage() {
     const [invoices, setInvoices] = useState<any[]>([]);
+    const [dashboardStats, setDashboardStats] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<FilterType>('all');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
     const [showCustom, setShowCustom] = useState(false);
 
-    const fetchInvoices = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const params: Record<string, string> = {};
@@ -46,8 +47,12 @@ export default function PurchasesPage() {
                 params.start_date = customStart;
                 params.end_date = customEnd;
             }
-            const response = await api.get('/products/erp/purchase-invoices/', { params });
-            setInvoices(response.data.results ?? response.data);
+            const [invRes, dashRes] = await Promise.all([
+                api.get('/products/erp/purchase-invoices/', { params }),
+                api.get('/products/erp/dashboard/summary/')
+            ]);
+            setInvoices(invRes.data.results ?? invRes.data);
+            setDashboardStats(dashRes.data);
         } catch (error) {
             toast.error("Failed to load purchase history");
         } finally {
@@ -55,7 +60,7 @@ export default function PurchasesPage() {
         }
     }, [filter, customStart, customEnd]);
 
-    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const FILTERS: { key: FilterType; label: string }[] = [
         { key: 'all', label: 'All Time' },
@@ -132,26 +137,45 @@ export default function PurchasesPage() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 bg-blue-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
-                    <div className="relative z-10">
-                        <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Total Purchases</p>
-                        <h3 className="text-3xl font-black text-gray-900">₹{totalPurchases.toLocaleString('en-IN')}</h3>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white p-6 rounded-3xl border border-red-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute -right-6 -top-6 bg-red-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                     <div className="relative z-10">
-                        <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Unpaid Balance</p>
-                        <h3 className="text-3xl font-black text-red-600">₹{unpaidBalance.toLocaleString('en-IN')}</h3>
+                        <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1">Total Khata Debt</p>
+                        <h3 className="text-3xl font-black text-red-600">₹{dashboardStats?.total_outstanding_debt?.toLocaleString('en-IN') || 0}</h3>
+                        <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">LIFETIME ALL SUPPLIERS</p>
+                    </div>
+                </div>
+                {dashboardStats?.total_advance_paid > 0 && (
+                    <div className="bg-white p-6 rounded-3xl border border-green-100 shadow-sm relative overflow-hidden group col-span-1">
+                        <div className="absolute -right-6 -top-6 bg-green-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Advance Paid</p>
+                            <h3 className="text-3xl font-black text-green-600">₹{dashboardStats.total_advance_paid.toLocaleString('en-IN')}</h3>
+                        </div>
+                    </div>
+                )}
+                <div className={`bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group ${dashboardStats?.total_advance_paid > 0 ? '' : 'md:col-span-1'}`}>
+                    <div className="absolute -right-6 -top-6 bg-blue-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                    <div className="relative z-10">
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Listed Purchases</p>
+                        <h3 className="text-3xl font-black text-gray-900">₹{totalPurchases.toLocaleString('en-IN')}</h3>
+                        <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold text-ellipsis line-clamp-1">For Filtered Dates</p>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 bg-green-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                    <div className="absolute -right-6 -top-6 bg-orange-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                    <div className="relative z-10">
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Listed Unpaid</p>
+                        <h3 className="text-3xl font-black text-gray-900">₹{unpaidBalance.toLocaleString('en-IN')}</h3>
+                        <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">For Filtered Dates</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group hidden md:block">
+                    <div className="absolute -right-6 -top-6 bg-gray-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                     <div className="relative z-10">
                         <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Invoices Found</p>
-                        <h3 className="text-3xl font-black text-gray-900">{invoices.length} Bills</h3>
+                        <h3 className="text-3xl font-black text-gray-900">{invoices.length}</h3>
                     </div>
                 </div>
             </div>
@@ -160,7 +184,7 @@ export default function PurchasesPage() {
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <Receipt className="text-gray-400" /> Purchase Bills
+                        <IndianRupee className="text-gray-400" /> Purchase Bills
                     </h3>
                     {filter !== 'all' && (
                         <span className="text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full uppercase tracking-wider">
@@ -227,9 +251,6 @@ export default function PurchasesPage() {
                                                         <Pencil size={18} />
                                                     </button>
                                                 </Link>
-                                                <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                                                    <ArrowRight size={18} />
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>

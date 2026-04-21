@@ -73,6 +73,9 @@ export default function SuppliersPage() {
         s.phone_number.includes(searchTerm)
     );
 
+    const totalDebt = suppliers.filter(s => Number(s.balance_due) > 0).reduce((sum, s) => sum + Number(s.balance_due), 0);
+    const totalAdvance = suppliers.filter(s => Number(s.balance_due) < 0).reduce((sum, s) => sum + Math.abs(Number(s.balance_due)), 0);
+
     return (
         <div className="p-8 max-w-7xl mx-auto font-sans">
             <Toaster position="top-right" />
@@ -97,30 +100,42 @@ export default function SuppliersPage() {
             </div>
 
             {/* Top Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Total Debt</p>
-                    <h3 className="text-4xl font-black text-red-600 tracking-tight">
-                        ₹{suppliers.reduce((sum, s) => sum + Number(s.balance_due), 0).toLocaleString('en-IN')}
-                    </h3>
-                    <p className="text-xs text-gray-400 mt-2 font-medium">To be paid across {suppliers.length} suppliers</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className="bg-white p-6 rounded-[2rem] border border-red-100 shadow-sm relative overflow-hidden group">
+                    <div className="absolute -right-6 -top-6 bg-red-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                    <div className="relative z-10">
+                        <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1">Total Debt</p>
+                        <h3 className="text-3xl font-black text-red-600 tracking-tight">₹{totalDebt.toLocaleString('en-IN')}</h3>
+                        <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">LIFETIME ALL SUPPLIERS</p>
+                    </div>
                 </div>
+
+                {totalAdvance > 0 && (
+                    <div className="bg-white p-6 rounded-[2rem] border border-green-100 shadow-sm relative overflow-hidden group">
+                        <div className="absolute -right-6 -top-6 bg-green-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Advance Paid</p>
+                            <h3 className="text-3xl font-black text-green-600 tracking-tight">₹{totalAdvance.toLocaleString('en-IN')}</h3>
+                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Extra payments pool</p>
+                        </div>
+                    </div>
+                )}
                 
-                <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm group hover:border-primary/20 transition-all cursor-pointer">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Primary Supplier</p>
+                <div className={`bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm group hover:border-primary/20 transition-all cursor-pointer ${totalAdvance > 0 ? '' : 'md:col-span-2'}`}>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Largest Creditor</p>
                     {suppliers.length > 0 ? (
                         <>
                             <h3 className="text-xl font-black text-gray-900 line-clamp-1">{suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].company_name}</h3>
-                            <p className="text-sm text-primary font-bold mt-1 uppercase tracking-wider">₹{Number(suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].balance_due).toLocaleString()} Due</p>
+                            <p className="text-sm text-primary font-bold mt-1 uppercase tracking-wider">₹{Math.max(0, Number(suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].balance_due)).toLocaleString('en-IN')} Due</p>
                         </>
                     ) : (
                         <h3 className="text-xl font-bold text-gray-300">No data</h3>
                     )}
                 </div>
 
-                <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
+                <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
                     <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">On-Credit Invoices</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Credit Invoices</p>
                         <h3 className="text-3xl font-black text-gray-900">{suppliers.filter(s => Number(s.balance_due) > 0).length}</h3>
                     </div>
                     <div className="size-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
@@ -201,10 +216,12 @@ export default function SuppliersPage() {
                                             </div>
                                         </td>
                                         <td className="p-6 text-right">
-                                            <div className={`text-2xl font-black ${Number(supplier.balance_due) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                ₹{Number(supplier.balance_due).toLocaleString()}
+                                            <div className={`text-2xl font-black ${Number(supplier.balance_due) > 0 ? 'text-red-600' : (Number(supplier.balance_due) < 0 ? 'text-green-600' : 'text-gray-900')}`}>
+                                                ₹{Math.abs(Number(supplier.balance_due)).toLocaleString('en-IN')}
                                             </div>
-                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Due Amount</div>
+                                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+                                                {Number(supplier.balance_due) > 0 ? 'Due Amount' : (Number(supplier.balance_due) < 0 ? 'Advance Paid' : 'Settled')}
+                                            </div>
                                         </td>
                                         <td className="p-6 text-right">
                                             <Link href={`/dashboard/suppliers/ledger?id=${supplier.id}`}>
