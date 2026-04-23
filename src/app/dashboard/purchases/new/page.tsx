@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { QuickAddModal } from '@/components/pos/QuickAddModal';
 
 interface Product {
     id: number;
@@ -48,6 +49,10 @@ export default function NewPurchasePage() {
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    
+    // Quick Add Modal State
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+    const [scanBarcode, setScanBarcode] = useState('');
     
     // Add Supplier Modal State
     const [showAddModal, setShowAddModal] = useState(false);
@@ -139,6 +144,11 @@ export default function NewPurchasePage() {
             if (matched) {
                 e.preventDefault();
                 addProductToRows(matched);
+            } else {
+                // Not found - Open Quick Add Modal
+                e.preventDefault();
+                setScanBarcode(searchTerm);
+                setIsQuickAddOpen(true);
             }
         }
     };
@@ -577,6 +587,18 @@ export default function NewPurchasePage() {
                     </div>
                 </div>
             )}
+
+            {/* Unknown Barcode Modal */}
+            <QuickAddModal 
+                isOpen={isQuickAddOpen}
+                barcode={scanBarcode}
+                onClose={() => setIsQuickAddOpen(false)}
+                onSuccess={(newProduct) => {
+                    // Update products list and add to rows
+                    setProducts(prev => [...prev, newProduct]);
+                    addProductToRows(newProduct);
+                }}
+            />
         </div>
     );
 }

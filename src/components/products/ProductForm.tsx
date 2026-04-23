@@ -3,7 +3,21 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Upload, X, Loader2, Barcode, CheckCircle2 } from "lucide-react";
+import { Upload, X, Loader2, Barcode, CheckCircle2, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { 
+    Card, 
+    CardHeader, 
+    CardTitle, 
+    CardContent 
+} from "@/components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +45,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [name, setName] = useState(initialData?.name || "");
     const [description, setDescription] = useState(initialData?.description || "");
     const [price, setPrice] = useState(initialData?.price || "");
+    const [purchasePrice, setPurchasePrice] = useState(initialData?.purchase_price || "");
     const [originalPrice, setOriginalPrice] = useState(initialData?.original_price || "");
     const [quantity, setQuantity] = useState(initialData?.quantity || "");
     const [unit, setUnit] = useState(initialData?.unit || "piece");
@@ -53,6 +68,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [isActive, setIsActive] = useState(initialData?.is_active ?? true);
     const [isSeasonal, setIsSeasonal] = useState(initialData?.is_seasonal ?? false);
     const [trackInventory, setTrackInventory] = useState(initialData?.track_inventory ?? true);
+    const [hasBatches, setHasBatches] = useState(initialData?.has_batches ?? false);
+    const [batches, setBatches] = useState<any[]>(initialData?.batches || []);
 
     // Image State
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -111,6 +128,31 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
         }
     };
 
+    const addBatch = () => {
+        setBatches([...batches, {
+            batch_number: "",
+            barcode: barcode,
+            purchase_price: purchasePrice,
+            price: price,
+            original_price: originalPrice,
+            quantity: "0",
+            is_active: true,
+            show_on_app: true
+        }]);
+    };
+
+    const removeBatch = (index: number) => {
+        const newBatches = [...batches];
+        newBatches.splice(index, 1);
+        setBatches(newBatches);
+    };
+
+    const updateBatch = (index: number, field: string, value: any) => {
+        const newBatches = [...batches];
+        newBatches[index] = { ...newBatches[index], [field]: value };
+        setBatches(newBatches);
+    };
+
     const handleScanSuccess = async (decodedText: string) => {
         setIsScannerOpen(false);
         setBarcode(decodedText);
@@ -147,8 +189,13 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name || !price || (trackInventory && !quantity)) {
+        if (!name || (!hasBatches && !price) || (trackInventory && !hasBatches && !quantity)) {
             toast.error(`Please fill in all required fields (Name, Price${trackInventory ? ", Quantity" : ""})`);
+            return;
+        }
+
+        if (hasBatches && batches.length === 0) {
+            toast.error("Please add at least one batch if Batch System is ON");
             return;
         }
 
@@ -159,6 +206,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("name", name);
             if (description) formData.append("description", description);
             formData.append("price", price);
+            if (purchasePrice) formData.append("purchase_price", purchasePrice);
             if (originalPrice) formData.append("original_price", originalPrice);
             if (trackInventory) {
                 formData.append("quantity", quantity);
@@ -176,6 +224,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (categoryId) formData.append("category", categoryId);
             formData.append("is_active", String(isActive));
             formData.append("is_seasonal", String(isSeasonal));
+            formData.append("has_batches", String(hasBatches));
+            if (hasBatches) {
+                formData.append("batches", JSON.stringify(batches));
+            }
             // Explicitly set is_available to true so it shows up in Customer App
             formData.append("is_available", "true");
 
@@ -322,60 +374,215 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     />
                 </div>
 
-                {/* Price */}
-                <div className="space-y-2">
-                    <Label htmlFor="price">Price (₹) *</Label>
-                    <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        required
-                    />
-                </div>
-
-                {/* Original Price */}
-                <div className="space-y-2">
-                    <Label htmlFor="originalPrice">MRP (₹)</Label>
-                    <Input
-                        id="originalPrice"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={originalPrice}
-                        onChange={(e) => setOriginalPrice(e.target.value)}
-                    />
-                </div>
-
-                {/* Track Inventory Toggle */}
-                <div className="md:col-span-2 flex items-center space-x-2 rounded-md border p-4 bg-muted/5">
+                {/* Batch System Toggle */}
+                <div className="md:col-span-2 flex items-center space-x-2 rounded-md border p-4 bg-primary/5 border-primary/20">
                     <Switch
-                        id="trackInventory"
-                        checked={trackInventory}
-                        onCheckedChange={setTrackInventory}
+                        id="hasBatches"
+                        checked={hasBatches}
+                        onCheckedChange={(checked) => {
+                            setHasBatches(checked);
+                            if (checked && batches.length === 0) {
+                                // Add an initial batch from current values if switching ON
+                                setBatches([{
+                                    batch_number: "B1",
+                                    barcode: barcode,
+                                    purchase_price: purchasePrice,
+                                    price: price,
+                                    original_price: originalPrice,
+                                    quantity: quantity || "0",
+                                    is_active: true,
+                                    show_on_app: true
+                                }]);
+                            }
+                        }}
                     />
-                    <Label htmlFor="trackInventory" className="flex-1 cursor-pointer">
-                        Track Inventory Stock
+                    <Label htmlFor="hasBatches" className="flex-1 cursor-pointer font-bold text-primary">
+                        Enable Multi-Batch Inventory System
                         <span className="block text-xs font-normal text-muted-foreground">
-                            If OFF, this item will always be "Available" for order regardless of stock count. Ideal for prepared food.
+                            Turn this ON if you have same products with different MRPs, Barcodes, or Purchase Prices.
                         </span>
                     </Label>
                 </div>
 
-                {/* Quantity */}
-                {trackInventory && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                        <Label htmlFor="quantity">Stock Quantity *</Label>
-                        <Input
-                            id="quantity"
-                            type="number"
-                            placeholder="0"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                            required={trackInventory}
-                        />
+                {!hasBatches ? (
+                    <>
+                        {/* Price */}
+                        <div className="space-y-2">
+                            <Label htmlFor="price">Selling Price (₹) *</Label>
+                            <Input
+                                id="price"
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                required={!hasBatches}
+                            />
+                        </div>
+
+                        {/* Purchase Price */}
+                        <div className="space-y-2">
+                            <Label htmlFor="purchasePrice">Purchase Price (₹)</Label>
+                            <Input
+                                id="purchasePrice"
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={purchasePrice}
+                                onChange={(e) => setPurchasePrice(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Original Price */}
+                        <div className="space-y-2">
+                            <Label htmlFor="originalPrice">MRP (₹)</Label>
+                            <Input
+                                id="originalPrice"
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={originalPrice}
+                                onChange={(e) => setOriginalPrice(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Track Inventory Toggle */}
+                        <div className="md:col-span-2 flex items-center space-x-2 rounded-md border p-4 bg-muted/5">
+                            <Switch
+                                id="trackInventory"
+                                checked={trackInventory}
+                                onCheckedChange={setTrackInventory}
+                            />
+                            <Label htmlFor="trackInventory" className="flex-1 cursor-pointer">
+                                Track Inventory Stock
+                                <span className="block text-xs font-normal text-muted-foreground">
+                                    If OFF, this item will always be "Available" for order regardless of stock count. Ideal for prepared food.
+                                </span>
+                            </Label>
+                        </div>
+
+                        {/* Quantity */}
+                        {trackInventory && (
+                            <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                                <Label htmlFor="quantity">Stock Quantity *</Label>
+                                <Input
+                                    id="quantity"
+                                    type="number"
+                                    placeholder="0"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                    required={trackInventory && !hasBatches}
+                                />
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="md:col-span-2 space-y-4">
+                        <Card className="border-primary/20">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
+                                <CardTitle className="text-sm font-medium">Batch Management</CardTitle>
+                                <Button type="button" size="sm" onClick={addBatch} className="h-8 gap-1">
+                                    <Plus className="h-4 w-4" /> Add Batch
+                                </Button>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[100px]">Batch No</TableHead>
+                                            <TableHead>Barcode</TableHead>
+                                            <TableHead className="w-[100px]">MRP</TableHead>
+                                            <TableHead className="w-[100px]">Selling</TableHead>
+                                            <TableHead className="w-[80px]">Stock</TableHead>
+                                            <TableHead className="w-[70px]">App</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {batches.map((batch, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        value={batch.batch_number} 
+                                                        onChange={(e) => updateBatch(index, "batch_number", e.target.value)}
+                                                        placeholder="B1"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        value={batch.barcode} 
+                                                        onChange={(e) => updateBatch(index, "barcode", e.target.value)}
+                                                        placeholder="Barcode"
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        type="number"
+                                                        value={batch.original_price} 
+                                                        onChange={(e) => updateBatch(index, "original_price", e.target.value)}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        type="number"
+                                                        value={batch.price} 
+                                                        onChange={(e) => updateBatch(index, "price", e.target.value)}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        type="number"
+                                                        value={batch.quantity} 
+                                                        onChange={(e) => updateBatch(index, "quantity", e.target.value)}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2 text-center">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => updateBatch(index, "show_on_app", !batch.show_on_app)}
+                                                        className={`p-1 rounded ${batch.show_on_app ? 'text-primary' : 'text-muted-foreground'}`}
+                                                    >
+                                                        {batch.show_on_app ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                                    </button>
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => removeBatch(index)}
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                {batches.length === 0 && (
+                                    <div className="p-4 text-center text-sm text-muted-foreground">
+                                        No batches added. Click "Add Batch" to start.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                        
+                        <div className="flex items-center space-x-2 rounded-md border p-4 bg-muted/5">
+                            <Switch
+                                id="trackInventoryBatches"
+                                checked={trackInventory}
+                                onCheckedChange={setTrackInventory}
+                            />
+                            <Label htmlFor="trackInventoryBatches" className="flex-1 cursor-pointer">
+                                Track Inventory Stock (Globally)
+                            </Label>
+                        </div>
                     </div>
                 )}
 

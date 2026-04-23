@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Upload, X, Loader2, ImageIcon, HelpCircle, Plus, Trash2 } from "lucide-react";
+import { Upload, X, Loader2, ImageIcon, HelpCircle, Plus, Trash2, Edit2, Check, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,8 +13,14 @@ export default function CategoriesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [uploadingId, setUploadingId] = useState<number | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [renamingId, setRenamingId] = useState<number | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState("");
+    
+    // Inline Renaming State
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editingName, setEditingName] = useState("");
+
     const fileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
 
     useEffect(() => {
@@ -56,7 +62,6 @@ export default function CategoriesPage() {
             console.error("Failed to update category image", error);
             toast.error("Failed to update image");
         } finally {
-            setUploadingId(catId);
             setUploadingId(null);
         }
     };
@@ -79,6 +84,33 @@ export default function CategoriesPage() {
             console.error("Failed to create category", error);
         } finally {
             setIsCreating(false);
+        }
+    };
+
+    const handleRenameStart = (cat: any) => {
+        setEditingId(cat.id);
+        setEditingName(cat.name);
+    };
+
+    const handleRenameCancel = () => {
+        setEditingId(null);
+        setEditingName("");
+    };
+
+    const handleRenameSubmit = async (catId: number) => {
+        if (!editingName.trim()) return;
+        
+        setRenamingId(catId);
+        try {
+            await productService.updateCategory(catId, { name: editingName.trim() });
+            toast.success("Category renamed successfully");
+            setEditingId(null);
+            fetchCategories();
+        } catch (error: any) {
+            console.error("Failed to rename category", error);
+            toast.error(error.response?.data?.error || "Failed to rename category");
+        } finally {
+            setRenamingId(null);
         }
     };
 
@@ -109,9 +141,9 @@ export default function CategoriesPage() {
         <div className="space-y-8 pb-8">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Category Images</h1>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Categories</h1>
                     <p className="text-muted-foreground mt-2 text-lg">
-                        Manage your store's categories and set primary images to show on the Customer App home page.
+                        Manage your store's categories. Renaming generic categories will create a private version for your store.
                     </p>
                 </div>
                 <form onSubmit={handleCreateCategory} className="flex items-center gap-2 w-full md:w-auto">
@@ -133,27 +165,56 @@ export default function CategoriesPage() {
                 {categories.map((cat) => (
                     <Card key={cat.id} className="overflow-hidden border-none shadow-xl shadow-primary/5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 group">
                         <CardHeader className="pb-4 border-b border-border/30 bg-muted/20">
-                            <CardTitle className="text-xl font-bold flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="group-hover:text-primary transition-colors">{cat.name}</span>
-                                    {cat.icon && (
-                                        <span title={`Icon: ${cat.icon}`} className="p-1.5 rounded-lg bg-white/50 border border-border/50">
-                                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                        </span>
-                                    )}
+                            <CardTitle className="text-xl font-bold">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        {editingId === cat.id ? (
+                                            <div className="flex items-center gap-1.5 animate-in slide-in-from-left-1">
+                                                <Input
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    className="h-8 text-lg font-bold bg-background/80"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleRenameSubmit(cat.id);
+                                                        if (e.key === 'Escape') handleRenameCancel();
+                                                    }}
+                                                    autoFocus
+                                                />
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600 shrink-0" onClick={() => handleRenameSubmit(cat.id)} disabled={renamingId === cat.id}>
+                                                    {renamingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 shrink-0" onClick={handleRenameCancel} disabled={renamingId === cat.id}>
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 group/title">
+                                                <span className="truncate group-hover:text-primary transition-colors">{cat.name}</span>
+                                                <button 
+                                                    onClick={() => handleRenameStart(cat)}
+                                                    className="opacity-0 group-hover/title:opacity-100 p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-opacity"
+                                                    title="Rename category"
+                                                >
+                                                    <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                            disabled={deletingId === cat.id}
+                                            title="Delete category"
+                                        >
+                                            {deletingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                        </Button>
+                                    </div>
                                 </div>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDeleteCategory(cat.id, cat.name)}
-                                    disabled={deletingId === cat.id}
-                                    title="Delete category"
-                                >
-                                    {deletingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                </Button>
                             </CardTitle>
-                            {cat.description && <CardDescription className="line-clamp-1">{cat.description}</CardDescription>}
+                            {cat.description && <CardDescription className="line-clamp-1 mt-1">{cat.description}</CardDescription>}
                         </CardHeader>
                         <CardContent className="pt-6">
                             <div className="aspect-[4/3] relative rounded-2xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group-hover:border-primary/30 transition-colors">

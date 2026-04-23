@@ -231,7 +231,7 @@ export const productService = {
 };
 
 export const customerService = {
-  getRetailerCustomers: () => api.get('customer/retailer/list/'),
+  getRetailerCustomers: (params?: any) => api.get('customer/retailer/list/', { params }),
   getRetailerCustomerDetail: (customerId: number) => api.get(`customer/retailer/details/${customerId}/`),
   updateRetailerCustomerMapping: (customerId: number, data: { nickname?: string; notes?: string }) => 
     api.patch(`customer/retailer/update/${customerId}/`, data),

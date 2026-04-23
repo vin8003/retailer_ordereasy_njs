@@ -11,11 +11,14 @@ export function OrderFilters({ currentStatus, onStatusChange }: OrderFiltersProp
     const statuses = [
         { value: "all", label: "All Orders" },
         { value: "pending", label: "Pending" },
+        { value: "waiting_for_customer_approval", label: "Awaiting Appr." },
         { value: "confirmed", label: "Confirmed" },
         { value: "processing", label: "Processing" },
-        { value: "shipped", label: "Shipped" },
+        { value: "packed", label: "Packed" },
+        { value: "out_for_delivery", label: "Out for Delivery" },
         { value: "delivered", label: "Delivered" },
         { value: "cancelled", label: "Cancelled" },
+        { value: "returned", label: "Returned" },
     ];
 
     return (

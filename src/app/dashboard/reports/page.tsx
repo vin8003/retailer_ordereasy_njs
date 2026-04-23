@@ -17,6 +17,8 @@ interface DailySummary {
     digital_sales: number;
     pos_sales: number;
     online_sales: number;
+    cash_refunds: number;
+    upi_refunds: number;
     shop_name: string;
 }
 
@@ -103,7 +105,12 @@ export default function ReportsPage() {
                                     <div className="p-3 bg-green-50 text-green-600 rounded-2xl"><Banknote size={24} /></div>
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Cash in Hand</p>
-                                        <p className="text-2xl font-black text-gray-900">₹{summary.cash_sales.toLocaleString()}</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-2xl font-black text-gray-900">₹{summary.cash_sales.toLocaleString()}</p>
+                                            {summary.cash_refunds > 0 && (
+                                                <span className="text-[10px] font-bold text-red-500">(-₹{summary.cash_refunds})</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <span className="text-xs font-black text-green-600 bg-green-50 px-3 py-1 rounded-full">{cashPercentage.toFixed(0)}%</span>
@@ -119,7 +126,12 @@ export default function ReportsPage() {
                                     <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Smartphone size={24} /></div>
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Digital Payments</p>
-                                        <p className="text-2xl font-black text-gray-900">₹{summary.digital_sales.toLocaleString()}</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-2xl font-black text-gray-900">₹{summary.digital_sales.toLocaleString()}</p>
+                                            {summary.upi_refunds > 0 && (
+                                                <span className="text-[10px] font-bold text-red-500">(-₹{summary.upi_refunds})</span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <span className="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full">{digitalPercentage.toFixed(0)}%</span>

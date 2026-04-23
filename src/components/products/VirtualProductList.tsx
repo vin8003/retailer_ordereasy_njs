@@ -414,8 +414,8 @@ function SwipeableRow({
                             {product.quantity} {product.unit}
                         </span>
                     ) : (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800">
-                            Available
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">
+                            Available (∞)
                         </Badge>
                     )}
                 </div>

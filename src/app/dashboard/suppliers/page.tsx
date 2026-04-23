@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 
 interface Supplier {
     id: number;
@@ -23,6 +24,8 @@ interface Supplier {
 export default function SuppliersPage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [nextPage, setNextPage] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [newSupplier, setNewSupplier] = useState({
@@ -34,18 +37,41 @@ export default function SuppliersPage() {
     });
 
     useEffect(() => {
-        fetchSuppliers();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchSuppliers(false);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
-    const fetchSuppliers = async () => {
-        setIsLoading(true);
+    const fetchSuppliers = async (isAppend = false) => {
+        if (isAppend) setIsFetchingMore(true);
+        else setIsLoading(true);
+        
         try {
-            const res = await api.get('/products/erp/suppliers/');
-            setSuppliers(res.data.results || res.data);
+            const params: any = {};
+            if (searchTerm) params.search = searchTerm;
+            
+            if (isAppend && nextPage) {
+                const url = new URL(nextPage);
+                const page = url.searchParams.get('page');
+                if (page) params.page = page;
+            }
+
+            const res = await api.get('/products/erp/suppliers/', { params });
+            const data = res.data.results || res.data;
+            const next = res.data.next || null;
+            
+            if (isAppend) {
+                setSuppliers(prev => [...prev, ...data]);
+            } else {
+                setSuppliers(data);
+            }
+            setNextPage(next);
         } catch (error) {
             toast.error("Failed to load suppliers");
         } finally {
             setIsLoading(false);
+            setIsFetchingMore(false);
         }
     };
 
@@ -68,10 +94,7 @@ export default function SuppliersPage() {
         }
     };
 
-    const filteredSuppliers = suppliers.filter(s => 
-        s.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.phone_number.includes(searchTerm)
-    );
+    const filteredSuppliers = suppliers;
 
     const totalDebt = suppliers.filter(s => Number(s.balance_due) > 0).reduce((sum, s) => sum + Number(s.balance_due), 0);
     const totalAdvance = suppliers.filter(s => Number(s.balance_due) < 0).reduce((sum, s) => sum + Math.abs(Number(s.balance_due)), 0);
@@ -324,6 +347,12 @@ export default function SuppliersPage() {
                     </div>
                 </div>
             )}
+
+            <InfiniteScrollTrigger 
+                onLoadMore={() => fetchSuppliers(true)}
+                hasMore={!!nextPage}
+                isLoading={isFetchingMore}
+            />
         </div>
     );
 }

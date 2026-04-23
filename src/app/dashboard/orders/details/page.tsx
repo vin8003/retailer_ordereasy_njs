@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck } from "lucide-react";
+import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";

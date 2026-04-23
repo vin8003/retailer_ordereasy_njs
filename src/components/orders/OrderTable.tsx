@@ -40,6 +40,9 @@ interface Order {
     };
     customer_average_rating?: number;
     source?: string;
+    refund_amount: number;
+    net_amount: number;
+    is_returned: boolean;
 }
 
 interface OrderTableProps {
@@ -53,6 +56,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100';
+            case 'waiting_for_customer_approval': return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100';
             case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
             case 'processing': return 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100';
             case 'packed': return 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100';
@@ -140,8 +144,13 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                             <TableCell>
                                 <div className="flex flex-col gap-1 items-start">
                                     <Badge variant="outline" className={cn("font-bold border shadow-none", getStatusColor(order.status))}>
-                                        {order.status.toUpperCase()}
+                                        {order.status === 'waiting_for_customer_approval' ? 'WAITING APPROVAL' : order.status.toUpperCase()}
                                     </Badge>
+                                    {order.is_returned && (
+                                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 shadow-none text-[10px] px-1.5 py-0 font-black">
+                                            PARTIAL RETURN ↩️
+                                        </Badge>
+                                    )}
                                     {order.feedback && (
                                         <div className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
                                             <span>{order.feedback.overall_rating}</span>
@@ -150,8 +159,17 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     )}
                                 </div>
                             </TableCell>
-                            <TableCell className="text-right">
-                                ₹{Number(order.total_amount).toLocaleString('en-IN')}
+                             <TableCell className="text-right">
+                                <div className="flex flex-col items-end">
+                                    <span className={cn("font-bold", order.is_returned && "text-gray-400 line-through text-xs font-medium decoration-red-400")}>
+                                        ₹{Number(order.total_amount).toLocaleString('en-IN')}
+                                    </span>
+                                    {order.is_returned && (
+                                        <span className="text-sm font-black text-gray-900 bg-yellow-50 px-2 py-0.5 rounded-lg border border-yellow-100">
+                                            ₹{Number(order.net_amount).toLocaleString('en-IN')}
+                                        </span>
+                                    )}
+                                </div>
                             </TableCell>
                             <TableCell>
                                 <DropdownMenu>

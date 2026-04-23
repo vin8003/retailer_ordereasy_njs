@@ -4,12 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
-    ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw 
+    ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
+    MessageSquare, Check
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
 import { ThermalReceipt } from '@/components/pos/ThermalReceipt';
 import { QuickAddModal } from '@/components/pos/QuickAddModal';
+import POSReturnModal from '@/components/pos/POSReturnModal';
 
 interface Product {
     id: number;
@@ -21,10 +23,22 @@ interface Product {
     category_name: string;
     barcode?: string;
     track_inventory?: boolean;
+    has_batches?: boolean;
+    batches?: any[];
 }
 
-interface CartItem extends Product {
+interface CartItem {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    track_inventory: boolean;
     cart_quantity: number;
+    batch_id?: number | null;
+    batch_name?: string | null;
+    original_price?: number;
+    barcode?: string;
+    image?: string;
 }
 
 interface CustomerSuggestion {
@@ -83,10 +97,24 @@ export default function POSPage() {
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
+
+    // Rating State
+    const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+    const [selectedRating, setSelectedRating] = useState<number>(0);
+    const [ratingComment, setRatingComment] = useState('');
+    const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
+    const [ratingSubmitted, setRatingSubmitted] = useState(false);
+
+    // Return Modal State
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     
     // Quick Add State
     const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
     const [unknownBarcode, setUnknownBarcode] = useState('');
+    
+    // Batch Selector State
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+    const [batchModalProduct, setBatchModalProduct] = useState<Product | null>(null);
     
     // Barcode scanner ref
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -157,11 +185,16 @@ export default function POSPage() {
         if (!searchTerm || searchTerm.length < 3) return;
 
         const timer = setTimeout(() => {
-            const matchedProduct = products.find(p => p.barcode === searchTerm);
-            if (matchedProduct) {
-                handleAddToCart(matchedProduct);
+            const matches = products.filter(p => p.barcode === searchTerm);
+            if (matches.length === 1) {
+                handleAddToCart(matches[0], searchTerm);
                 setSearchTerm('');
-                toast.success(`Added ${matchedProduct.name}`, { duration: 1000, icon: '🛒' });
+                toast.success(`Added ${matches[0].name}`, { duration: 1000, icon: '🛒' });
+            } else if (matches.length > 1) {
+                // Same barcode for multiple products? Rare but possible.
+                // Just show first one or handle appropriately.
+                handleAddToCart(matches[0], searchTerm);
+                setSearchTerm('');
             }
         }, 400);
 
@@ -190,37 +223,88 @@ export default function POSPage() {
         setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, ...update } : s));
     };
 
-    const handleAddToCart = (product: Product) => {
+    const handleAddToCart = (product: Product, scanBarcode?: string) => {
         const shouldTrack = product.track_inventory !== false;
         
-        if (shouldTrack && product.quantity <= 0) {
-            toast.error(`${product.name} is out of stock!`);
+        // POS allows negative stock, so we don't block here
+        if (shouldTrack && !product.has_batches && product.quantity <= 0) {
+            console.log(`${product.name} is out of stock in system, but allowing sale.`);
+        }
+
+        // If product has batches, we need to select one
+        if (product.has_batches && product.batches && product.batches.length > 0) {
+            // If we have a scan barcode, prioritize batch with that barcode
+            const matchingBatches = scanBarcode 
+                ? product.batches.filter(b => b.barcode === scanBarcode && b.is_active)
+                : product.batches.filter(b => b.is_active);
+
+            if (matchingBatches.length === 1 && scanBarcode) {
+                // Auto-select if unique barcode match
+                finalizeAddToCart(product, matchingBatches[0]);
+            } else {
+                setBatchModalProduct(product);
+                setIsBatchModalOpen(true);
+            }
             return;
         }
 
-        const existing = activeSession.cart.find(item => item.id === product.id);
-        let updatedCart;
+        finalizeAddToCart(product);
+    };
 
+    const finalizeAddToCart = (product: Product, batch?: any) => {
+        const shouldTrack = product.track_inventory !== false;
+        const price = batch ? parseFloat(batch.price) : (typeof product.price === 'string' ? parseFloat(product.price) : product.price);
+        const originalPrice = batch 
+            ? parseFloat(batch.original_price) 
+            : (typeof product.discounted_price === 'string' 
+                ? parseFloat(product.discounted_price) 
+                : (typeof product.price === 'string' 
+                    ? parseFloat(product.price) 
+                    : (product.price || 0)
+                  )
+              );
+        const quantity = batch ? batch.quantity : product.quantity;
+        
+        // POS allows negative stock, so we don't block even if quantity is <= 0
+        if (shouldTrack && quantity <= 0) {
+            console.log(`Selected batch/product is out of stock in system, but allowing sale.`);
+        }
+
+        const existing = activeSession.cart.find(item => 
+            item.id === product.id && item.batch_id === (batch?.id || null)
+        );
+
+        let updatedCart;
         if (existing) {
-            if (shouldTrack && existing.cart_quantity >= product.quantity) {
-                toast.error(`Only ${product.quantity} units available`);
-                return;
-            }
+            // POS allows negative stock, so we don't cap the quantity
             updatedCart = activeSession.cart.map(item => 
-                item.id === product.id 
+                (item.id === product.id && item.batch_id === (batch?.id || null))
                 ? { ...item, cart_quantity: item.cart_quantity + 1 } 
                 : item
             );
         } else {
-            updatedCart = [...activeSession.cart, { ...product, cart_quantity: 1 }];
+            updatedCart = [...activeSession.cart, { 
+                id: product.id,
+                name: product.name,
+                price: price,
+                original_price: originalPrice,
+                quantity: quantity,
+                track_inventory: shouldTrack,
+                cart_quantity: 1,
+                batch_id: batch?.id || null,
+                batch_name: batch?.batch_number || null,
+                barcode: batch?.barcode || product.barcode,
+                image: product.image
+            }];
         }
 
         updateActiveSession({ cart: updatedCart });
+        if (batch) setIsBatchModalOpen(false);
     };
 
-    const updateQuantity = (id: number, delta: number) => {
+    const updateQuantity = (id: number, delta: number, batchId: number | null = null) => {
         const updatedCart = activeSession.cart.map(item => {
-            if (item.id === id) {
+            if (item.id === id && item.batch_id === batchId) {
                 const newQty = item.cart_quantity + delta;
                 const shouldTrack = item.track_inventory !== false;
                 
@@ -237,13 +321,14 @@ export default function POSPage() {
         updateActiveSession({ cart: updatedCart });
     };
 
-    const removeFromCart = (id: number) => {
-        updateActiveSession({ cart: activeSession.cart.filter(item => item.id !== id) });
+    const removeFromCart = (id: number, batchId: number | null = null) => {
+        updateActiveSession({ 
+            cart: activeSession.cart.filter(item => !(item.id === id && item.batch_id === batchId)) 
+        });
     };
 
     const subtotal = Math.round(activeSession.cart.reduce((sum, item) => {
-        const price = item.discounted_price ? Number(item.discounted_price) : Number(item.price);
-        return sum + (price * item.cart_quantity);
+        return sum + (item.price * item.cart_quantity);
     }, 0));
 
     const total = subtotal - activeSession.discountAmount;
@@ -264,8 +349,9 @@ export default function POSPage() {
             const payload = {
                 items: activeSession.cart.map(item => ({
                     product_id: item.id,
+                    batch_id: item.batch_id,
                     quantity: item.cart_quantity,
-                    unit_price: item.discounted_price ? Number(item.discounted_price) : Number(item.price)
+                    unit_price: item.price
                 })),
                 payment_mode: activeSession.paymentMode,
                 subtotal: subtotal,
@@ -297,7 +383,32 @@ export default function POSPage() {
             verificationStatus: null,
             completedOrder: null
         });
+        setRatingSubmitted(false);
+        setSelectedRating(5);
+        setRatingComment('');
         setTimeout(() => searchInputRef.current?.focus(), 100);
+    };
+
+    const handleRatingSubmit = async () => {
+        if (!activeSession.completedOrder?.id || !activeSession.completedOrder?.customer) {
+            toast.error("Cannot rate: No customer linked to this order.");
+            return;
+        }
+
+        setIsRatingSubmitting(true);
+        try {
+            await api.post(`/orders/retailer-rating/${activeSession.completedOrder.id}/`, {
+                rating: selectedRating,
+                comment: ratingComment
+            });
+            toast.success("Customer rated successfully!");
+            setRatingSubmitted(true);
+            setTimeout(() => setIsRatingModalOpen(false), 1500);
+        } catch (err: any) {
+            toast.error(err.response?.data?.error || "Failed to submit rating");
+        } finally {
+            setIsRatingSubmitting(false);
+        }
     };
 
     const addNewSession = () => {
@@ -339,12 +450,12 @@ export default function POSPage() {
             if (!searchTerm) return;
 
             // 1. Check for exact barcode match first (High Priority for Scanners)
-            const matchedProduct = products.find(p => p.barcode === searchTerm);
-            if (matchedProduct) {
+            const matches = products.filter(p => p.barcode === searchTerm || (p.batches && p.batches.some(b => b.barcode === searchTerm)));
+            if (matches.length > 0) {
                 e.preventDefault();
-                handleAddToCart(matchedProduct);
+                // If multiple products have same barcode (rare), handleAddToCart handles first one
+                handleAddToCart(matches[0], searchTerm);
                 setSearchTerm('');
-                toast.success(`Added ${matchedProduct.name}`, { duration: 1000, icon: '🛒' });
                 return;
             }
 
@@ -390,8 +501,16 @@ export default function POSPage() {
                             </h1>
                             <p className="text-sm text-gray-500 mt-1">Walk-in Customer Billing</p>
                         </div>
-                        <div className="flex gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-                            <span className="font-medium text-gray-700">F1</span> to Search
+                        <div className="flex gap-4 items-center">
+                            <button
+                                onClick={() => setIsReturnModalOpen(true)}
+                                className="flex gap-2 items-center px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-sm border border-red-100"
+                            >
+                                <RefreshCcw size={18} /> Sale Return
+                            </button>
+                            <div className="flex gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
+                                <span className="font-medium text-gray-700">F1</span> to Search
+                            </div>
                         </div>
                     </div>
 
@@ -567,6 +686,15 @@ export default function POSPage() {
                             >
                                 <RefreshCcw size={20} /> New Bill <span className="text-xs font-normal text-gray-500 ml-1">(Esc)</span>
                             </button>
+
+                            {activeSession.completedOrder?.customer && !ratingSubmitted && (
+                                <button
+                                    onClick={() => setIsRatingModalOpen(true)}
+                                    className="w-full bg-primary/10 hover:bg-primary/20 text-primary py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all mt-2"
+                                >
+                                    <Star size={20} /> Rate Customer
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -593,15 +721,9 @@ export default function POSPage() {
                         </div>
                     ) : (
                         activeSession.cart.map(item => {
-                            const price = item.discounted_price ? Number(item.discounted_price) : Number(item.price);
+                            const price = item.price;
                             return (
-                                <div key={item.id} className="flex gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm relative group">
-                                    <button 
-                                        onClick={() => removeFromCart(item.id)}
-                                        className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <X size={14} />
-                                    </button>
+                                <div key={`${item.id}-${item.batch_id}`} className="flex gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm relative group">
                                     <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
                                          {item.image ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
@@ -610,26 +732,31 @@ export default function POSPage() {
                                                 <ShoppingCart className="text-gray-300" size={20} />
                                             )}
                                     </div>
-                                    <div className="flex-1 flex flex-col justify-between py-0.5">
-                                        <div className="pr-4">
+                                    <div className="flex-1 min-w-0 pr-4">
+                                        <div className="flex justify-between items-start">
                                             <h4 className="text-sm font-semibold text-gray-800 line-clamp-1">{item.name}</h4>
-                                            <p className="text-xs text-primary font-medium mt-0.5">₹{price} / item</p>
+                                            <button 
+                                                onClick={() => removeFromCart(item.id, item.batch_id)}
+                                                className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <p className="text-primary font-bold text-sm">₹{price.toFixed(2)}</p>
+                                            {item.batch_name && (
+                                                <span className="bg-primary/10 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                    {item.batch_name}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex justify-between items-center mt-2">
-                                            <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-0.5 border border-gray-100">
-                                                <button onClick={() => updateQuantity(item.id, -1)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
+                                            <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
+                                                <button onClick={() => updateQuantity(item.id, -1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
                                                     <Minus size={12} />
                                                 </button>
-                                                <input 
-                                                    type="number" 
-                                                    value={item.cart_quantity} 
-                                                    onChange={(e) => {
-                                                        const newVal = parseInt(e.target.value) || 0;
-                                                        updateQuantity(item.id, newVal - item.cart_quantity);
-                                                    }}
-                                                    className="w-10 text-center bg-transparent border-none text-sm font-bold focus:ring-0 p-0"
-                                                />
-                                                <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
+                                                <span className="w-8 text-center text-sm font-bold">{item.cart_quantity}</span>
+                                                <button onClick={() => updateQuantity(item.id, 1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
                                                     <Plus size={12} />
                                                 </button>
                                             </div>
@@ -806,6 +933,14 @@ export default function POSPage() {
                     </button>
                 </div>
             </div>
+
+            <POSReturnModal 
+                isOpen={isReturnModalOpen}
+                onClose={() => setIsReturnModalOpen(false)}
+                onSuccess={() => {
+                    fetchProducts(); // Refresh stock after return
+                }}
+            />
             
             <QuickAddModal 
                 isOpen={isQuickAddOpen}
@@ -813,6 +948,157 @@ export default function POSPage() {
                 barcode={unknownBarcode}
                 onSuccess={handleQuickAddSuccess}
             />
+
+            {/* Batch Selection Modal */}
+            {isBatchModalOpen && batchModalProduct && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Select Batch</h2>
+                                <p className="text-sm text-gray-500">{batchModalProduct.name}</p>
+                            </div>
+                            <button onClick={() => setIsBatchModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <X size={20} className="text-gray-400" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
+                            <div className="grid gap-3">
+                                {batchModalProduct.batches?.filter(b => b.is_active).map((batch) => {
+                                    const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
+                                    const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
+                                    
+                                    return (
+                                        <button
+                                            key={batch.id}
+                                            onClick={() => finalizeAddToCart(batchModalProduct, batch)}
+                                            className="flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left border-gray-100 hover:border-primary hover:bg-primary/5"
+                                        >
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-gray-900">
+                                                        {batch.batch_number || `Batch #${batch.id}`}
+                                                    </span>
+                                                    {batch.barcode && (
+                                                        <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-500 font-medium">
+                                                            {batch.barcode}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-3 text-sm">
+                                                    <span className={`${isDiffPrice ? 'text-primary font-bold' : 'text-gray-500'}`}>
+                                                        Price: ₹{parseFloat(batch.price).toFixed(2)}
+                                                    </span>
+                                                    <span className={`${isDiffMRP ? 'text-orange-500 font-bold' : 'text-gray-400'}`}>
+                                                        MRP: ₹{parseFloat(batch.original_price).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="text-right">
+                                                <p className={`text-xs font-bold uppercase tracking-wider ${batch.quantity > 5 ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {batch.quantity} in stock
+                                                </p>
+                                                <div className="mt-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold text-sm">
+                                                    Select <Check size={16} />
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end">
+                            <button onClick={() => setIsBatchModalOpen(false)} className="px-6 py-2 bg-white border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-100">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rating Modal */}
+            {isRatingModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                                <MessageSquare size={32} />
+                            </div>
+                            
+                            <h3 className="text-2xl font-black text-gray-900 mb-2">Rate Customer</h3>
+                            <p className="text-gray-500 mb-8">How was your interaction with {activeSession.completedOrder?.customer_name || 'this customer'}?</p>
+                            
+                            {/* Stars */}
+                            <div className="flex justify-center gap-4 mb-8">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        onClick={() => {
+                                            if (star === 1 && selectedRating === 1) setSelectedRating(0);
+                                            else setSelectedRating(star);
+                                        }}
+                                        className="transition-transform active:scale-90"
+                                    >
+                                        <Star 
+                                            size={40} 
+                                            className={star <= selectedRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} 
+                                            strokeWidth={star <= selectedRating ? 2.5 : 2}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Warning for 0 stars (Blacklist) */}
+                            {selectedRating === 0 && (
+                                <div className="bg-red-600 text-white p-4 rounded-xl text-sm font-bold mb-6 animate-pulse border border-red-700 shadow-lg">
+                                    <AlertCircle className="inline mr-2" size={18} /> 
+                                    CRITICAL WARNING: 0 stars will BLACKLIST this customer! They won't be able to order from you again.
+                                </div>
+                            )}
+
+                            {selectedRating > 0 && selectedRating <= 2 && (
+                                <div className="bg-orange-50 text-orange-700 p-3 rounded-xl text-xs font-medium mb-6 border border-orange-100">
+                                    Low rating selected. Please add a comment to help us understand.
+                                </div>
+                            )}
+
+                            <textarea
+                                value={ratingComment}
+                                onChange={(e) => setRatingComment(e.target.value)}
+                                placeholder="Add optional comments..."
+                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none h-24 mb-8"
+                            />
+
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setIsRatingModalOpen(false)}
+                                    className="flex-1 py-4 text-gray-500 font-bold hover:bg-gray-50 rounded-2xl transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleRatingSubmit}
+                                    disabled={isRatingSubmitting || ratingSubmitted}
+                                    className={`flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${
+                                        ratingSubmitted 
+                                        ? 'bg-green-500 text-white shadow-green-500/20' 
+                                        : 'bg-primary text-white shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5'
+                                    }`}
+                                >
+                                    {isRatingSubmitting ? (
+                                        <Loader2 className="animate-spin" size={20} />
+                                    ) : ratingSubmitted ? (
+                                        <><Check size={20} /> Saved</>
+                                    ) : 'Submit Rating'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

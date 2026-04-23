@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { customerService } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,6 +35,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 
 interface RetailerCustomer {
     customerId: number;
@@ -57,6 +58,8 @@ export default function CustomersPage() {
     const [customers, setCustomers] = useState<RetailerCustomer[]>([]);
     const [filteredCustomers, setFilteredCustomers] = useState<RetailerCustomer[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [nextPage, setNextPage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Filter States
@@ -71,58 +74,68 @@ export default function CustomersPage() {
     const [editNotes, setEditNotes] = useState('');
     const [isUpdating, setIsUpdating] = useState(false);
 
-    const fetchCustomers = async () => {
-        setLoading(true);
+    const fetchCustomers = useCallback(async (isAppend = false) => {
+        if (isAppend) setIsFetchingMore(true);
+        else setLoading(true);
+        
         setError(null);
         try {
-            const response = await customerService.getRetailerCustomers();
-            if (response.status === 200) {
-                // Map snake_case to camelCase
-                const mappedData = response.data.map((item: any) => ({
-                    customerId: item.customer_id,
-                    customerName: item.customer_name,
-                    phoneNumber: item.phone_number,
-                    profileImage: item.profile_image,
-                    totalOrders: item.total_orders,
-                    totalSpent: item.total_spent ? parseFloat(item.total_spent) : 0,
-                    averageRating: item.average_rating ? parseFloat(item.average_rating) : 0,
-                    joinedDate: item.joined_date,
-                    lastOrderDate: item.last_order_date,
-                    isBlacklisted: item.is_blacklisted,
-                    registrationStatus: item.registration_status,
-                    isPhoneVerified: item.is_phone_verified,
-                    nickname: item.nickname,
-                }));
-                setCustomers(mappedData);
-            } else {
-                throw new Error('Failed to load customers');
+            const params: any = {};
+            if (searchQuery) params.search = searchQuery;
+            
+            if (isAppend && nextPage) {
+                const url = new URL(nextPage);
+                const p = url.searchParams.get('page');
+                if (p) params.page = p;
             }
+
+            const response = await customerService.getRetailerCustomers(params);
+            
+            // Handle pagination structure
+            const resultsData = response.data.results || response.data;
+            const nextLink = response.data.next || null;
+
+            const mappedData = resultsData.map((item: any) => ({
+                customerId: item.customer_id,
+                customerName: item.customer_name,
+                phoneNumber: item.phone_number,
+                profileImage: item.profile_image,
+                totalOrders: item.total_orders,
+                totalSpent: item.total_spent ? parseFloat(item.total_spent) : 0,
+                averageRating: item.average_rating ? parseFloat(item.average_rating) : 0,
+                joinedDate: item.joined_date,
+                lastOrderDate: item.last_order_date,
+                isBlacklisted: item.is_blacklisted,
+                registrationStatus: item.registration_status,
+                isPhoneVerified: item.is_phone_verified,
+                nickname: item.nickname,
+            }));
+
+            if (isAppend) {
+                setCustomers(prev => [...prev, ...mappedData]);
+            } else {
+                setCustomers(mappedData);
+            }
+            setNextPage(nextLink);
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'An error occurred');
             toast.error('Failed to load customers');
         } finally {
             setLoading(false);
+            setIsFetchingMore(false);
         }
-    };
+    }, [searchQuery, nextPage]);
 
     useEffect(() => {
-        fetchCustomers();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchCustomers(false);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     useEffect(() => {
         let result = [...customers];
-
-        // 1. Search
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(
-                (c) =>
-                    (c.customerName && c.customerName.toLowerCase().includes(query)) ||
-                    (c.phoneNumber && c.phoneNumber.includes(query)) ||
-                    (c.customerId && c.customerId.toString().includes(query))
-            );
-        }
 
         // 2. Status Filter
         if (statusFilter !== 'All') {
@@ -152,14 +165,12 @@ export default function CustomersPage() {
         });
 
         setFilteredCustomers(result);
-    }, [customers, searchQuery, statusFilter, sortBy]);
+    }, [customers, statusFilter, sortBy]);
 
     const handleEditClick = (e: React.MouseEvent, customer: RetailerCustomer) => {
         e.stopPropagation();
         setEditingCustomer(customer);
         setEditNickname(customer.nickname || '');
-        // The list API might not have notes, so we'll fetch details or just update nickname
-        // But for now let's assume notes are available or will be updated blindly
         setEditNotes(''); 
         setIsEditModalOpen(true);
     };
@@ -175,7 +186,7 @@ export default function CustomersPage() {
             if (response.status === 200) {
                 toast.success('Customer updated successfully');
                 setIsEditModalOpen(false);
-                fetchCustomers(); // Refresh list
+                fetchCustomers(false);
             }
         } catch (err) {
             console.error(err);
@@ -185,13 +196,13 @@ export default function CustomersPage() {
         }
     };
 
-    // Analytics
-    const totalCustomers = customers.length;
-    const totalBlacklisted = customers.filter(c => c.isBlacklisted).length;
-    const avgRating = customers.length
+    // Analytics (using only currently loaded customers for basic summary, or could fetch from backend)
+    const totalCustomersCount = customers.length;
+    const totalBlacklistedCount = customers.filter(c => c.isBlacklisted).length;
+    const avgRatingValue = customers.length
         ? customers.reduce((sum, c) => sum + (c.averageRating || 0), 0) / customers.length
         : 0;
-    const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
+    const totalRevenueValue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -209,7 +220,7 @@ export default function CustomersPage() {
     };
 
 
-    if (loading) {
+    if (loading && customers.length === 0) {
         return (
             <div className="flex justify-center items-center h-96">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -217,11 +228,11 @@ export default function CustomersPage() {
         );
     }
 
-    if (error) {
+    if (error && customers.length === 0) {
         return (
             <div className="flex flex-col justify-center items-center h-96 gap-4">
                 <p className="text-red-500">Error: {error}</p>
-                <Button onClick={fetchCustomers}>Retry</Button>
+                <Button onClick={() => fetchCustomers(false)}>Retry</Button>
             </div>
         );
     }
@@ -234,10 +245,10 @@ export default function CustomersPage() {
 
             {/* Analytics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <StatCard title="Total Customers" value={totalCustomers.toString()} icon="users" color="text-blue-600" />
-                <StatCard title="Avg Rating" value={avgRating.toFixed(1)} icon="star" color="text-yellow-500" />
-                <StatCard title="Total Revenue" value={formatCurrency(totalRevenue)} icon="indian-rupee" color="text-green-600" />
-                <StatCard title="Blacklisted" value={totalBlacklisted.toString()} icon="ban" color="text-red-600" />
+                <StatCard title="Total Customers" value={totalCustomersCount.toString()} icon="users" color="text-blue-600" />
+                <StatCard title="Avg Rating" value={avgRatingValue.toFixed(1)} icon="star" color="text-yellow-500" />
+                <StatCard title="Total Revenue" value={formatCurrency(totalRevenueValue)} icon="indian-rupee" color="text-green-600" />
+                <StatCard title="Blacklisted" value={totalBlacklistedCount.toString()} icon="ban" color="text-red-600" />
             </div>
 
             {/* Filters */}
@@ -289,12 +300,13 @@ export default function CustomersPage() {
                                 <TableHead>Spent</TableHead>
                                 <TableHead>Last Active</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredCustomers.length === 0 ? (
                                 <TableRow key="no-customers">
-                                    <TableCell colSpan={6} className="text-center h-24">
+                                    <TableCell colSpan={7} className="text-center h-24">
                                         No customers found.
                                     </TableCell>
                                 </TableRow>
@@ -362,6 +374,12 @@ export default function CustomersPage() {
                 </CardContent>
             </Card>
 
+            <InfiniteScrollTrigger 
+                onLoadMore={() => fetchCustomers(true)}
+                hasMore={!!nextPage}
+                isLoading={isFetchingMore}
+            />
+
             {/* Edit Modal */}
             <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
                 <DialogContent>
@@ -405,8 +423,6 @@ export default function CustomersPage() {
 }
 
 function StatCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
-    // Icons mapping for simplicity (using lucide names properly if importing dynamically, but here hardcoded)
-    // Actually, let's keep it simple.
     return (
         <Card>
             <CardContent className="p-6">
@@ -415,7 +431,6 @@ function StatCard({ title, value, icon, color }: { title: string; value: string;
                         <p className="text-sm font-medium text-muted-foreground">{title}</p>
                         <p className="text-2xl font-bold">{value}</p>
                     </div>
-                    {/* We could render icon here based on string, but for now just text or simple placeholder if icon lib not fully set up for dynamic */}
                 </div>
             </CardContent>
         </Card>

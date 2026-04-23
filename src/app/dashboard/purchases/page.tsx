@@ -3,8 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/services/api';
 import Link from 'next/link';
-import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown } from 'lucide-react';
+import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown, RotateCcw } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
+import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -31,13 +33,21 @@ export default function PurchasesPage() {
     const [invoices, setInvoices] = useState<any[]>([]);
     const [dashboardStats, setDashboardStats] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [nextPage, setNextPage] = useState<string | null>(null);
     const [filter, setFilter] = useState<FilterType>('all');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
     const [showCustom, setShowCustom] = useState(false);
+    
+    // Return Modal State
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+    const [selectedInvoiceForReturn, setSelectedInvoiceForReturn] = useState<number | undefined>(undefined);
 
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
+    const fetchData = useCallback(async (isAppend = false) => {
+        if (isAppend) setIsFetchingMore(true);
+        else setIsLoading(true);
+
         try {
             const params: Record<string, string> = {};
             if (filter !== 'all' && filter !== 'custom') {
@@ -47,20 +57,39 @@ export default function PurchasesPage() {
                 params.start_date = customStart;
                 params.end_date = customEnd;
             }
+
+            if (isAppend && nextPage) {
+                const url = new URL(nextPage);
+                const p = url.searchParams.get('page');
+                if (p) params.page = p;
+            }
+
             const [invRes, dashRes] = await Promise.all([
                 api.get('/products/erp/purchase-invoices/', { params }),
-                api.get('/products/erp/dashboard/summary/')
+                isAppend ? Promise.resolve(null) : api.get('/products/erp/dashboard/summary/')
             ]);
-            setInvoices(invRes.data.results ?? invRes.data);
-            setDashboardStats(dashRes.data);
+            
+            const data = invRes.data.results ?? invRes.data;
+            const nextLink = invRes.data.next ?? null;
+
+            if (isAppend) {
+                setInvoices(prev => [...prev, ...data]);
+            } else {
+                setInvoices(data);
+            }
+            
+            setNextPage(nextLink);
+            if (dashRes) setDashboardStats(dashRes.data);
         } catch (error) {
+            console.error(error);
             toast.error("Failed to load purchase history");
         } finally {
             setIsLoading(false);
+            setIsFetchingMore(false);
         }
-    }, [filter, customStart, customEnd]);
+    }, [filter, customStart, customEnd, nextPage]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { fetchData(false); }, [filter, customStart, customEnd]);
 
     const FILTERS: { key: FilterType; label: string }[] = [
         { key: 'all', label: 'All Time' },
@@ -91,11 +120,22 @@ export default function PurchasesPage() {
                     </h1>
                     <p className="text-gray-500 mt-2 ml-14">Track distributor stock inwards and manage supplier khata.</p>
                 </div>
-                <Link href="/dashboard/purchases/new">
-                    <button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 hover:-translate-y-0.5">
-                        <Plus size={20} /> Record Inward Stock
+                <div className="flex gap-4">
+                    <button 
+                        onClick={() => {
+                            setSelectedInvoiceForReturn(undefined);
+                            setIsReturnModalOpen(true);
+                        }}
+                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
+                    >
+                        <RotateCcw size={20} /> Create Return
                     </button>
-                </Link>
+                    <Link href="/dashboard/purchases/new">
+                        <button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 hover:-translate-y-0.5">
+                            <Plus size={20} /> Record Inward Stock
+                        </button>
+                    </Link>
+                </div>
             </div>
 
             {/* Date Filter Bar */}
@@ -234,23 +274,51 @@ export default function PurchasesPage() {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right font-medium text-gray-600">{invoice.items?.length || 0}</td>
-                                        <td className="p-4 text-right font-bold text-gray-900">₹{Number(invoice.total_amount).toLocaleString('en-IN')}</td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex flex-col items-end">
+                                                <span className={`font-bold ${invoice.is_returned ? 'text-gray-400 line-through text-[10px] font-medium decoration-red-400' : 'text-gray-900'}`}>
+                                                    ₹{Number(invoice.total_amount).toLocaleString('en-IN')}
+                                                </span>
+                                                {invoice.is_returned && (
+                                                    <span className="text-sm font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 mt-1">
+                                                        ₹{Number(invoice.net_amount).toLocaleString('en-IN')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="p-4 text-center">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
                                                 invoice.payment_status === 'PAID' ? 'bg-green-100 text-green-700' :
                                                 invoice.payment_status === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
                                                 'bg-red-100 text-red-700'
                                             }`}>
-                                                {invoice.payment_status || 'UNPAID'}
+                                                 {invoice.payment_status || 'UNPAID'}
                                             </span>
+                                            {invoice.is_returned && (
+                                                <div className="mt-1">
+                                                    <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded tracking-tighter animate-pulse">
+                                                        RETURNED
+                                                    </span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="p-4 pr-6 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Link href={`/dashboard/purchases/edit?id=${invoice.id}`}>
-                                                    <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                                                    <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Bill">
                                                         <Pencil size={18} />
                                                     </button>
                                                 </Link>
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedInvoiceForReturn(invoice.id);
+                                                        setIsReturnModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Return items from this bill"
+                                                >
+                                                    <RotateCcw size={18} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -260,6 +328,21 @@ export default function PurchasesPage() {
                     </table>
                 </div>
             </div>
+
+            <PurchaseReturnModal 
+                isOpen={isReturnModalOpen}
+                invoiceId={selectedInvoiceForReturn}
+                onClose={() => setIsReturnModalOpen(false)}
+                onSuccess={() => {
+                    fetchData(false);
+                }}
+            />
+
+            <InfiniteScrollTrigger 
+                onLoadMore={() => fetchData(true)}
+                hasMore={!!nextPage}
+                isLoading={isFetchingMore}
+            />
         </div>
     );
 }

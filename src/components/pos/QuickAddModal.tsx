@@ -81,11 +81,12 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, b
         }
         setIsSubmitting(true);
         try {
+            // Updated to use the new batch-linking logic
             const res = await api.patch(`/products/${selectedProduct.id}/update/`, {
-                barcode: barcode,
-                price: price ? Number(price) : selectedProduct.price // Allow updating price while linking
+                link_barcode: barcode,
+                price: price ? Number(price) : selectedProduct.price
             });
-            toast.success("Barcode linked successfully!");
+            toast.success("Barcode linked to product as a new batch!");
             onSuccess(res.data);
             onClose();
         } catch (err: any) {
