@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
-    MessageSquare, Check
+    MessageSquare, Check, Keyboard
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
 import { ThermalReceipt } from '@/components/pos/ThermalReceipt';
 import { QuickAddModal } from '@/components/pos/QuickAddModal';
 import POSReturnModal from '@/components/pos/POSReturnModal';
+import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
+import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
+import POSStatusBar from '@/components/pos/POSStatusBar';
 
 interface Product {
     id: number;
@@ -116,8 +119,17 @@ export default function POSPage() {
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [batchModalProduct, setBatchModalProduct] = useState<Product | null>(null);
     
+    // Keyboard Navigation State
+    const [activeGridIndex, setActiveGridIndex] = useState(-1);
+    const [activeCartIndex, setActiveCartIndex] = useState(-1);
+    const [currentFocus, setCurrentFocus] = useState<'search' | 'grid' | 'cart' | 'checkout' | 'success' | 'empty' | 'customer'>('search');
+    const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
+    const [showOnboarding, setShowOnboarding] = useState(false);
+    
     // Barcode scanner ref
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const mobileInputRef = useRef<HTMLInputElement>(null);
+    const discountInputRef = useRef<HTMLInputElement>(null);
     
     // Receipt print ref
     const receiptRef = useRef<HTMLDivElement>(null);
@@ -125,31 +137,178 @@ export default function POSPage() {
         contentRef: receiptRef,
     });
 
+    // Check for first-time onboarding
+    useEffect(() => {
+        const done = localStorage.getItem('pos_onboarding_done');
+        if (!done) {
+            // Delay to let the page render first
+            setTimeout(() => setShowOnboarding(true), 800);
+        }
+    }, []);
+
+    const handleOnboardingComplete = useCallback(() => {
+        setShowOnboarding(false);
+        localStorage.setItem('pos_onboarding_done', 'true');
+        searchInputRef.current?.focus();
+    }, []);
+
+    const handleReplayTour = useCallback(() => {
+        setIsCheatsheetOpen(false);
+        localStorage.removeItem('pos_onboarding_done');
+        setTimeout(() => setShowOnboarding(true), 300);
+    }, []);
+
     useEffect(() => {
         fetchProducts();
         fetchProfile();
-        
-        // Listen for global barcode scanning triggers if keyboard input is fast
+        // Auto-focus search on load
+        setTimeout(() => searchInputRef.current?.focus(), 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Global keyboard shortcut handler
+    useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't intercept when typing in input/textarea (except our specific Alt shortcuts)
+            const target = e.target as HTMLElement;
+            const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+            const isModal = isRatingModalOpen || isBatchModalOpen || isQuickAddOpen || isReturnModalOpen;
+
+            // --- Post-checkout shortcuts ---
             if (activeSession.completedOrder) {
-                if (e.key === 'Enter') {
+                if (e.ctrlKey && e.key === 'p') {
                     e.preventDefault();
                     handlePrint();
-                } else if (e.key === 'Escape') {
+                    return;
+                }
+                if (e.altKey && e.key.toLowerCase() === 'n') {
                     e.preventDefault();
                     handleNewBill();
+                    return;
                 }
                 return;
             }
 
-            if (e.key === 'F1') {
+            // --- Don't intercept inside modals ---
+            if (isModal) return;
+
+            // --- Alt + Key shortcuts (work even when typing) ---
+            if (e.altKey) {
+                switch (e.key.toLowerCase()) {
+                    case 's': // Focus Search
+                        e.preventDefault();
+                        searchInputRef.current?.focus();
+                        setCurrentFocus('search');
+                        setActiveGridIndex(-1);
+                        setActiveCartIndex(-1);
+                        break;
+                    case 'n': // New Bill
+                        e.preventDefault();
+                        handleNewBill();
+                        break;
+                    case 'c': // Focus Cart
+                        e.preventDefault();
+                        if (activeSession.cart.length > 0) {
+                            setActiveCartIndex(0);
+                            setCurrentFocus('cart');
+                            setActiveGridIndex(-1);
+                            (document.activeElement as HTMLElement)?.blur();
+                        }
+                        break;
+                    case 'm': // Focus Mobile
+                        e.preventDefault();
+                        mobileInputRef.current?.focus();
+                        setCurrentFocus('customer');
+                        break;
+                    case 'd': // Focus Discount
+                        e.preventDefault();
+                        discountInputRef.current?.focus();
+                        setCurrentFocus('checkout');
+                        break;
+                    case 'r': // Sales Return
+                        e.preventDefault();
+                        setIsReturnModalOpen(true);
+                        break;
+                    case 't': // New Tab
+                        e.preventDefault();
+                        addNewSession();
+                        break;
+                    case 'k': // Toggle Cheatsheet
+                        e.preventDefault();
+                        setIsCheatsheetOpen(prev => !prev);
+                        break;
+                    case '1': // Cash
+                        e.preventDefault();
+                        updateActiveSession({ paymentMode: 'cash' });
+                        setCurrentFocus('checkout');
+                        break;
+                    case '2': // UPI
+                        e.preventDefault();
+                        updateActiveSession({ paymentMode: 'upi' });
+                        setCurrentFocus('checkout');
+                        break;
+                    case ']': // Next session
+                        e.preventDefault();
+                        {
+                            const idx = sessions.findIndex(s => s.id === activeSessionId);
+                            if (idx < sessions.length - 1) setActiveSessionId(sessions[idx + 1].id);
+                        }
+                        break;
+                    case '[': // Prev session
+                        e.preventDefault();
+                        {
+                            const idx = sessions.findIndex(s => s.id === activeSessionId);
+                            if (idx > 0) setActiveSessionId(sessions[idx - 1].id);
+                        }
+                        break;
+                }
+                return;
+            }
+
+            // --- Ctrl+Enter: Checkout ---
+            if (e.ctrlKey && e.key === 'Enter') {
                 e.preventDefault();
-                searchInputRef.current?.focus();
+                handleCheckout();
+                return;
+            }
+
+            // --- Cart keyboard navigation (only when cart is focused, not typing) ---
+            if (currentFocus === 'cart' && activeCartIndex >= 0 && !isTyping) {
+                const cart = activeSession.cart;
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setActiveCartIndex(prev => Math.min(prev + 1, cart.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setActiveCartIndex(prev => Math.max(prev - 1, 0));
+                } else if (e.key === '+' || e.key === '=' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const item = cart[activeCartIndex];
+                    if (item) updateQuantity(item.id, 1, item.batch_id ?? null);
+                } else if (e.key === '-' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    const item = cart[activeCartIndex];
+                    if (item) updateQuantity(item.id, -1, item.batch_id ?? null);
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    const item = cart[activeCartIndex];
+                    if (item) {
+                        removeFromCart(item.id, item.batch_id ?? null);
+                        setActiveCartIndex(prev => Math.min(prev, cart.length - 2));
+                    }
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setActiveCartIndex(-1);
+                    setCurrentFocus('search');
+                    searchInputRef.current?.focus();
+                }
+                return;
             }
         };
+
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeSession.completedOrder]);
+    }, [activeSession.completedOrder, activeSession.cart, activeCartIndex, currentFocus, sessions, activeSessionId, isRatingModalOpen, isBatchModalOpen, isQuickAddOpen, isReturnModalOpen]);
     
     const fetchProfile = async () => {
         try {
@@ -300,6 +459,10 @@ export default function POSPage() {
 
         updateActiveSession({ cart: updatedCart });
         if (batch) setIsBatchModalOpen(false);
+        // Auto-focus back to search for continuous scanning
+        setActiveGridIndex(-1);
+        setCurrentFocus('search');
+        setTimeout(() => searchInputRef.current?.focus(), 50);
     };
 
     const updateQuantity = (id: number, delta: number, batchId: number | null = null) => {
@@ -386,6 +549,9 @@ export default function POSPage() {
         setRatingSubmitted(false);
         setSelectedRating(5);
         setRatingComment('');
+        setActiveGridIndex(-1);
+        setActiveCartIndex(-1);
+        setCurrentFocus('search');
         setTimeout(() => searchInputRef.current?.focus(), 100);
     };
 
@@ -443,29 +609,92 @@ export default function POSPage() {
 
     const onSearchChange = (val: string) => {
         setSearchTerm(val);
+        setActiveGridIndex(-1); // Reset grid selection on new search
+        setCurrentFocus('search');
     };
 
     const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
+        // Arrow key navigation for product grid
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (filteredProducts.length > 0) {
+                const cols = window.innerWidth >= 1280 ? 4 : 3;
+                setActiveGridIndex(prev => Math.min(prev + cols, filteredProducts.length - 1));
+                setCurrentFocus('grid');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (activeGridIndex > 0) {
+                const cols = window.innerWidth >= 1280 ? 4 : 3;
+                setActiveGridIndex(prev => Math.max(prev - cols, 0));
+            } else {
+                setActiveGridIndex(-1);
+                setCurrentFocus('search');
+            }
+        } else if (e.key === 'ArrowRight') {
+            if (activeGridIndex >= 0) {
+                e.preventDefault();
+                setActiveGridIndex(prev => Math.min(prev + 1, filteredProducts.length - 1));
+            }
+        } else if (e.key === 'ArrowLeft') {
+            if (activeGridIndex >= 0) {
+                e.preventDefault();
+                setActiveGridIndex(prev => Math.max(prev - 1, 0));
+            }
+        } else if (e.key === 'Enter') {
+            // If a grid item is highlighted, add it
+            if (activeGridIndex >= 0 && filteredProducts[activeGridIndex]) {
+                e.preventDefault();
+                handleAddToCart(filteredProducts[activeGridIndex]);
+                setSearchTerm('');
+                setActiveGridIndex(-1);
+                return;
+            }
+
             if (!searchTerm) return;
 
+            // Support barcode*qty multiplier syntax
+            let actualBarcode = searchTerm;
+            let multiplier = 1;
+            if (searchTerm.includes('*')) {
+                const parts = searchTerm.split('*');
+                actualBarcode = parts[0];
+                multiplier = parseInt(parts[1]) || 1;
+                multiplier = Math.max(1, Math.min(multiplier, 999)); // Safety clamp
+            }
+
             // 1. Check for exact barcode match first (High Priority for Scanners)
-            const matches = products.filter(p => p.barcode === searchTerm || (p.batches && p.batches.some(b => b.barcode === searchTerm)));
+            const matches = products.filter(p => p.barcode === actualBarcode || (p.batches && p.batches.some(b => b.barcode === actualBarcode)));
             if (matches.length > 0) {
                 e.preventDefault();
-                // If multiple products have same barcode (rare), handleAddToCart handles first one
-                handleAddToCart(matches[0], searchTerm);
+                for (let i = 0; i < multiplier; i++) {
+                    handleAddToCart(matches[0], actualBarcode);
+                }
+                if (multiplier > 1) toast.success(`Added ${multiplier}× ${matches[0].name}`, { duration: 1500, icon: '📦' });
                 setSearchTerm('');
                 return;
             }
 
-            // 2. Otherwise, if no products match the search term, open QuickAdd
+            // 2. If single search result, add it directly
+            if (filteredProducts.length === 1) {
+                e.preventDefault();
+                for (let i = 0; i < multiplier; i++) {
+                    handleAddToCart(filteredProducts[0]);
+                }
+                setSearchTerm('');
+                return;
+            }
+
+            // 3. Otherwise, if no products match the search term, open QuickAdd
             if (filteredProducts.length === 0) {
-                if (/^\d+$/.test(searchTerm) || searchTerm.length > 5) {
-                    setUnknownBarcode(searchTerm);
+                if (/^\d+$/.test(actualBarcode) || actualBarcode.length > 5) {
+                    setUnknownBarcode(actualBarcode);
                     setIsQuickAddOpen(true);
                 }
             }
+        } else if (e.key === 'Escape') {
+            setActiveGridIndex(-1);
+            setSearchTerm('');
         }
     };
 
@@ -486,7 +715,7 @@ export default function POSPage() {
     });
 
     return (
-        <div className="flex h-screen bg-gray-50/50 p-4 gap-6 font-sans">
+        <div className="flex h-screen bg-gray-50/50 p-4 pb-12 gap-6 font-sans">
             <Toaster position="top-right" />
             
             {/* Left Panel: Products & Search (70%) */}
@@ -501,28 +730,35 @@ export default function POSPage() {
                             </h1>
                             <p className="text-sm text-gray-500 mt-1">Walk-in Customer Billing</p>
                         </div>
-                        <div className="flex gap-4 items-center">
+                        <div className="flex gap-3 items-center">
                             <button
                                 onClick={() => setIsReturnModalOpen(true)}
                                 className="flex gap-2 items-center px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-sm border border-red-100"
                             >
                                 <RefreshCcw size={18} /> Sale Return
+                                <kbd className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-500 rounded text-[10px] font-mono font-bold border border-red-200">Alt+R</kbd>
                             </button>
-                            <div className="flex gap-2 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-                                <span className="font-medium text-gray-700">F1</span> to Search
-                            </div>
+                            <button
+                                onClick={() => setIsCheatsheetOpen(true)}
+                                className="flex gap-2 items-center px-3 py-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 transition-all font-bold text-sm border border-gray-100"
+                                title="Keyboard Shortcuts (Alt+K)"
+                            >
+                                <Keyboard size={18} />
+                                <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-mono font-bold border border-gray-200">Alt+K</kbd>
+                            </button>
                         </div>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative" data-tour="search">
                         <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                         <input
                             ref={searchInputRef}
                             type="text"
-                            placeholder="Scan barcode or search products..."
+                            placeholder="Scan barcode or search... (Alt+S)  •  Use barcode*qty for bulk"
                             value={searchTerm}
                             onChange={(e) => onSearchChange(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
+                            onFocus={() => setCurrentFocus('search')}
                             className="w-full pl-12 pr-4 py-4 bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-inner text-gray-800"
                         />
                     </div>
@@ -546,7 +782,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Product Grid */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30" data-tour="product-grid">
                     {isFetching ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-400">
                             <Loader2 className="animate-spin mb-4" size={32} />
@@ -559,19 +795,23 @@ export default function POSPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
-                            {filteredProducts.map(product => {
+                            {filteredProducts.map((product, gridIdx) => {
                                 const price = product.discounted_price || product.price;
                                 const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
+                                const isGridActive = gridIdx === activeGridIndex;
                                 
                                 return (
                                     <button
                                         key={product.id}
+                                        data-grid-index={gridIdx}
                                         onClick={() => handleAddToCart(product)}
                                         disabled={isOutOfStock}
                                         className={`group relative flex flex-col text-left bg-white rounded-2xl border p-4 transition-all duration-200 
-                                            ${isOutOfStock 
-                                                ? 'border-red-100 opacity-60 cursor-not-allowed' 
-                                                : 'border-gray-100 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1'
+                                            ${isGridActive
+                                                ? 'border-primary border-2 shadow-lg shadow-primary/15 -translate-y-1 ring-2 ring-primary/20'
+                                                : isOutOfStock 
+                                                    ? 'border-red-100 opacity-60 cursor-not-allowed' 
+                                                    : 'border-gray-100 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1'
                                             }`}
                                     >
                                         <div className="w-full aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden flex items-center justify-center relative">
@@ -637,7 +877,8 @@ export default function POSPage() {
                     ))}
                     <button 
                         onClick={addNewSession}
-                        className="px-4 py-3 text-gray-400 hover:text-primary transition-colors flex items-center justify-center"
+                        className="px-4 py-3 text-gray-400 hover:text-primary transition-colors flex items-center justify-center gap-1"
+                        title="New Bill Tab (Alt+T)"
                     >
                         <Plus size={18} />
                     </button>
@@ -678,13 +919,13 @@ export default function POSPage() {
                                 onClick={handlePrint}
                                 className="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
                             >
-                                <Printer size={20} /> Print Receipt <span className="text-xs font-normal text-gray-400 ml-1">(Enter)</span>
+                                <Printer size={20} /> Print Receipt <kbd className="ml-2 px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-[10px] font-mono font-bold border border-gray-600">Ctrl+P</kbd>
                             </button>
                             <button
                                 onClick={handleNewBill}
                                 className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:bg-gray-100"
                             >
-                                <RefreshCcw size={20} /> New Bill <span className="text-xs font-normal text-gray-500 ml-1">(Esc)</span>
+                                <RefreshCcw size={20} /> New Bill <kbd className="ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-mono font-bold border border-gray-200">Alt+N</kbd>
                             </button>
 
                             {activeSession.completedOrder?.customer && !ratingSubmitted && (
@@ -700,10 +941,11 @@ export default function POSPage() {
                 )}
                 
                 {/* Cart Header */}
-                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-transparent">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-transparent" data-tour="cart">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
                             Current Order
+                            <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded text-[9px] font-mono font-bold border border-gray-200">Alt+C</kbd>
                         </h2>
                         <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm shadow-primary/30">
                             {activeSession.cart.reduce((s, i) => s + i.cart_quantity, 0)} Items
@@ -720,11 +962,18 @@ export default function POSPage() {
                             <p className="text-sm mt-1">Scan a product or click items on the left to add them to the bill.</p>
                         </div>
                     ) : (
-                        activeSession.cart.map(item => {
+                        activeSession.cart.map((item, cartIdx) => {
                             const price = item.price;
+                            const isCartActive = cartIdx === activeCartIndex && currentFocus === 'cart';
                             return (
-                                <div key={`${item.id}-${item.batch_id}`} className="flex gap-3 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm relative group">
-                                    <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                <div key={`${item.id}-${item.batch_id}`} 
+                                    data-cart-index={cartIdx}
+                                    className={`flex gap-3 bg-white p-3 rounded-2xl border shadow-sm relative group transition-all duration-150
+                                        ${isCartActive 
+                                            ? 'border-primary border-l-4 bg-primary/5 shadow-md shadow-primary/10' 
+                                            : 'border-gray-100'
+                                        }`}
+                                >                                    <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
                                          {item.image ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
                                                 <img src={item.image} alt={item.name} className="object-cover w-full h-full" />
@@ -783,10 +1032,12 @@ export default function POSPage() {
                             <div className="relative w-24">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium font-sans">₹</span>
                                 <input 
+                                    ref={discountInputRef}
                                     type="number" 
                                     min="0"
                                     value={activeSession.discountAmount || ''}
                                     onChange={(e) => updateActiveSession({ discountAmount: Number(e.target.value) })}
+                                    onFocus={() => setCurrentFocus('checkout')}
                                     className="w-full bg-red-50/50 border border-red-100 rounded-lg py-1.5 pl-6 pr-2 text-right text-red-600 font-bold focus:ring-red-200 outline-none"
                                 />
                             </div>
@@ -802,8 +1053,9 @@ export default function POSPage() {
                         
                         <div className="relative">
                             <input
+                                ref={mobileInputRef}
                                 type="tel"
-                                placeholder="Mobile Number"
+                                placeholder="Mobile Number (Alt+M)"
                                 value={activeSession.customerMobile}
                                 maxLength={10}
                                 onChange={(e) => {
@@ -832,7 +1084,7 @@ export default function POSPage() {
                                         }
                                     }
                                 }}
-                                onFocus={() => setShowSuggestions(true)}
+                                onFocus={() => { setShowSuggestions(true); setCurrentFocus('customer'); }}
                                 className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2.5 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                             />
                             {activeSession.verificationStatus === 'verified' && (
@@ -892,7 +1144,7 @@ export default function POSPage() {
                         />
                     </div>
 
-                    <div className="mb-4">
+                    <div className="mb-4" data-tour="payment">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Mode</p>
                         <div className="grid grid-cols-2 gap-3">
                             <button 
@@ -904,6 +1156,7 @@ export default function POSPage() {
                                 }`}
                             >
                                 <Banknote size={18} /> Cash
+                                <kbd className="px-1 py-0.5 bg-green-100 text-green-600 rounded text-[9px] font-mono font-bold border border-green-200">Alt+1</kbd>
                             </button>
                             <button 
                                 onClick={() => updateActiveSession({ paymentMode: 'upi' })}
@@ -914,6 +1167,7 @@ export default function POSPage() {
                                 }`}
                             >
                                 <CreditCard size={18} /> UPI
+                                <kbd className="px-1 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-mono font-bold border border-primary/20">Alt+2</kbd>
                             </button>
                         </div>
                     </div>
@@ -922,12 +1176,13 @@ export default function POSPage() {
                         onClick={handleCheckout}
                         disabled={activeSession.cart.length === 0 || isCheckoutLoading}
                         className="w-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/25 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all active:scale-[0.98]"
+                        data-tour="checkout"
                     >
                         {isCheckoutLoading ? (
                             <Loader2 className="animate-spin" size={24} />
                         ) : (
                             <>
-                                Complete Bill <span className="opacity-75 font-normal text-sm">(Enter)</span>
+                                Complete Bill <kbd className="ml-1 px-2 py-0.5 bg-white/20 text-white/90 rounded text-[10px] font-mono font-bold border border-white/20">Ctrl+↵</kbd>
                             </>
                         )}
                     </button>
@@ -1099,6 +1354,25 @@ export default function POSPage() {
                     </div>
                 </div>
             )}
+
+            {/* Keyboard Shortcut Cheatsheet Panel */}
+            <KeyboardShortcutPanel 
+                isOpen={isCheatsheetOpen} 
+                onClose={() => setIsCheatsheetOpen(false)}
+                onReplayTour={handleReplayTour}
+            />
+
+            {/* Context-Sensitive Status Bar */}
+            <POSStatusBar 
+                currentFocus={activeSession.completedOrder ? 'success' : currentFocus} 
+                cartItemCount={activeSession.cart.length} 
+            />
+
+            {/* First-Time Onboarding Tour */}
+            <POSOnboardingTour 
+                isActive={showOnboarding} 
+                onComplete={handleOnboardingComplete} 
+            />
         </div>
     );
 }
