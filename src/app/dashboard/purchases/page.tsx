@@ -58,27 +58,29 @@ export default function PurchasesPage() {
                 params.end_date = customEnd;
             }
 
-            if (isAppend && nextPage) {
-                const url = new URL(nextPage);
-                const p = url.searchParams.get('page');
-                if (p) params.page = p;
-            }
-
-            const [invRes, dashRes] = await Promise.all([
+            // Simplification for merging: fetch both without infinite scroll pagination for now,
+            // or just rely on next from invoices if we really need it.
+            // Ideally we'd need a unified backend endpoint for true infinite scroll across mixed types.
+            // For now, we fetch both and merge.
+            const [invRes, retRes, dashRes] = await Promise.all([
                 api.get('/products/erp/purchase-invoices/', { params }),
+                api.get('/returns/purchase/', { params }),
                 isAppend ? Promise.resolve(null) : api.get('/products/erp/dashboard/summary/')
             ]);
             
-            const data = invRes.data.results ?? invRes.data;
-            const nextLink = invRes.data.next ?? null;
-
-            if (isAppend) {
-                setInvoices(prev => [...prev, ...data]);
-            } else {
-                setInvoices(data);
-            }
+            const invData = (invRes.data.results ?? invRes.data).map((item: any) => ({...item, type: 'invoice'}));
+            const retData = (retRes.data.results ?? retRes.data).map((item: any) => ({...item, type: 'return'}));
             
-            setNextPage(nextLink);
+            const merged = [...invData, ...retData].sort((a: any, b: any) => {
+                const dateA = new Date(a.created_at).getTime();
+                const dateB = new Date(b.created_at).getTime();
+                return dateB - dateA;
+            });
+
+            // We will disable infinite scroll for the merged view as it requires complex backend coordination
+            setInvoices(merged);
+            setNextPage(null);
+            
             if (dashRes) setDashboardStats(dashRes.data);
         } catch (error) {
             console.error(error);
@@ -87,7 +89,7 @@ export default function PurchasesPage() {
             setIsLoading(false);
             setIsFetchingMore(false);
         }
-    }, [filter, customStart, customEnd, nextPage]);
+    }, [filter, customStart, customEnd]);
 
     useEffect(() => { fetchData(false); }, [filter, customStart, customEnd]);
 
@@ -258,71 +260,104 @@ export default function PurchasesPage() {
                                     <p className="text-sm mt-1">Try changing the date filter or record a new inward bill.</p>
                                 </td></tr>
                             ) : (
-                                invoices.map((invoice) => (
-                                    <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors group">
-                                        <td className="p-4 pl-6 font-bold text-gray-900">{invoice.invoice_number || `INV-${invoice.id}`}</td>
-                                        <td className="p-4 text-gray-600">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar size={14} className="text-gray-400" />
-                                                {new Date(invoice.invoice_date || invoice.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 font-medium text-gray-900">
-                                            <div className="flex items-center gap-2">
-                                                <Truck size={14} className="text-gray-400" />
-                                                {invoice.supplier_name || 'Unknown Distributor'}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-right font-medium text-gray-600">{invoice.items?.length || 0}</td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className={`font-bold ${invoice.is_returned ? 'text-gray-400 line-through text-[10px] font-medium decoration-red-400' : 'text-gray-900'}`}>
-                                                    ₹{Number(invoice.total_amount).toLocaleString('en-IN')}
-                                                </span>
-                                                {invoice.is_returned && (
-                                                    <span className="text-sm font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 mt-1">
-                                                        ₹{Number(invoice.net_amount).toLocaleString('en-IN')}
+                                invoices.map((item) => {
+                                    if (item.type === 'invoice') {
+                                        return (
+                                            <tr key={`inv-${item.id}`} className="hover:bg-gray-50/50 transition-colors group">
+                                                <td className="p-4 pl-6 font-bold text-gray-900">{item.invoice_number || `INV-${item.id}`}</td>
+                                                <td className="p-4 text-gray-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar size={14} className="text-gray-400" />
+                                                        {new Date(item.invoice_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 font-medium text-gray-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <Truck size={14} className="text-gray-400" />
+                                                        {item.supplier_name || 'Unknown Distributor'}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-right font-medium text-gray-600">{item.items?.length || 0}</td>
+                                                <td className="p-4 text-right">
+                                                    <span className="font-bold text-gray-900">
+                                                        ₹{Number(item.total_amount).toLocaleString('en-IN')}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                                                invoice.payment_status === 'PAID' ? 'bg-green-100 text-green-700' :
-                                                invoice.payment_status === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
-                                                'bg-red-100 text-red-700'
-                                            }`}>
-                                                 {invoice.payment_status || 'UNPAID'}
-                                            </span>
-                                            {invoice.is_returned && (
-                                                <div className="mt-1">
-                                                    <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded tracking-tighter animate-pulse">
-                                                        RETURNED
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                                                        item.payment_status === 'PAID' ? 'bg-green-100 text-green-700' :
+                                                        item.payment_status === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
+                                                        'bg-red-100 text-red-700'
+                                                    }`}>
+                                                        {item.payment_status || 'UNPAID'}
                                                     </span>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="p-4 pr-6 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Link href={`/dashboard/purchases/edit?id=${invoice.id}`}>
-                                                    <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Bill">
-                                                        <Pencil size={18} />
-                                                    </button>
-                                                </Link>
-                                                <button 
-                                                    onClick={() => {
-                                                        setSelectedInvoiceForReturn(invoice.id);
-                                                        setIsReturnModalOpen(true);
-                                                    }}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Return items from this bill"
-                                                >
-                                                    <RotateCcw size={18} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                                </td>
+                                                <td className="p-4 pr-6 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Link href={`/dashboard/purchases/edit?id=${item.id}`}>
+                                                            <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Bill">
+                                                                <Pencil size={18} />
+                                                            </button>
+                                                        </Link>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedInvoiceForReturn(item.id);
+                                                                setIsReturnModalOpen(true);
+                                                            }}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Return items from this bill"
+                                                        >
+                                                            <RotateCcw size={18} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    } else {
+                                        return (
+                                            <tr key={`ret-${item.id}`} className="hover:bg-red-50/50 transition-colors group bg-red-50/20 border-l-4 border-l-red-500">
+                                                <td className="p-4 pl-5 font-bold text-red-700">
+                                                    <div className="flex flex-col">
+                                                        <span>{item.return_number || `RET-${item.id}`}</span>
+                                                        <span className="text-[10px] text-red-400 font-medium mt-0.5">Against {item.invoice_number}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-red-600">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar size={14} className="text-red-400" />
+                                                        {new Date(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 font-medium text-red-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <Truck size={14} className="text-red-400" />
+                                                        {item.supplier_name || 'Unknown Distributor'}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-right font-medium text-red-600">{item.items?.length || 0}</td>
+                                                <td className="p-4 text-right">
+                                                    <span className="font-black text-red-600">
+                                                        -₹{Number(item.total_amount).toLocaleString('en-IN')}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-red-100 text-red-700">
+                                                        RETURN
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 pr-6 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Link href={`/dashboard/purchases/return-detail?id=${item.id}`}>
+                                                            <button className="p-2 text-red-400 hover:text-red-700 hover:bg-red-100 rounded-lg transition-colors" title="View Return Details">
+                                                                <ArrowRight size={18} />
+                                                            </button>
+                                                        </Link>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    }
+                                })
                             )}
                         </tbody>
                     </table>

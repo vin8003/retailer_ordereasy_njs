@@ -51,6 +51,8 @@ function EditPurchaseContent() {
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasReturns, setHasReturns] = useState(false);
+    const [refundAmount, setRefundAmount] = useState(0);
     
     // Add Supplier Modal State
     const [showAddModal, setShowAddModal] = useState(false);
@@ -106,6 +108,8 @@ function EditPurchaseContent() {
                     setInvoiceDate(inv.invoice_date);
                     setPaidAmount(Number(inv.paid_amount));
                     setNotes(inv.notes || '');
+                    setHasReturns(inv.is_returned);
+                    setRefundAmount(Number(inv.refund_amount));
                     
                     // Map items to rows
                     const mappedRows: PurchaseRow[] = inv.items.map((item: any) => {
@@ -257,6 +261,18 @@ function EditPurchaseContent() {
                 {/* Left: Bill Details & Items */}
                 <div className="xl:col-span-2 space-y-6">
                     
+                    {hasReturns && (
+                        <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100 flex gap-4">
+                            <AlertCircle className="text-red-500 shrink-0" size={24} />
+                            <div>
+                                <h3 className="text-red-800 font-bold mb-1">Returns exist for this bill</h3>
+                                <p className="text-xs font-medium text-red-700 leading-relaxed">
+                                    Items worth ₹{refundAmount.toFixed(2)} have been returned from this bill. Editing the bill now will only modify the original quantities and prices. The returns are tracked separately and won't be affected by your edits here.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Invoice Meta */}
                     <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">

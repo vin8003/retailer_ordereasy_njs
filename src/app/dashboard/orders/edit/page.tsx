@@ -133,7 +133,22 @@ function OrderEditContent() {
 
     const calculateSummary = () => {
         const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-        const deliveryFee = deliveryMode === 'delivery' ? Number(order?.delivery_fee || 0) : 0;
+        
+        // Dynamically calculate delivery fee from retailer's actual settings
+        let deliveryFee = 0;
+        if (deliveryMode === 'delivery') {
+            const retailerDeliveryCharge = Number(order?.retailer_delivery_charge || 0);
+            const freeDeliveryThreshold = Number(order?.retailer_free_delivery_threshold || 0);
+            
+            if (retailerDeliveryCharge > 0) {
+                if (freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) {
+                    deliveryFee = 0; // Free delivery — subtotal meets threshold
+                } else {
+                    deliveryFee = retailerDeliveryCharge;
+                }
+            }
+        }
+        
         const totalBeforePoints = Math.max(0, subtotal + deliveryFee - discountAmount);
 
         let pointsRefundValue = 0;
@@ -341,7 +356,7 @@ function OrderEditContent() {
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Delivery Fee</span>
-                                <span>+ ₹{summary.deliveryFee.toFixed(2)}</span>
+                                <span>{summary.deliveryFee > 0 ? `+ ₹${summary.deliveryFee.toFixed(2)}` : <span className="text-green-600 font-medium">{deliveryMode === 'pickup' ? 'Pickup' : 'FREE'}</span>}</span>
                             </div>
                             <div className="flex justify-between text-sm text-green-600 font-medium">
                                 <span>Manual Discount</span>
