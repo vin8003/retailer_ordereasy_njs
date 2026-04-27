@@ -123,6 +123,7 @@ export default function POSPage() {
     const [activeGridIndex, setActiveGridIndex] = useState(-1);
     const [activeCartIndex, setActiveCartIndex] = useState(-1);
     const [currentFocus, setCurrentFocus] = useState<'search' | 'grid' | 'cart' | 'checkout' | 'success' | 'empty' | 'customer'>('search');
+    const [visibleCount, setVisibleCount] = useState(20);
     const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
     const [showOnboarding, setShowOnboarding] = useState(false);
     
@@ -363,7 +364,7 @@ export default function POSPage() {
     const fetchProducts = async () => {
         setIsFetching(true);
         try {
-            const response = await api.get('/products/');
+            const response = await api.get('/products/?no_page=true&is_active=true');
             const dataList = response.data.results || response.data;
             setProducts(dataList || []);
             
@@ -611,6 +612,7 @@ export default function POSPage() {
         setSearchTerm(val);
         setActiveGridIndex(-1); // Reset grid selection on new search
         setCurrentFocus('search');
+        setVisibleCount(20); // Reset visible count on new search
     };
 
     const handleSearchKeyDown = (e: React.KeyboardEvent) => {
@@ -619,7 +621,13 @@ export default function POSPage() {
             e.preventDefault();
             if (filteredProducts.length > 0) {
                 const cols = window.innerWidth >= 1280 ? 4 : 3;
-                setActiveGridIndex(prev => Math.min(prev + cols, filteredProducts.length - 1));
+                setActiveGridIndex(prev => {
+                    const next = Math.min(prev + cols, filteredProducts.length - 1);
+                    if (next >= visibleCount) {
+                        setVisibleCount(next + 20); // Auto-expand when navigating down
+                    }
+                    return next;
+                });
                 setCurrentFocus('grid');
             }
         } else if (e.key === 'ArrowUp') {
@@ -634,7 +642,13 @@ export default function POSPage() {
         } else if (e.key === 'ArrowRight') {
             if (activeGridIndex >= 0) {
                 e.preventDefault();
-                setActiveGridIndex(prev => Math.min(prev + 1, filteredProducts.length - 1));
+                setActiveGridIndex(prev => {
+                    const next = Math.min(prev + 1, filteredProducts.length - 1);
+                    if (next >= visibleCount) {
+                        setVisibleCount(next + 20); // Auto-expand when navigating right
+                    }
+                    return next;
+                });
             }
         } else if (e.key === 'ArrowLeft') {
             if (activeGridIndex >= 0) {
@@ -714,6 +728,18 @@ export default function POSPage() {
         return matchSearch && matchCategory;
     });
 
+    const displayedProducts = filteredProducts.slice(0, visibleCount);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+        // Load more when scrolled within 1.5 screen heights of the bottom
+        if (scrollHeight - scrollTop <= clientHeight * 1.5) {
+            if (visibleCount < filteredProducts.length) {
+                setVisibleCount(prev => prev + 20);
+            }
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-50/50 p-4 pb-12 gap-6 font-sans">
             <Toaster position="top-right" />
@@ -768,7 +794,7 @@ export default function POSPage() {
                         {categories.map(cat => (
                             <button
                                 key={cat}
-                                onClick={() => setActiveCategory(cat)}
+                                onClick={() => { setActiveCategory(cat); setVisibleCount(20); }}
                                 className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                                     activeCategory === cat 
                                     ? 'bg-primary text-white shadow-md shadow-primary/20' 
@@ -782,7 +808,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Product Grid */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30" data-tour="product-grid">
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30" data-tour="product-grid" onScroll={handleScroll}>
                     {isFetching ? (
                         <div className="flex flex-col items-center justify-center h-full text-gray-400">
                             <Loader2 className="animate-spin mb-4" size={32} />
@@ -795,7 +821,7 @@ export default function POSPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
-                            {filteredProducts.map((product, gridIdx) => {
+                            {displayedProducts.map((product, gridIdx) => {
                                 const price = product.discounted_price || product.price;
                                 const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
                                 const isGridActive = gridIdx === activeGridIndex;
