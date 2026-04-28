@@ -53,6 +53,7 @@ export default function ProductsPage() {
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
     const [isBulkMatrixOpen, setIsBulkMatrixOpen] = useState(false);
+    const [isSelectingAll, setIsSelectingAll] = useState(false);
 
     useEffect(() => {
         fetchCategories();
@@ -257,6 +258,48 @@ export default function ProductsPage() {
         };
         sessionStorage.setItem('productsPageState', JSON.stringify(stateToSave));
         router.push(`/dashboard/products/edit?id=${product.id}`);
+    };
+
+    const handleSelectAll = async () => {
+        setIsSelectingAll(true);
+        try {
+            const params: any = { no_page: 'true' };
+
+            if (statusFilter === 'active') params.is_active = true;
+            if (statusFilter === 'inactive') params.is_active = false;
+            if (searchQuery) params.search = searchQuery;
+            if (selectedCategory && selectedCategory !== "all") params.category = selectedCategory;
+            if (selectedBrand && selectedBrand !== "all") params.brand = selectedBrand;
+            if (stockFilter === "in") params.in_stock = "true";
+            if (stockFilter === "out") params.in_stock = "false";
+            if (stockFilter === "low") params.low_stock = "true";
+
+            if (isFeaturedFilter) params.is_featured = "true";
+            if (isSeasonalFilter) params.is_seasonal = "true";
+
+            const response = await productService.fetchProducts(params);
+            
+            let allProducts: any[] = [];
+            if (Array.isArray(response.data)) {
+                allProducts = response.data;
+            } else if (response.data && Array.isArray(response.data.results)) {
+                allProducts = response.data.results;
+            }
+
+            if (allProducts.length > 0) {
+                setProducts(allProducts);
+                const allIds = new Set(allProducts.map((p: any) => p.id));
+                setSelectedProductIds(allIds);
+                setTotalPages(1);
+                setCurrentPage(1);
+                setTotalCount(allProducts.length);
+            }
+        } catch (error) {
+            console.error("Failed to select all products:", error);
+            toast.error("Failed to select all products");
+        } finally {
+            setIsSelectingAll(false);
+        }
     };
 
     return (
@@ -521,10 +564,16 @@ export default function ProductsPage() {
 
                 {/* Bulk Actions UI */}
                 <BulkActionBar
+                    selectionMode={selectionMode}
                     selectedCount={selectedProductIds.size}
+                    totalCount={totalCount}
+                    isSelectingAll={isSelectingAll}
+                    onSelectAll={handleSelectAll}
                     onCancel={() => {
                         setSelectionMode(false);
                         setSelectedProductIds(new Set());
+                        // If they cancel out of a massive select-all list, maybe they want to go back to paginated list.
+                        // But to be safe, just clear the selection. 
                     }}
                     onEditSelected={() => setIsBulkMatrixOpen(true)}
                 />
