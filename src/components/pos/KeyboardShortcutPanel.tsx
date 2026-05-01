@@ -86,6 +86,8 @@ export default function KeyboardShortcutPanel({ isOpen, onClose, onReplayTour }:
                     <SectionTitle>Payment</SectionTitle>
                     <ShortcutRow label="Cash" shortcut={<><Kbd>Alt</Kbd><span className="text-gray-300">+</span><Kbd>1</Kbd></>} />
                     <ShortcutRow label="UPI" shortcut={<><Kbd>Alt</Kbd><span className="text-gray-300">+</span><Kbd>2</Kbd></>} />
+                    <ShortcutRow label="Credit" shortcut={<><Kbd>Alt</Kbd><span className="text-gray-300">+</span><Kbd>3</Kbd></>} />
+                    <ShortcutRow label="Split / Partial" shortcut={<><Kbd>Alt</Kbd><span className="text-gray-300">+</span><Kbd>4</Kbd></>} />
                     <ShortcutRow label="Customer Mobile" shortcut={<><Kbd>Alt</Kbd><span className="text-gray-300">+</span><Kbd>M</Kbd></>} />
                     <ShortcutRow label="Discount" shortcut={<><Kbd>Alt</Kbd><span className="text-gray-300">+</span><Kbd>D</Kbd></>} />
 

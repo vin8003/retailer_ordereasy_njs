@@ -29,7 +29,28 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowLeft, Star, ShoppingBag, Wallet, Calendar, ShieldBan, CheckCircle } from 'lucide-react';
+import { 
+    Loader2, 
+    ArrowLeft, 
+    Star, 
+    ShoppingBag, 
+    Wallet, 
+    Calendar, 
+    ShieldBan, 
+    CheckCircle, 
+    History,
+    IndianRupee,
+    CreditCard,
+    PlusCircle
+} from 'lucide-react';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { toast } from 'sonner';
 
 interface CustomerDetail {
@@ -44,6 +65,8 @@ interface CustomerDetail {
     averageRating: number;
     joinedDate?: string;
     isBlacklisted: boolean;
+    creditLimit: number;
+    currentBalance: number;
     recentOrders: any[];
     rewardHistory: any[];
 }
@@ -58,13 +81,28 @@ function CustomerDetailContent() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Ledger state
+    const [ledger, setLedger] = useState<any[]>([]);
+    const [ledgerLoading, setLedgerLoading] = useState(false);
+
     // Actions State
     const [showBlacklistConfirm, setShowBlacklistConfirm] = useState(false);
     const [showRatingDialog, setShowRatingDialog] = useState(false);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+    const [showCreditLimitDialog, setShowCreditLimitDialog] = useState(false);
+
     const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
     const [rating, setRating] = useState(5);
     const [ratingComment, setRatingComment] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
+
+    // Payment state
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentMode, setPaymentMode] = useState('cash');
+    const [paymentNotes, setPaymentNotes] = useState('');
+
+    // Credit Limit state
+    const [newCreditLimit, setNewCreditLimit] = useState('');
 
 
     const fetchDetails = async () => {
@@ -89,9 +127,12 @@ function CustomerDetailContent() {
                     averageRating: data.average_rating ? parseFloat(data.average_rating) : 0,
                     joinedDate: data.joined_date,
                     isBlacklisted: data.is_blacklisted,
+                    creditLimit: data.credit_limit ? parseFloat(data.credit_limit) : 0,
+                    currentBalance: data.current_balance ? parseFloat(data.current_balance) : 0,
                     recentOrders: data.recent_orders || [],
                     rewardHistory: data.reward_history || [],
                 });
+                setNewCreditLimit(data.credit_limit?.toString() || '0');
             } else {
                 throw new Error('Failed to load details');
             }
@@ -101,6 +142,21 @@ function CustomerDetailContent() {
             toast.error('Failed to load customer details');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchLedger = async () => {
+        if (!id) return;
+        setLedgerLoading(true);
+        try {
+            const response = await customerService.fetchLedger(id);
+            if (response.status === 200) {
+                setLedger(response.data.results || response.data || []);
+            }
+        } catch (err) {
+            toast.error('Failed to load ledger history');
+        } finally {
+            setLedgerLoading(false);
         }
     };
 
@@ -136,7 +192,7 @@ function CustomerDetailContent() {
         try {
             const response = await customerService.rateCustomer(selectedOrderId, rating, ratingComment);
             if (response.status === 200 || response.status === 201) {
-                toast.success('Rating submitted details');
+                toast.success('Rating submitted successfully');
                 setShowRatingDialog(false);
                 setRating(5);
                 setRatingComment('');
@@ -144,6 +200,44 @@ function CustomerDetailContent() {
             }
         } catch (err: any) {
             toast.error('Failed to submit rating');
+        }
+    };
+
+    const handleRecordPayment = async () => {
+        if (!id || !paymentAmount) return;
+        setActionLoading(true);
+        try {
+            await customerService.recordPayment({
+                customer_id: id,
+                amount: parseFloat(paymentAmount),
+                payment_mode: paymentMode,
+                notes: paymentNotes
+            });
+            toast.success('Payment recorded successfully');
+            setShowPaymentDialog(false);
+            setPaymentAmount('');
+            setPaymentNotes('');
+            fetchDetails();
+            fetchLedger();
+        } catch (err) {
+            toast.error('Failed to record payment');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleUpdateCreditLimit = async () => {
+        if (!id || !newCreditLimit) return;
+        setActionLoading(true);
+        try {
+            await customerService.updateCreditLimit(id, parseFloat(newCreditLimit));
+            toast.success('Credit limit updated successfully');
+            setShowCreditLimitDialog(false);
+            fetchDetails();
+        } catch (err) {
+            toast.error('Failed to update credit limit');
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -221,14 +315,35 @@ function CustomerDetailContent() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <StatRow icon={Wallet} label="Total Spent" value={formatCurrency(customer.totalSpent)} />
-                            <StatRow icon={ShoppingBag} label="Total Orders" value={customer.totalOrders.toString()} />
+                            <StatRow 
+                                icon={IndianRupee} 
+                                label="Current Balance" 
+                                value={formatCurrency(customer.currentBalance)} 
+                                valueClassName={customer.currentBalance > 0 ? "text-red-600" : "text-green-600"}
+                            />
+                            <StatRow icon={CreditCard} label="Credit Limit" value={formatCurrency(customer.creditLimit)} />
+                            <StatRow icon={ShoppingBag} label="Total Orders" value={customer.customerName === "Walking Customer" ? "POS Only" : customer.totalOrders.toString()} />
                             <StatRow icon={Star} label="Avg Rating" value={(customer.averageRating || 0).toFixed(1)} />
-                            <StatRow icon={Calendar} label="Joined" value={customer.joinedDate ? new Date(customer.joinedDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '-'} />
 
-                            <div className="pt-4">
+                            <div className="pt-4 space-y-3">
+                                <Button
+                                    className="w-full gap-2"
+                                    onClick={() => setShowPaymentDialog(true)}
+                                >
+                                    <PlusCircle className="h-4 w-4" /> Record Payment
+                                </Button>
+                                
+                                <Button
+                                    variant="outline"
+                                    className="w-full gap-2"
+                                    onClick={() => setShowCreditLimitDialog(true)}
+                                >
+                                    <ShieldBan className="h-4 w-4" /> Set Credit Limit
+                                </Button>
+
                                 <Button
                                     variant={customer.isBlacklisted ? "outline" : "destructive"}
-                                    className="w-full"
+                                    className="w-full mt-4"
                                     onClick={() => setShowBlacklistConfirm(true)}
                                 >
                                     {customer.isBlacklisted ? 'Unblacklist Customer' : 'Blacklist Customer'}
@@ -245,6 +360,7 @@ function CustomerDetailContent() {
                             <Tabs defaultValue="orders">
                                 <TabsList className="w-full justify-start mb-6">
                                     <TabsTrigger value="orders">Order History</TabsTrigger>
+                                    <TabsTrigger value="khata" onClick={fetchLedger}>Khata / Ledger</TabsTrigger>
                                     <TabsTrigger value="rewards">Reward History</TabsTrigger>
                                 </TabsList>
 
@@ -280,6 +396,77 @@ function CustomerDetailContent() {
                                                 </div>
                                             </div>
                                         ))
+                                    )}
+                                </TabsContent>
+
+                                <TabsContent value="khata" className="space-y-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                                            <History className="h-5 w-5 text-primary" /> Transaction Ledger
+                                        </h3>
+                                        <div className="text-sm text-muted-foreground">
+                                            Showing last 50 transactions
+                                        </div>
+                                    </div>
+
+                                    {ledgerLoading ? (
+                                        <div className="flex justify-center py-10">
+                                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                        </div>
+                                    ) : ledger.length === 0 ? (
+                                        <div className="text-center py-10 text-muted-foreground border rounded-lg border-dashed">
+                                            No ledger entries found for this customer.
+                                        </div>
+                                    ) : (
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow className="bg-slate-50">
+                                                        <TableHead>Date</TableHead>
+                                                        <TableHead>Type</TableHead>
+                                                        <TableHead>Details</TableHead>
+                                                        <TableHead className="text-right">Amount</TableHead>
+                                                        <TableHead className="text-right">Balance</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {ledger.map((entry: any) => (
+                                                        <TableRow key={entry.id}>
+                                                            <TableCell className="text-xs">
+                                                                {new Date(entry.created_at).toLocaleDateString('en-IN', {
+                                                                    day: '2-digit',
+                                                                    month: 'short',
+                                                                    year: '2-digit',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={entry.transaction_type === 'PAYMENT' ? "secondary" : "outline"} className={entry.transaction_type === 'PAYMENT' ? "bg-green-100 text-green-700" : ""}>
+                                                                    {entry.transaction_type}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <div className="text-sm">
+                                                                    {entry.order_number ? `Order #${entry.order_number}` : entry.notes}
+                                                                </div>
+                                                                {entry.payment_mode && (
+                                                                    <div className="text-[10px] text-muted-foreground uppercase">
+                                                                        Mode: {entry.payment_mode}
+                                                                    </div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className={`text-right font-medium ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
+                                                                {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-bold">
+                                                                {formatCurrency(entry.balance_after)}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
                                     )}
                                 </TabsContent>
 
@@ -367,6 +554,110 @@ function CustomerDetailContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Record Payment Dialog */}
+            <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Record Payment</DialogTitle>
+                        <DialogDescription>
+                            Enter the amount received from {customer.customerName} to settle their balance.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 bg-slate-50 rounded-lg border">
+                                <Label className="text-xs text-muted-foreground">Current Balance</Label>
+                                <div className="text-xl font-bold text-red-600">{formatCurrency(customer.currentBalance)}</div>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-lg border">
+                                <Label className="text-xs text-muted-foreground">Remaining Limit</Label>
+                                <div className="text-xl font-bold text-slate-700">{formatCurrency(customer.creditLimit - customer.currentBalance)}</div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="pay-amount">Payment Amount (₹) *</Label>
+                            <Input
+                                id="pay-amount"
+                                type="number"
+                                value={paymentAmount}
+                                onChange={(e) => setPaymentAmount(e.target.value)}
+                                placeholder="0.00"
+                                className="text-lg font-semibold"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Payment Mode</Label>
+                            <select 
+                                className="w-full h-10 px-3 rounded-md border border-input bg-background"
+                                value={paymentMode}
+                                onChange={(e) => setPaymentMode(e.target.value)}
+                            >
+                                <option value="cash">Cash</option>
+                                <option value="upi">UPI / Online</option>
+                                <option value="card">Card</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="pay-notes">Notes</Label>
+                            <Input
+                                id="pay-notes"
+                                value={paymentNotes}
+                                onChange={(e) => setPaymentNotes(e.target.value)}
+                                placeholder="e.g. Paid in cash at shop"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
+                        <Button 
+                            onClick={handleRecordPayment} 
+                            disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || actionLoading}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            {actionLoading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Record Payment
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Set Credit Limit Dialog */}
+            <Dialog open={showCreditLimitDialog} onOpenChange={setShowCreditLimitDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Credit Limit</DialogTitle>
+                        <DialogDescription>
+                            Set the maximum credit amount allowed for this customer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="credit-limit">Credit Limit (₹)</Label>
+                            <Input
+                                id="credit-limit"
+                                type="number"
+                                value={newCreditLimit}
+                                onChange={(e) => setNewCreditLimit(e.target.value)}
+                                placeholder="0.00"
+                            />
+                            <p className="text-xs text-muted-foreground italic">
+                                Currently set to {formatCurrency(customer.creditLimit)}
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowCreditLimitDialog(false)}>Cancel</Button>
+                        <Button onClick={handleUpdateCreditLimit} disabled={actionLoading}>
+                            {actionLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+                            Update Limit
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -383,15 +674,15 @@ export default function CustomerDetailPage() {
     );
 }
 
-function StatRow({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
+function StatRow({ icon: Icon, label, value, valueClassName }: { icon: any, label: string, value: string, valueClassName?: string }) {
     return (
         <div className="flex items-center gap-4">
             <div className="bg-slate-100 p-2.5 rounded-lg">
                 <Icon className="h-5 w-5 text-slate-600" />
             </div>
-            <div>
+            <div className="flex-1">
                 <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="font-semibold">{value}</p>
+                <p className={`font-semibold ${valueClassName || ''}`}>{value}</p>
             </div>
         </div>
     )

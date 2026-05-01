@@ -239,6 +239,12 @@ export const customerService = {
     api.post('customer/retailer/blacklist/toggle/', { customer_id: customerId, action, reason }),
   rateCustomer: (orderId: number, rating: number, comment?: string) =>
     api.post(`orders/${orderId}/rate-customer/`, { rating, comment }),
+  fetchLedger: (customerId: number) => 
+    api.get(`customer/retailer/ledger/${customerId}/`),
+  recordPayment: (data: { customer_id: number; amount: number; payment_mode: string; notes?: string }) =>
+    api.post('customer/retailer/payment/record/', data),
+  updateCreditLimit: (customerId: number, credit_limit: number) =>
+    api.patch(`customer/retailer/credit-limit/update/${customerId}/`, { credit_limit }),
 };
 
 export const rewardService = {

@@ -5,7 +5,7 @@ import api from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
-    MessageSquare, Check, Keyboard
+    MessageSquare, Check, Keyboard, Users
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
@@ -55,7 +55,12 @@ interface POSSession {
     cart: CartItem[];
     customerName: string;
     customerMobile: string;
-    paymentMode: 'cash' | 'upi';
+    paymentMode: 'cash' | 'upi' | 'credit' | 'split';
+    paymentSplit: {
+        cash: number;
+        upi: number;
+        credit: number;
+    };
     discountAmount: number;
     verificationStatus: 'verified' | 'returning_guest' | 'new' | null;
     completedOrder: any | null;
@@ -86,6 +91,7 @@ export default function POSPage() {
             customerName: '',
             customerMobile: '',
             paymentMode: 'cash',
+            paymentSplit: { cash: 0, upi: 0, credit: 0 },
             discountAmount: 0,
             verificationStatus: null,
             completedOrder: null
@@ -142,9 +148,13 @@ export default function POSPage() {
     // Auto-scroll cart to bottom when items are added
     useEffect(() => {
         if (cartContainerRef.current) {
-            cartContainerRef.current.scrollTop = cartContainerRef.current.scrollHeight;
+            // Smooth scroll to bottom to ensure last added item is visible
+            cartContainerRef.current.scrollTo({
+                top: cartContainerRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
         }
-    }, [activeSession.cart]);
+    }, [activeSession.cart.length]); // Scroll only when a NEW item is added
 
     // Check for first-time onboarding
     useEffect(() => {
@@ -254,6 +264,19 @@ export default function POSPage() {
                     case '2': // UPI
                         e.preventDefault();
                         updateActiveSession({ paymentMode: 'upi' });
+                        setCurrentFocus('checkout');
+                        break;
+                    case '3': // Credit
+                        e.preventDefault();
+                        updateActiveSession({ paymentMode: 'credit' });
+                        setCurrentFocus('checkout');
+                        break;
+                    case '4': // Split
+                        e.preventDefault();
+                        updateActiveSession({ 
+                            paymentMode: 'split',
+                            paymentSplit: { cash: total, upi: 0, credit: 0 }
+                        });
                         setCurrentFocus('checkout');
                         break;
                     case ']': // Next session
@@ -549,9 +572,28 @@ export default function POSPage() {
             return;
         }
 
+        if (activeSession.paymentMode === 'credit' && !activeSession.customerMobile) {
+            toast.error("Customer mobile is required for Credit (Udhaar) sales");
+            mobileInputRef.current?.focus();
+            return;
+        }
+
+        if (activeSession.paymentMode === 'split') {
+            const sum = activeSession.paymentSplit.cash + activeSession.paymentSplit.upi + activeSession.paymentSplit.credit;
+            if (Math.abs(sum - total) > 1) { // Allowing 1 rupee rounding diff
+                toast.error(`Total split (₹${sum}) does not match bill total (₹${total})`);
+                return;
+            }
+            if (activeSession.paymentSplit.credit > 0 && !activeSession.customerMobile) {
+                toast.error("Customer mobile is required for partial Credit (Udhaar)");
+                mobileInputRef.current?.focus();
+                return;
+            }
+        }
+
         setIsCheckoutLoading(true);
         try {
-            const payload = {
+            const payload: any = {
                 items: activeSession.cart.map(item => ({
                     product_id: item.id,
                     batch_id: item.batch_id,
@@ -565,6 +607,14 @@ export default function POSPage() {
                 customer_name: activeSession.customerName,
                 customer_mobile: activeSession.customerMobile
             };
+
+            if (activeSession.paymentMode === 'split') {
+                payload.payment_details = {
+                    cash: activeSession.paymentSplit.cash,
+                    upi: activeSession.paymentSplit.upi,
+                    credit: activeSession.paymentSplit.credit
+                };
+            }
 
             const response = await api.post('/products/erp/pos-checkout/', payload);
             toast.success(`Order ${response.data.order.order_number} created successfully!`);
@@ -584,6 +634,7 @@ export default function POSPage() {
             customerName: '',
             customerMobile: '',
             paymentMode: 'cash',
+            paymentSplit: { cash: 0, upi: 0, credit: 0 },
             discountAmount: 0,
             verificationStatus: null,
             completedOrder: null
@@ -627,6 +678,7 @@ export default function POSPage() {
             customerName: '',
             customerMobile: '',
             paymentMode: 'cash',
+            paymentSplit: { cash: 0, upi: 0, credit: 0 },
             discountAmount: 0,
             verificationStatus: null,
             completedOrder: null
@@ -1015,16 +1067,20 @@ export default function POSPage() {
                             Current Order
                             <kbd className="px-1.5 py-0.5 bg-white text-gray-400 rounded text-[9px] font-mono font-bold border border-gray-200">Alt+C</kbd>
                         </h2>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                             <div className="flex flex-col items-end">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Total Summary</span>
-                                <div className="flex gap-1">
-                                    <span className="bg-gray-100 text-gray-700 text-[11px] font-black px-3 py-1 rounded-lg border border-gray-200 flex items-center gap-1">
-                                        <span className="text-gray-400">Items:</span> {activeSession.cart.length}
-                                    </span>
-                                    <span className="bg-primary text-white text-[11px] font-black px-3 py-1 rounded-lg shadow-lg shadow-primary/20 flex items-center gap-1">
-                                        <span className="text-white/60">Qty:</span> {activeSession.cart.reduce((s, i) => s + i.cart_quantity, 0)}
-                                    </span>
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-2">Total Order Summary</span>
+                                <div className="flex gap-2">
+                                    <div className="bg-white border-2 border-gray-100 text-gray-800 px-4 py-2 rounded-2xl flex flex-col items-center min-w-[70px] shadow-sm">
+                                        <span className="text-[9px] font-black text-gray-400 uppercase leading-none mb-1">Items</span>
+                                        <span className="text-xl font-black leading-none">{activeSession.cart.length}</span>
+                                    </div>
+                                    <div className="bg-primary text-white px-5 py-2 rounded-2xl flex flex-col items-center min-w-[80px] shadow-lg shadow-primary/20 ring-4 ring-primary/10">
+                                        <span className="text-[9px] font-black text-white/70 uppercase leading-none mb-1">Total Qty</span>
+                                        <span className="text-2xl font-black leading-none">
+                                            {activeSession.cart.reduce((s, i) => s + i.cart_quantity, 0)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1235,7 +1291,7 @@ export default function POSPage() {
 
                     <div className="mb-4" data-tour="payment">
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Mode</p>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-4 gap-2">
                             <button 
                                 onClick={() => updateActiveSession({ paymentMode: 'cash' })}
                                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-bold transition-all ${
@@ -1258,7 +1314,87 @@ export default function POSPage() {
                                 <CreditCard size={18} /> UPI
                                 <kbd className="px-1 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-mono font-bold border border-primary/20">Alt+2</kbd>
                             </button>
+                            <button 
+                                onClick={() => updateActiveSession({ paymentMode: 'credit' })}
+                                className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-bold transition-all ${
+                                    activeSession.paymentMode === 'credit' 
+                                    ? 'border-orange-500 bg-orange-500/10 text-orange-700' 
+                                    : 'border-gray-100 text-gray-500 hover:border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                                <Users size={18} /> Credit
+                                <kbd className="px-1 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] font-mono font-bold border border-orange-200">Alt+3</kbd>
+                            </button>
+                            <button 
+                                onClick={() => updateActiveSession({ 
+                                    paymentMode: 'split',
+                                    paymentSplit: { cash: total, upi: 0, credit: 0 } 
+                                })}
+                                className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 font-bold transition-all ${
+                                    activeSession.paymentMode === 'split' 
+                                    ? 'border-purple-500 bg-purple-500/10 text-purple-700' 
+                                    : 'border-gray-100 text-gray-500 hover:border-gray-200 hover:bg-gray-50'
+                                }`}
+                            >
+                                <Plus size={18} /> Split
+                                <kbd className="px-1 py-0.5 bg-purple-100 text-purple-600 rounded text-[9px] font-mono font-bold border border-purple-200">Alt+4</kbd>
+                            </button>
                         </div>
+
+                        {activeSession.paymentMode === 'split' && (
+                            <div className="mt-4 p-4 bg-purple-50 rounded-2xl border border-purple-100 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="flex items-center justify-between text-purple-700 mb-1">
+                                    <span className="text-xs font-black uppercase tracking-widest">Partial Payment Details</span>
+                                    <span className="text-xs font-bold">Bill Total: ₹{total}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-purple-400 uppercase">Cash</label>
+                                        <input 
+                                            type="number"
+                                            value={activeSession.paymentSplit.cash || ''}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                updateActiveSession({ paymentSplit: { ...activeSession.paymentSplit, cash: val } });
+                                            }}
+                                            className="w-full bg-white border border-purple-200 rounded-lg py-2 px-3 text-sm font-black focus:ring-2 focus:ring-purple-500/20 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-purple-400 uppercase">UPI</label>
+                                        <input 
+                                            type="number"
+                                            value={activeSession.paymentSplit.upi || ''}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                updateActiveSession({ paymentSplit: { ...activeSession.paymentSplit, upi: val } });
+                                            }}
+                                            className="w-full bg-white border border-purple-200 rounded-lg py-2 px-3 text-sm font-black focus:ring-2 focus:ring-purple-500/20 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-purple-400 uppercase">Credit</label>
+                                        <input 
+                                            type="number"
+                                            value={activeSession.paymentSplit.credit || ''}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) || 0;
+                                                updateActiveSession({ paymentSplit: { ...activeSession.paymentSplit, credit: val } });
+                                            }}
+                                            className="w-full bg-white border border-purple-200 rounded-lg py-2 px-3 text-sm font-black focus:ring-2 focus:ring-purple-500/20 outline-none"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
+                                {Math.abs((activeSession.paymentSplit.cash + activeSession.paymentSplit.upi + activeSession.paymentSplit.credit) - total) > 1 && (
+                                    <p className="text-[10px] font-bold text-red-500 mt-1 animate-pulse text-center">
+                                        Sum (₹{activeSession.paymentSplit.cash + activeSession.paymentSplit.upi + activeSession.paymentSplit.credit}) must be ₹{total}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <button

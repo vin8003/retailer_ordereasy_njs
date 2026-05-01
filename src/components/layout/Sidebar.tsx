@@ -105,8 +105,9 @@ const Sidebar = () => {
                             <span className="flex-1">{item.label}</span>
                             
                             {item.label === 'Orders' && pendingCount > 0 && (
-                                <span className="flex items-center justify-center bg-red-500 text-white text-[10px] font-black min-w-[20px] h-[20px] px-1 rounded-full animate-pulse shadow-lg shadow-red-500/20">
-                                    {pendingCount}
+                                <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg animate-pulse ring-4 ring-red-500/20 shadow-lg shadow-red-600/30 uppercase tracking-tight ml-auto">
+                                    <span className="size-1 bg-white rounded-full animate-ping"></span>
+                                    {pendingCount} PENDING
                                 </span>
                             )}
                         </Link>

@@ -42,14 +42,14 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [isLoading, setIsLoading] = useState(false);
 
     // Form State
-    const [name, setName] = useState(initialData?.name || "");
-    const [description, setDescription] = useState(initialData?.description || "");
-    const [price, setPrice] = useState(initialData?.price || "");
-    const [purchasePrice, setPurchasePrice] = useState(initialData?.purchase_price || "");
-    const [originalPrice, setOriginalPrice] = useState(initialData?.original_price || "");
-    const [quantity, setQuantity] = useState(initialData?.quantity || "");
-    const [unit, setUnit] = useState(initialData?.unit || "piece");
-    const [minOrderQty, setMinOrderQty] = useState(initialData?.minimum_order_quantity || "1");
+    const [name, setName] = useState(initialData?.name ?? "");
+    const [description, setDescription] = useState(initialData?.description ?? "");
+    const [price, setPrice] = useState(initialData?.price ?? "");
+    const [purchasePrice, setPurchasePrice] = useState(initialData?.purchase_price ?? "");
+    const [originalPrice, setOriginalPrice] = useState(initialData?.original_price ?? "");
+    const [quantity, setQuantity] = useState(initialData?.quantity !== undefined ? String(initialData.quantity) : "0");
+    const [unit, setUnit] = useState(initialData?.unit ?? "piece");
+    const [minOrderQty, setMinOrderQty] = useState(initialData?.minimum_order_quantity ?? "1");
     const [maxOrderQty, setMaxOrderQty] = useState(initialData?.maximum_order_quantity || "");
     const [productGroup, setProductGroup] = useState(initialData?.product_group || "");
     const [barcode, setBarcode] = useState(initialData?.barcode || "");
@@ -189,8 +189,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!name || (!hasBatches && !price) || (trackInventory && !hasBatches && !quantity)) {
-            toast.error(`Please fill in all required fields (Name, Price${trackInventory ? ", Quantity" : ""})`);
+        const isInvalid = (val: any) => val === "" || val === null || val === undefined;
+
+        if (!name || (!hasBatches && isInvalid(price))) {
+            toast.error("Please fill in required fields (Name, Price)");
             return;
         }
 
@@ -209,7 +211,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (purchasePrice) formData.append("purchase_price", purchasePrice);
             if (originalPrice) formData.append("original_price", originalPrice);
             if (trackInventory) {
-                formData.append("quantity", quantity);
+                formData.append("quantity", quantity || "0");
             } else {
                 formData.append("quantity", "0");
             }

@@ -51,6 +51,7 @@ interface RetailerCustomer {
     registrationStatus?: string;
     isPhoneVerified?: boolean;
     nickname?: string;
+    currentBalance: number;
 }
 
 export default function CustomersPage() {
@@ -109,6 +110,7 @@ export default function CustomersPage() {
                 registrationStatus: item.registration_status,
                 isPhoneVerified: item.is_phone_verified,
                 nickname: item.nickname,
+                currentBalance: item.current_balance ? parseFloat(item.current_balance) : 0,
             }));
 
             if (isAppend) {
@@ -299,6 +301,7 @@ export default function CustomersPage() {
                                 <TableHead>Orders</TableHead>
                                 <TableHead>Spent</TableHead>
                                 <TableHead>Last Active</TableHead>
+                                <TableHead className="text-right">Credit Balance</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead></TableHead>
                             </TableRow>
@@ -350,6 +353,9 @@ export default function CustomersPage() {
                                             {customer.lastOrderDate
                                                 ? new Date(customer.lastOrderDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
                                                 : '-'}
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold text-red-600">
+                                            {customer.currentBalance > 0 ? formatCurrency(customer.currentBalance) : '-'}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={customer.isBlacklisted ? "destructive" : "secondary"} className={!customer.isBlacklisted ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>

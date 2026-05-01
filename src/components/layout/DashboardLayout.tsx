@@ -1,12 +1,14 @@
 import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+    useNotifications();
     return (
         <div className="min-h-screen bg-background pb-16 md:pb-0 font-sans selection:bg-primary/20">
             <div className="fixed inset-0 bg-[radial-gradient(circle_at_top_right,var(--color-primary),transparent)] opacity-[0.03] pointer-events-none" />
