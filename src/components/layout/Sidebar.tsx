@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { authService } from '@/services/api';
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -19,6 +21,37 @@ import {
 
 const Sidebar = () => {
     const pathname = usePathname();
+    const [pendingCount, setPendingCount] = useState<number>(0);
+
+    const fetchPendingCount = async () => {
+        try {
+            const response = await authService.fetchStats();
+            // Assuming stats returns pending_orders as seen in backend code
+            setPendingCount(response.data.pending_orders || 0);
+        } catch (error) {
+            console.error('Failed to fetch pending orders count:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchPendingCount();
+
+        // Listen for real-time FCM updates
+        const handleOrderUpdate = () => {
+            console.log('Sidebar refreshing pending count due to FCM update');
+            fetchPendingCount();
+        };
+
+        window.addEventListener('fcm_order_update', handleOrderUpdate);
+
+        // Fallback polling every 60 seconds
+        const interval = setInterval(fetchPendingCount, 60000);
+
+        return () => {
+            window.removeEventListener('fcm_order_update', handleOrderUpdate);
+            clearInterval(interval);
+        };
+    }, []);
 
     const handleLogout = () => {
         // Clear tokens and redirect
@@ -69,7 +102,13 @@ const Sidebar = () => {
                                 }`}
                         >
                             <item.icon size={20} className={isActive ? 'text-primary-foreground' : 'group-hover:text-primary transition-colors'} />
-                            <span>{item.label}</span>
+                            <span className="flex-1">{item.label}</span>
+                            
+                            {item.label === 'Orders' && pendingCount > 0 && (
+                                <span className="flex items-center justify-center bg-red-500 text-white text-[10px] font-black min-w-[20px] h-[20px] px-1 rounded-full animate-pulse shadow-lg shadow-red-500/20">
+                                    {pendingCount}
+                                </span>
+                            )}
                         </Link>
                     );
                 })}
