@@ -503,7 +503,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                             <TableRow key={index}>
                                                 <TableCell className="p-2">
                                                     <Input 
-                                                        value={batch.batch_number} 
+                                                        value={batch.batch_number ?? ''} 
                                                         onChange={(e) => updateBatch(index, "batch_number", e.target.value)}
                                                         placeholder="B1"
                                                         className="h-8 text-xs"
@@ -511,7 +511,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                                 </TableCell>
                                                 <TableCell className="p-2">
                                                     <Input 
-                                                        value={batch.barcode} 
+                                                        value={batch.barcode ?? ''} 
                                                         onChange={(e) => updateBatch(index, "barcode", e.target.value)}
                                                         placeholder="Barcode"
                                                         className="h-8 text-xs"
@@ -520,7 +520,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                                 <TableCell className="p-2">
                                                     <Input 
                                                         type="number"
-                                                        value={batch.original_price} 
+                                                        value={batch.original_price ?? ''} 
                                                         onChange={(e) => updateBatch(index, "original_price", e.target.value)}
                                                         className="h-8 text-xs"
                                                     />
@@ -528,7 +528,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                                 <TableCell className="p-2">
                                                     <Input 
                                                         type="number"
-                                                        value={batch.price} 
+                                                        value={batch.price ?? ''} 
                                                         onChange={(e) => updateBatch(index, "price", e.target.value)}
                                                         className="h-8 text-xs"
                                                     />
@@ -536,7 +536,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                                 <TableCell className="p-2">
                                                     <Input 
                                                         type="number"
-                                                        value={batch.quantity} 
+                                                        value={batch.quantity ?? ''} 
                                                         onChange={(e) => updateBatch(index, "quantity", e.target.value)}
                                                         className="h-8 text-xs"
                                                     />

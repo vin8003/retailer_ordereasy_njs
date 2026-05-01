@@ -345,14 +345,16 @@ export default function POSPage() {
         if (!searchTerm || searchTerm.length < 3) return;
 
         const timer = setTimeout(() => {
-            const matches = products.filter(p => p.barcode === searchTerm);
+            // Check product-level AND batch-level barcodes
+            const matches = products.filter(p => 
+                p.barcode === searchTerm || 
+                (p.batches && p.batches.some(b => b.barcode === searchTerm))
+            );
             if (matches.length === 1) {
                 handleAddToCart(matches[0], searchTerm);
                 setSearchTerm('');
                 toast.success(`Added ${matches[0].name}`, { duration: 1000, icon: '🛒' });
             } else if (matches.length > 1) {
-                // Same barcode for multiple products? Rare but possible.
-                // Just show first one or handle appropriately.
                 handleAddToCart(matches[0], searchTerm);
                 setSearchTerm('');
             }
@@ -393,15 +395,32 @@ export default function POSPage() {
 
         // If product has batches, we need to select one
         if (product.has_batches && product.batches && product.batches.length > 0) {
-            // If we have a scan barcode, prioritize batch with that barcode
-            const matchingBatches = scanBarcode 
-                ? product.batches.filter(b => b.barcode === scanBarcode && b.is_active)
-                : product.batches.filter(b => b.is_active);
-
-            if (matchingBatches.length === 1 && scanBarcode) {
-                // Auto-select if unique barcode match
-                finalizeAddToCart(product, matchingBatches[0]);
+            // Default is_active to true — POS fast path only returns active batches
+            const activeBatches = product.batches.filter(b => b.is_active !== false);
+            
+            if (scanBarcode) {
+                // Barcode scan: find batches matching this specific barcode
+                const matchingBatches = activeBatches.filter(b => b.barcode === scanBarcode);
+                
+                if (matchingBatches.length === 1) {
+                    // Unique barcode -> auto-select, no modal needed
+                    finalizeAddToCart(product, matchingBatches[0]);
+                    return;
+                } else if (matchingBatches.length > 1) {
+                    // 2+ batches share same barcode -> show modal to pick
+                    setBatchModalProduct(product);
+                    setIsBatchModalOpen(true);
+                    return;
+                }
+                // If no batch matched this barcode, fall through to check product-level barcode
+            }
+            
+            // Manual click (no scan) or barcode didn't match any batch
+            if (activeBatches.length === 1) {
+                // Only 1 active batch -> auto-select, no modal needed
+                finalizeAddToCart(product, activeBatches[0]);
             } else {
+                // 2+ active batches, no unique barcode match -> show modal
                 setBatchModalProduct(product);
                 setIsBatchModalOpen(true);
             }
@@ -472,9 +491,9 @@ export default function POSPage() {
                 const newQty = item.cart_quantity + delta;
                 const shouldTrack = item.track_inventory !== false;
                 
-                if (shouldTrack && newQty > item.quantity) {
-                    toast.error(`Max stock is ${item.quantity}`);
-                    return item;
+                // POS allows negative stock - show warning but don't block
+                if (shouldTrack && newQty > item.quantity && delta > 0) {
+                    toast(`Stock: ${item.quantity} in system. Billing allowed.`, { icon: '⚠️', duration: 1500 });
                 }
                 if (newQty <= 0) return { ...item, cart_quantity: 0 };
                 return { ...item, cart_quantity: newQty };
@@ -712,17 +731,18 @@ export default function POSPage() {
         }
     };
 
-    const handleQuickAddSuccess = (newProduct: any) => {
+    const handleQuickAddSuccess = (newProduct: any, linkedBarcode?: string) => {
         // Refresh local product list first
         fetchProducts();
-        // Manually add to cart since we have the object
-        handleAddToCart(newProduct);
+        // Add to cart with the linked barcode so the correct batch auto-selects
+        handleAddToCart(newProduct, linkedBarcode);
         setSearchTerm('');
     };
 
     const filteredProducts = products.filter(p => {
         const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           (p.barcode && p.barcode.includes(searchTerm));
+                           (p.barcode && p.barcode.includes(searchTerm)) ||
+                           (p.batches && p.batches.some(b => b.barcode && b.barcode.includes(searchTerm)));
         const productCategory = p.category_name || 'Uncategorized';
         const matchCategory = activeCategory === 'All' || productCategory === activeCategory;
         return matchSearch && matchCategory;
@@ -1246,7 +1266,7 @@ export default function POSPage() {
                         
                         <div className="p-6 max-h-[60vh] overflow-y-auto">
                             <div className="grid gap-3">
-                                {batchModalProduct.batches?.filter(b => b.is_active).map((batch) => {
+                                {batchModalProduct.batches?.filter(b => b.is_active !== false).map((batch) => {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
                                     const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
                                     

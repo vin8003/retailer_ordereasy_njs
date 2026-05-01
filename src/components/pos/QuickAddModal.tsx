@@ -14,7 +14,7 @@ interface QuickAddModalProps {
     isOpen: boolean;
     onClose: () => void;
     barcode: string;
-    onSuccess: (product: any) => void;
+    onSuccess: (product: any, linkedBarcode?: string) => void;
 }
 
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, barcode, onSuccess }) => {
@@ -62,10 +62,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, b
                 price: Number(price),
                 barcode,
                 is_active: true,
-                track_inventory: false // Default for quick add
+                track_inventory: true // Track inventory so future stock additions work correctly
             });
             toast.success("Product created and added to cart!");
-            onSuccess(res.data);
+            onSuccess(res.data, barcode);
             onClose();
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Failed to create product");
@@ -87,7 +87,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, b
                 price: price ? Number(price) : selectedProduct.price
             });
             toast.success("Barcode linked to product as a new batch!");
-            onSuccess(res.data);
+            onSuccess(res.data, barcode);
             onClose();
         } catch (err: any) {
             toast.error(err.response?.data?.error || "Failed to link barcode");
