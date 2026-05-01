@@ -488,7 +488,8 @@ export default function POSPage() {
     const updateQuantity = (id: number, delta: number, batchId: number | null = null) => {
         const updatedCart = activeSession.cart.map(item => {
             if (item.id === id && item.batch_id === batchId) {
-                const newQty = item.cart_quantity + delta;
+                // Use precise float addition for decimals
+                const newQty = Math.round((item.cart_quantity + delta) * 1000) / 1000;
                 const shouldTrack = item.track_inventory !== false;
                 
                 // POS allows negative stock - show warning but don't block
@@ -497,6 +498,19 @@ export default function POSPage() {
                 }
                 if (newQty <= 0) return { ...item, cart_quantity: 0 };
                 return { ...item, cart_quantity: newQty };
+            }
+            return item;
+        }).filter(item => item.cart_quantity > 0);
+
+        updateActiveSession({ cart: updatedCart });
+    };
+
+    const setQuantity = (id: number, value: string, batchId: number | null = null) => {
+        const qty = parseFloat(value);
+        const updatedCart = activeSession.cart.map(item => {
+            if (item.id === id && item.batch_id === batchId) {
+                if (isNaN(qty) || qty < 0) return { ...item, cart_quantity: 0 };
+                return { ...item, cart_quantity: qty };
             }
             return item;
         }).filter(item => item.cart_quantity > 0);
@@ -1050,7 +1064,13 @@ export default function POSPage() {
                                                 <button onClick={() => updateQuantity(item.id, -1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
                                                     <Minus size={12} />
                                                 </button>
-                                                <span className="w-8 text-center text-sm font-bold">{item.cart_quantity}</span>
+                                                <input 
+                                                    type="number" 
+                                                    step="any"
+                                                    value={item.cart_quantity} 
+                                                    onChange={(e) => setQuantity(item.id, e.target.value, item.batch_id)}
+                                                    className="w-14 text-center text-sm font-bold bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
                                                 <button onClick={() => updateQuantity(item.id, 1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
                                                     <Plus size={12} />
                                                 </button>
