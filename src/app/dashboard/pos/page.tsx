@@ -131,12 +131,20 @@ export default function POSPage() {
     const searchInputRef = useRef<HTMLInputElement>(null);
     const mobileInputRef = useRef<HTMLInputElement>(null);
     const discountInputRef = useRef<HTMLInputElement>(null);
+    const cartContainerRef = useRef<HTMLDivElement>(null);
     
     // Receipt print ref
     const receiptRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
         contentRef: receiptRef,
     });
+
+    // Auto-scroll cart to bottom when items are added
+    useEffect(() => {
+        if (cartContainerRef.current) {
+            cartContainerRef.current.scrollTop = cartContainerRef.current.scrollHeight;
+        }
+    }, [activeSession.cart]);
 
     // Check for first-time onboarding
     useEffect(() => {
@@ -775,11 +783,11 @@ export default function POSPage() {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50/50 p-4 pb-12 gap-6 font-sans">
+        <div className="flex h-screen bg-white pb-12 font-sans overflow-hidden">
             <Toaster position="top-right" />
             
-            {/* Left Panel: Products & Search (70%) */}
-            <div className="flex-1 flex flex-col bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden relative">
+            {/* Left Panel: Products & Search (50%) - FIXED / FLUSH */}
+            <div className="w-1/2 flex flex-col bg-white border-r border-gray-100 overflow-hidden relative">
                 
                 {/* Header & Search */}
                 <div className="p-6 border-b border-gray-100 bg-white z-10">
@@ -854,7 +862,7 @@ export default function POSPage() {
                             <p className="text-lg">No products found</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
+                        <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 pb-20">
                             {displayedProducts.map((product, gridIdx) => {
                                 const price = product.discounted_price || product.price;
                                 const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
@@ -907,8 +915,8 @@ export default function POSPage() {
                 </div>
             </div>
 
-            {/* Right Panel: Cart & Checkout (30%) */}
-            <div className="w-[400px] flex flex-col bg-white rounded-3xl shadow-xl shadow-primary/5 border border-primary/10 overflow-hidden z-20 relative">
+            {/* Right Panel: Cart & Checkout (50%) - FIXED / FLUSH */}
+            <div className="w-1/2 flex flex-col bg-white border-l border-gray-100 overflow-hidden z-20 relative shadow-2xl shadow-black/5">
                 
                 {/* Session Tabs */}
                 <div className="flex bg-gray-50/50 border-b border-gray-100 overflow-x-auto scrollbar-hide">
@@ -1001,88 +1009,99 @@ export default function POSPage() {
                 )}
                 
                 {/* Cart Header */}
-                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-primary/5 to-transparent" data-tour="cart">
+                <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white" data-tour="cart">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+                        <h2 className="text-xl font-black tracking-tighter text-gray-900 flex items-center gap-2">
                             Current Order
-                            <kbd className="px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded text-[9px] font-mono font-bold border border-gray-200">Alt+C</kbd>
+                            <kbd className="px-1.5 py-0.5 bg-white text-gray-400 rounded text-[9px] font-mono font-bold border border-gray-200">Alt+C</kbd>
                         </h2>
-                        <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm shadow-primary/30">
-                            {activeSession.cart.reduce((s, i) => s + i.cart_quantity, 0)} Items
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Total Summary</span>
+                                <div className="flex gap-1">
+                                    <span className="bg-gray-100 text-gray-700 text-[11px] font-black px-3 py-1 rounded-lg border border-gray-200 flex items-center gap-1">
+                                        <span className="text-gray-400">Items:</span> {activeSession.cart.length}
+                                    </span>
+                                    <span className="bg-primary text-white text-[11px] font-black px-3 py-1 rounded-lg shadow-lg shadow-primary/20 flex items-center gap-1">
+                                        <span className="text-white/60">Qty:</span> {activeSession.cart.reduce((s, i) => s + i.cart_quantity, 0)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/30">
+                {/* Cart Items Table */}
+                <div ref={cartContainerRef} className="flex-1 overflow-y-auto bg-gray-50/10 border-b border-gray-100 scroll-smooth">
                     {activeSession.cart.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 px-6">
+                        <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 px-6 p-4">
                             <ShoppingCart size={48} className="mb-4 text-gray-300" strokeWidth={1.5} />
                             <p className="text-lg font-medium text-gray-600">Cart is empty</p>
                             <p className="text-sm mt-1">Scan a product or click items on the left to add them to the bill.</p>
                         </div>
                     ) : (
-                        activeSession.cart.map((item, cartIdx) => {
-                            const price = item.price;
-                            const isCartActive = cartIdx === activeCartIndex && currentFocus === 'cart';
-                            return (
-                                <div key={`${item.id}-${item.batch_id}`} 
-                                    data-cart-index={cartIdx}
-                                    className={`flex gap-3 bg-white p-3 rounded-2xl border shadow-sm relative group transition-all duration-150
-                                        ${isCartActive 
-                                            ? 'border-primary border-l-4 bg-primary/5 shadow-md shadow-primary/10' 
-                                            : 'border-gray-100'
-                                        }`}
-                                >                                    <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                         {item.image ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
-                                                <img src={item.image} alt={item.name} className="object-cover w-full h-full" />
-                                            ) : (
-                                                <ShoppingCart className="text-gray-300" size={20} />
-                                            )}
-                                    </div>
-                                    <div className="flex-1 min-w-0 pr-4">
-                                        <div className="flex justify-between items-start">
-                                            <h4 className="text-sm font-semibold text-gray-800 line-clamp-1">{item.name}</h4>
-                                            <button 
-                                                onClick={() => removeFromCart(item.id, item.batch_id)}
-                                                className="text-gray-300 hover:text-red-500 transition-colors p-1"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <p className="text-primary font-bold text-sm">₹{price.toFixed(2)}</p>
-                                            {item.batch_name && (
-                                                <span className="bg-primary/10 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                                                    {item.batch_name}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex justify-between items-center mt-2">
-                                            <div className="flex items-center bg-gray-50 rounded-lg p-0.5 border border-gray-100">
-                                                <button onClick={() => updateQuantity(item.id, -1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
-                                                    <Minus size={12} />
+                        <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                    <th className="px-6 py-3">Item Details</th>
+                                    <th className="px-4 py-3 text-center">Quantity</th>
+                                    <th className="px-4 py-3 text-right">Price</th>
+                                    <th className="px-6 py-3 text-right">Total</th>
+                                    <th className="px-4 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {activeSession.cart.map((item, cartIdx) => {
+                                    const isCartActive = cartIdx === activeCartIndex && currentFocus === 'cart';
+                                    return (
+                                        <tr 
+                                            key={`${item.id}-${item.batch_id}`} 
+                                            className={`group transition-all ${isCartActive ? 'bg-primary/5' : 'bg-white hover:bg-gray-50/50'}`}
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-gray-800 line-clamp-1">{item.name}</span>
+                                                    {item.batch_name && (
+                                                        <span className="text-[10px] text-primary font-bold uppercase mt-0.5 tracking-tighter">Batch: {item.batch_name}</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center justify-center bg-gray-100 rounded-lg p-0.5 w-fit mx-auto border border-gray-200/50">
+                                                    <button onClick={() => updateQuantity(item.id, -1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
+                                                        <Minus size={10} />
+                                                    </button>
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        value={item.cart_quantity} 
+                                                        onChange={(e) => setQuantity(item.id, e.target.value, item.batch_id)}
+                                                        className="w-12 text-center text-xs font-black bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                    />
+                                                    <button onClick={() => updateQuantity(item.id, 1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
+                                                        <Plus size={10} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 text-right text-sm font-medium text-gray-500">
+                                                ₹{item.price.toFixed(2)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right text-sm font-black text-gray-900">
+                                                ₹{Math.round(item.price * item.cart_quantity)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right">
+                                                <button 
+                                                    onClick={() => removeFromCart(item.id, item.batch_id)}
+                                                    className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                >
+                                                    <X size={14} />
                                                 </button>
-                                                <input 
-                                                    type="number" 
-                                                    step="any"
-                                                    value={item.cart_quantity} 
-                                                    onChange={(e) => setQuantity(item.id, e.target.value, item.batch_id)}
-                                                    className="w-14 text-center text-sm font-bold bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                                <button onClick={() => updateQuantity(item.id, 1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
-                                                    <Plus size={12} />
-                                                </button>
-                                            </div>
-                                            <div className="text-sm font-bold text-gray-900">
-                                                ₹{Math.round(price * item.cart_quantity)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     )}
                 </div>
 
@@ -1108,106 +1127,110 @@ export default function POSPage() {
                                 />
                             </div>
                         </div>
-                        <div className="pt-3 border-t border-dashed border-gray-200 flex justify-between items-center">
-                            <span className="text-lg font-bold text-gray-900">Total</span>
-                            <span className="text-3xl font-black text-primary tracking-tight">₹{total.toFixed(0)}</span>
+                        <div className="pt-4 border-t-2 border-dashed border-gray-200 flex justify-between items-center">
+                            <span className="text-xl font-black text-gray-900 uppercase tracking-tighter">Total</span>
+                            <span className="text-5xl font-black text-primary tracking-tighter">₹{total.toFixed(0)}</span>
                         </div>
                     </div>
 
                     <div className="mb-4 space-y-3">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Customer Details (Optional)</p>
+                    <div className="mb-4 space-y-4">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Customer Details (Optional)</p>
                         
-                        <div className="relative">
-                            <input
-                                ref={mobileInputRef}
-                                type="tel"
-                                placeholder="Mobile Number (Alt+M)"
-                                value={activeSession.customerMobile}
-                                maxLength={10}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, ''); // Allow only digits
-                                    if (val.length <= 10) {
-                                        updateActiveSession({ 
-                                            customerMobile: val,
-                                            verificationStatus: val.length < 10 ? null : activeSession.verificationStatus
-                                        });
-                                        setShowSuggestions(val.length >= 3);
-                                    }
-                                }}
-                                onBlur={async (e) => {
-                                    setTimeout(() => setShowSuggestions(false), 200);
-                                    const mobile = e.target.value;
-                                    if(mobile.length >= 10) {
-                                        try {
-                                            const response = await api.get(`/products/erp/verify-pos-customer/?mobile_number=${mobile}`);
-                                            const data = response.data;
-                                            updateActiveSession({
-                                                verificationStatus: data.status,
-                                                customerName: data.name && !activeSession.customerName ? data.name : activeSession.customerName
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="relative">
+                                <input
+                                    ref={mobileInputRef}
+                                    type="tel"
+                                    placeholder="Mobile Number (Alt+M)"
+                                    value={activeSession.customerMobile}
+                                    maxLength={10}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, ''); // Allow only digits
+                                        if (val.length <= 10) {
+                                            updateActiveSession({ 
+                                                customerMobile: val,
+                                                verificationStatus: val.length < 10 ? null : activeSession.verificationStatus
                                             });
-                                        } catch (err) {
-                                            console.error(err);
+                                            setShowSuggestions(val.length >= 3);
                                         }
-                                    }
-                                }}
-                                onFocus={() => { setShowSuggestions(true); setCurrentFocus('customer'); }}
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2.5 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                    }}
+                                    onBlur={async (e) => {
+                                        setTimeout(() => setShowSuggestions(false), 200);
+                                        const mobile = e.target.value;
+                                        if(mobile.length >= 10) {
+                                            try {
+                                                const response = await api.get(`/products/erp/verify-pos-customer/?mobile_number=${mobile}`);
+                                                const data = response.data;
+                                                updateActiveSession({
+                                                    verificationStatus: data.status,
+                                                    customerName: data.name && !activeSession.customerName ? data.name : activeSession.customerName
+                                                });
+                                            } catch (err) {
+                                                console.error(err);
+                                            }
+                                        }
+                                    }}
+                                    onFocus={() => { setShowSuggestions(true); setCurrentFocus('customer'); }}
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                                />
+                                {activeSession.verificationStatus === 'verified' && (
+                                    <span className="absolute right-3 -top-2 text-[8px] font-black text-green-600 bg-green-50 px-2 py-0.5 rounded shadow-sm border border-green-100">VERIFIED USER</span>
+                                )}
+                                {activeSession.verificationStatus === 'returning_guest' && (
+                                    <span className="absolute right-3 -top-2 text-[8px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded shadow-sm border border-blue-100">WALK-IN GUEST</span>
+                                )}
+
+                                {/* Dropdown Suggestions */}
+                                {showSuggestions && (customerSuggestions.length > 0 || isLoadingSuggestions) && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
+                                        {isLoadingSuggestions ? (
+                                            <div className="p-4 flex items-center justify-center gap-2 text-sm text-gray-500 font-medium">
+                                                <Loader2 size={16} className="animate-spin" /> Fetching...
+                                            </div>
+                                        ) : (
+                                            <ul className="max-h-56 overflow-y-auto">
+                                                {customerSuggestions.map((sug, i) => (
+                                                    <li 
+                                                        key={i}
+                                                        onMouseDown={(e) => {
+                                                            e.preventDefault(); // Prevent input blur from firing first
+                                                            updateActiveSession({
+                                                                customerMobile: sug.mobile,
+                                                                customerName: sug.name,
+                                                                verificationStatus: sug.status
+                                                            });
+                                                            setShowSuggestions(false);
+                                                        }}
+                                                        className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex justify-between items-center transition-colors border-b last:border-b-0"
+                                                    >
+                                                        <div>
+                                                            <div className="font-bold text-gray-800 text-[13px]">{sug.mobile}</div>
+                                                            <div className="text-xs text-gray-500 font-medium">{sug.name || 'Unknown Name'}</div>
+                                                        </div>
+                                                        {sug.status === 'verified' && (
+                                                            <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-md uppercase tracking-wider">App User</span>
+                                                        )}
+                                                        {sug.status === 'returning_guest' && (
+                                                            <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Walk-in</span>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <input
+                                type="text"
+                                placeholder="Customer Name"
+                                value={activeSession.customerName}
+                                onChange={(e) => updateActiveSession({ customerName: e.target.value })}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                             />
-                            {activeSession.verificationStatus === 'verified' && (
-                                <span className="absolute right-3 top-3 text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded">✓ Verified App User</span>
-                            )}
-                            {activeSession.verificationStatus === 'returning_guest' && (
-                                <span className="absolute right-3 top-3 text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">✓ Returning Walk-in</span>
-                            )}
-
-                            {/* Dropdown Suggestions */}
-                            {showSuggestions && (customerSuggestions.length > 0 || isLoadingSuggestions) && (
-                                <div className="absolute z-10 w-full mt-1 bg-white rounded-xl border border-gray-100 shadow-xl overflow-hidden">
-                                    {isLoadingSuggestions ? (
-                                        <div className="p-4 flex items-center justify-center gap-2 text-sm text-gray-500 font-medium">
-                                            <Loader2 size={16} className="animate-spin" /> Fetching...
-                                        </div>
-                                    ) : (
-                                        <ul className="max-h-56 overflow-y-auto">
-                                            {customerSuggestions.map((sug, i) => (
-                                                <li 
-                                                    key={i}
-                                                    onMouseDown={(e) => {
-                                                        e.preventDefault(); // Prevent input blur from firing first
-                                                        updateActiveSession({
-                                                            customerMobile: sug.mobile,
-                                                            customerName: sug.name,
-                                                            verificationStatus: sug.status
-                                                        });
-                                                        setShowSuggestions(false);
-                                                    }}
-                                                    className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer flex justify-between items-center transition-colors border-b last:border-b-0"
-                                                >
-                                                    <div>
-                                                        <div className="font-bold text-gray-800 text-[13px]">{sug.mobile}</div>
-                                                        <div className="text-xs text-gray-500 font-medium">{sug.name || 'Unknown Name'}</div>
-                                                    </div>
-                                                    {sug.status === 'verified' && (
-                                                        <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-md uppercase tracking-wider">App User</span>
-                                                    )}
-                                                    {sug.status === 'returning_guest' && (
-                                                        <span className="text-[9px] font-bold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-md uppercase tracking-wider">Walk-in</span>
-                                                    )}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            )}
                         </div>
-
-                        <input
-                            type="text"
-                            placeholder="Customer Name"
-                            value={activeSession.customerName}
-                            onChange={(e) => updateActiveSession({ customerName: e.target.value })}
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2.5 px-4 text-sm focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
-                        />
+                    </div>
                     </div>
 
                     <div className="mb-4" data-tour="payment">
@@ -1241,14 +1264,14 @@ export default function POSPage() {
                     <button
                         onClick={handleCheckout}
                         disabled={activeSession.cart.length === 0 || isCheckoutLoading}
-                        className="w-full bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/25 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-3 transition-all active:scale-[0.98]"
+                        className="w-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-5 rounded-2xl font-black text-xl flex justify-center items-center gap-3 transition-all active:scale-[0.98] border-b-4 border-primary/20"
                         data-tour="checkout"
                     >
                         {isCheckoutLoading ? (
-                            <Loader2 className="animate-spin" size={24} />
+                            <Loader2 className="animate-spin" size={28} />
                         ) : (
                             <>
-                                Complete Bill <kbd className="ml-1 px-2 py-0.5 bg-white/20 text-white/90 rounded text-[10px] font-mono font-bold border border-white/20">Ctrl+↵</kbd>
+                                COMPLETE BILL <kbd className="ml-2 px-2.5 py-1 bg-white/20 text-white/90 rounded-lg text-xs font-mono font-bold border border-white/30">Ctrl+↵</kbd>
                             </>
                         )}
                     </button>
