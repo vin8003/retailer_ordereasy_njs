@@ -257,6 +257,9 @@ export const offerService = {
   fetchOfferDetails: (id: string | number) => api.get(`offers/${id}/`),
   createOffer: (data: any) => api.post('offers/', data),
   updateOffer: (id: string | number, data: any) => api.put(`offers/${id}/`, data),
+  calculateOffers: (items: { product_id: number; quantity: number; price: number; batch_id?: number | null }[]) =>
+    api.post('offers/calculate/', { items, channel: 'pos' }),
 };
 
 export default api;
+

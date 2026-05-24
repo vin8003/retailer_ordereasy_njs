@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import api from '@/services/api';
+import api, { offerService } from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
-    MessageSquare, Check, Keyboard, Users
+    MessageSquare, Check, Keyboard, Users, Tag
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
@@ -100,6 +100,51 @@ export default function POSPage() {
     const [activeSessionId, setActiveSessionId] = useState('1');
 
     const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
+    
+    const [offerCalculation, setOfferCalculation] = useState<{
+        totalSavings: number;
+        appliedOffers: any[];
+        isLoading: boolean;
+    }>({
+        totalSavings: 0,
+        appliedOffers: [],
+        isLoading: false
+    });
+
+    useEffect(() => {
+        if (!activeSession || !activeSession.cart || activeSession.cart.length === 0) {
+            setOfferCalculation({
+                totalSavings: 0,
+                appliedOffers: [],
+                isLoading: false
+            });
+            return;
+        }
+
+        setOfferCalculation(prev => ({ ...prev, isLoading: true }));
+
+        const timer = setTimeout(async () => {
+            try {
+                const itemsPayload = activeSession.cart.map(item => ({
+                    product_id: item.id,
+                    quantity: item.cart_quantity,
+                    price: item.price
+                }));
+
+                const response = await offerService.calculateOffers(itemsPayload);
+                setOfferCalculation({
+                    totalSavings: parseFloat(response.data.total_savings) || 0,
+                    appliedOffers: response.data.applied_offers || [],
+                    isLoading: false
+                });
+            } catch (error) {
+                console.error("Failed to calculate POS offers:", error);
+                setOfferCalculation(prev => ({ ...prev, isLoading: false }));
+            }
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [activeSession.cart, activeSessionId]);
     
     const [customerSuggestions, setCustomerSuggestions] = useState<CustomerSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -559,7 +604,7 @@ export default function POSPage() {
         return sum + (item.price * item.cart_quantity);
     }, 0));
 
-    const total = subtotal - activeSession.discountAmount;
+    const total = Math.max(0, subtotal - Math.max(offerCalculation.totalSavings, activeSession.discountAmount));
 
     const handleCheckout = async () => {
         if (activeSession.cart.length === 0) {
@@ -1168,8 +1213,45 @@ export default function POSPage() {
                             <span>Subtotal</span>
                             <span>₹{subtotal.toFixed(0)}</span>
                         </div>
+                        
+                        {/* Auto applied offers listing */}
+                        {offerCalculation.appliedOffers.length > 0 && (
+                            <div className="p-3 bg-green-50 rounded-2xl border border-green-100 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="flex items-center gap-1.5 text-xs font-black text-green-700 uppercase tracking-widest">
+                                    <Tag size={12} /> Applied Offers ({offerCalculation.appliedOffers.length})
+                                </div>
+                                <div className="space-y-1">
+                                    {offerCalculation.appliedOffers.map((off: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between text-xs text-green-600 font-medium">
+                                            <span>{off.name || off.description}</span>
+                                            <span className="font-bold">−₹{Math.round(off.savings || 0)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {offerCalculation.totalSavings > 0 && (
+                            <div className="flex justify-between items-center text-sm text-green-600 font-bold">
+                                <span className="flex items-center gap-1">
+                                    <Tag size={14} /> Offer Savings
+                                </span>
+                                <span>−₹{offerCalculation.totalSavings.toFixed(0)}</span>
+                            </div>
+                        )}
+
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600 font-medium">Discount</span>
+                            <span className="text-gray-600 font-medium flex flex-col">
+                                <span>Manual Discount</span>
+                                {activeSession.discountAmount > 0 && offerCalculation.totalSavings > 0 && (
+                                    <span className="text-[10px] text-gray-400 font-normal">
+                                        {activeSession.discountAmount >= offerCalculation.totalSavings 
+                                            ? '(Manual discount overrides automatic offers)' 
+                                            : '(Automatic offers override manual discount)'
+                                        }
+                                    </span>
+                                )}
+                            </span>
                             <div className="relative w-24">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium font-sans">₹</span>
                                 <input 
@@ -1183,6 +1265,13 @@ export default function POSPage() {
                                 />
                             </div>
                         </div>
+
+                        {offerCalculation.isLoading && (
+                            <div className="flex justify-center items-center gap-1.5 py-1 text-xs text-primary/60 font-medium">
+                                <Loader2 size={12} className="animate-spin" /> Calculating real-time offers...
+                            </div>
+                        )}
+
                         <div className="pt-4 border-t-2 border-dashed border-gray-200 flex justify-between items-center">
                             <span className="text-xl font-black text-gray-900 uppercase tracking-tighter">Total</span>
                             <span className="text-5xl font-black text-primary tracking-tighter">₹{total.toFixed(0)}</span>
