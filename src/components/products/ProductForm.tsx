@@ -57,6 +57,14 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [isSearchingMaster, setIsSearchingMaster] = useState(false);
 
+    // Grouping State (KAN-13)
+    const [isParentBulk, setIsParentBulk] = useState(initialData?.is_parent_bulk ?? false);
+    const [parentBulkProductSearch, setParentBulkProductSearch] = useState("");
+    const [parentBulkProductId, setParentBulkProductId] = useState<string>(initialData?.parent_bulk_product?.toString() || "");
+    const [conversionFactor, setConversionFactor] = useState(initialData?.conversion_factor ?? "");
+    const [parentProductSuggestions, setParentProductSuggestions] = useState<any[]>([]);
+    const [isSearchingParents, setIsSearchingParents] = useState(false);
+
     // Handle category: could be ID (create) or Object (edit)
     const getInitialCategoryId = () => {
         if (!initialData?.category) return "";
@@ -101,12 +109,52 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     const found = allCatsRes.data.find((c: any) => c.id === id);
                     if (found) setCategorySearch(found.name);
                 }
+
+                // If editing, try to get parent product name if ID is provided
+                if (isEditing && initialData?.parent_bulk_product) {
+                    try {
+                        const parentId = typeof initialData.parent_bulk_product === 'object' ? initialData.parent_bulk_product.id : initialData.parent_bulk_product;
+                        const parentRes = await productService.fetchProductDetails(parentId);
+                        if (parentRes.data) {
+                            setParentBulkProductSearch(parentRes.data.name);
+                            setParentProductSuggestions([parentRes.data]);
+                        }
+                    } catch (e) {
+                        console.error("Failed to load parent product name", e);
+                    }
+                }
             } catch (error) {
                 console.error("Failed to load form data", error);
             }
         };
         fetchInitialData();
     }, [isEditing, initialData]);
+
+    useEffect(() => {
+        const fetchParents = async () => {
+            if (!parentBulkProductSearch) {
+                setParentProductSuggestions([]);
+                return;
+            }
+            // Skip search if the user just selected a suggestion
+            const exactMatch = parentProductSuggestions.find(s => s.name === parentBulkProductSearch);
+            if (exactMatch && exactMatch.id.toString() === parentBulkProductId) return;
+
+            setIsSearchingParents(true);
+            try {
+                const res = await productService.searchProducts(parentBulkProductSearch);
+                const items = res.data?.results || [];
+                setParentProductSuggestions(items);
+            } catch (err) {
+                console.error("Failed to search parent products", err);
+            } finally {
+                setIsSearchingParents(false);
+            }
+        };
+
+        const timer = setTimeout(fetchParents, 300);
+        return () => clearTimeout(timer);
+    }, [parentBulkProductSearch, parentBulkProductId, parentProductSuggestions]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -230,6 +278,14 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (hasBatches) {
                 formData.append("batches", JSON.stringify(batches));
             }
+
+            // KAN-13 Product Grouping fields
+            formData.append("is_parent_bulk", String(isParentBulk));
+            if (!isParentBulk) {
+                if (parentBulkProductId) formData.append("parent_bulk_product", parentBulkProductId);
+                if (conversionFactor) formData.append("conversion_factor", conversionFactor);
+            }
+
             // Explicitly set is_available to true so it shows up in Customer App
             formData.append("is_available", "true");
 
@@ -647,6 +703,61 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         suggestions={allCategories}
                         placeholder="Search category..."
                     />
+                </div>
+
+                {/* Product Grouping (Pack & Bulk sizing) KAN-13 */}
+                <div className="md:col-span-2 space-y-4 rounded-md border p-4 bg-muted/5 mt-4">
+                    <h3 className="text-sm font-semibold text-primary">Fractional Sizing (Pack & Bulk)</h3>
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="isParentBulk"
+                            checked={isParentBulk}
+                            onCheckedChange={(checked) => {
+                                setIsParentBulk(checked);
+                                if (checked) {
+                                    setParentBulkProductId("");
+                                    setParentBulkProductSearch("");
+                                    setConversionFactor("");
+                                }
+                            }}
+                        />
+                        <Label htmlFor="isParentBulk" className="flex-1 cursor-pointer">
+                            Is Master Bulk Product?
+                            <span className="block text-xs font-normal text-muted-foreground">
+                                E.g. A 50kg bag that is split into smaller packs. If ON, you cannot select a parent.
+                            </span>
+                        </Label>
+                    </div>
+
+                    {!isParentBulk && (
+                        <div className="grid gap-6 md:grid-cols-2 mt-4 animate-in slide-in-from-top-2 duration-300">
+                            <div className="space-y-2">
+                                <Label htmlFor="parentBulkProduct">Parent Bulk Product</Label>
+                                <Autocomplete
+                                    value={parentBulkProductSearch}
+                                    onChange={(val) => {
+                                        setParentBulkProductSearch(val);
+                                        if (!val) setParentBulkProductId("");
+                                    }}
+                                    onSelect={(id) => setParentBulkProductId(id)}
+                                    suggestions={parentProductSuggestions}
+                                    placeholder="Search parent product..."
+                                    isLoading={isSearchingParents}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="conversionFactor">Conversion Factor</Label>
+                                <Input
+                                    id="conversionFactor"
+                                    type="number"
+                                    step="0.0001"
+                                    placeholder="e.g. 0.10 for 5kg from 50kg"
+                                    value={conversionFactor}
+                                    onChange={(e) => setConversionFactor(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Active Status */}
