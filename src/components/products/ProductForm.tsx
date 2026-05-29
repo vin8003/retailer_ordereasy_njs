@@ -140,7 +140,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             }
             // Skip search if the user just selected a suggestion
             const exactMatch = parentProductSuggestions.find(s => s.name === parentBulkProductSearch);
-            if (exactMatch && exactMatch.id.toString() === parentBulkProductId) return;
+            // If the ID is still set and matches exactly, we don't need to search again
+            if (exactMatch && parentBulkProductId && exactMatch.id.toString() === parentBulkProductId) return;
 
             setIsSearchingParents(true);
             try {
@@ -786,7 +787,9 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                         value={parentBulkProductSearch}
                                         onChange={(val) => {
                                             setParentBulkProductSearch(val);
-                                            if (!val) setParentBulkProductId("");
+                                            // Always clear the ID when typing. 
+                                            // Autocomplete's onSelect will immediately set it back if they clicked an item.
+                                            setParentBulkProductId("");
                                         }}
                                         onSelect={(id) => setParentBulkProductId(id)}
                                         suggestions={parentProductSuggestions}

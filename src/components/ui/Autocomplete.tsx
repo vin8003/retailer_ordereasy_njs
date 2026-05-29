@@ -29,17 +29,11 @@ export function Autocomplete({
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (value && isOpen) {
-            const filtered = suggestions.filter(s => {
-                const name = typeof s === 'string' ? s : s.name;
-                return name.toLowerCase().includes(value.toLowerCase());
-            });
-            setFilteredSuggestions(filtered);
-            setActiveIndex(-1);
-        } else {
+        if (isOpen) {
             setFilteredSuggestions(suggestions);
+            setActiveIndex(-1);
         }
-    }, [value, suggestions, isOpen]);
+    }, [suggestions, isOpen]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
