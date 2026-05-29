@@ -95,24 +95,39 @@ export function Autocomplete({
             />
             {isOpen && (filteredSuggestions.length > 0 || isLoading) && (
                 <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-200">
-                    {isLoading ? (
-                        <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+                    {isLoading && filteredSuggestions.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground animate-pulse">Loading...</div>
                     ) : (
-                        filteredSuggestions.map((s, i) => {
-                            const name = typeof s === 'string' ? s : s.name;
-                            return (
-                                <div
-                                    key={i}
-                                    className={cn(
-                                        "p-2 text-sm cursor-pointer transition-colors",
-                                        i === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
-                                    )}
-                                    onClick={() => handleSelect(s)}
-                                >
-                                    {name}
+                        <>
+                            {filteredSuggestions.length === 0 && !isLoading ? (
+                                <div className="p-2 text-sm text-muted-foreground">No results found.</div>
+                            ) : (
+                                filteredSuggestions.map((s, i) => {
+                                    const name = typeof s === 'string' ? s : s.name;
+                                    return (
+                                        <div
+                                            key={i}
+                                            className={cn(
+                                                "p-2 text-sm cursor-pointer transition-colors",
+                                                i === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+                                            )}
+                                            onMouseDown={(e) => {
+                                                // Prevent input from losing focus before click
+                                                e.preventDefault();
+                                            }}
+                                            onClick={() => handleSelect(s)}
+                                        >
+                                            {name}
+                                        </div>
+                                    );
+                                })
+                            )}
+                            {isLoading && filteredSuggestions.length > 0 && (
+                                <div className="p-2 text-xs text-muted-foreground text-center bg-muted/50 border-t animate-pulse">
+                                    Updating...
                                 </div>
-                            );
-                        })
+                            )}
+                        </>
                     )}
                 </div>
             )}

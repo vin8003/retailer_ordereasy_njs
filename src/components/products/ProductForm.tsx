@@ -157,7 +157,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
         const timer = setTimeout(fetchParents, 300);
         return () => clearTimeout(timer);
-    }, [parentBulkProductSearch, parentBulkProductId, parentProductSuggestions]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [parentBulkProductSearch, parentBulkProductId]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
