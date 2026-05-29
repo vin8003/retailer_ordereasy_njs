@@ -59,11 +59,13 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
     // Grouping State (KAN-13)
     const [isParentBulk, setIsParentBulk] = useState(initialData?.is_parent_bulk ?? false);
+    const [isLinkedToParent, setIsLinkedToParent] = useState(!!initialData?.parent_bulk_product);
     const [parentBulkProductSearch, setParentBulkProductSearch] = useState("");
     const [parentBulkProductId, setParentBulkProductId] = useState<string>(initialData?.parent_bulk_product?.toString() || "");
     const [conversionFactor, setConversionFactor] = useState(initialData?.conversion_factor ?? "");
     const [parentProductSuggestions, setParentProductSuggestions] = useState<any[]>([]);
     const [isSearchingParents, setIsSearchingParents] = useState(false);
+    const [childIsAvailable, setChildIsAvailable] = useState(initialData?.is_available ?? true);
 
     // Handle category: could be ID (create) or Object (edit)
     const getInitialCategoryId = () => {
@@ -281,13 +283,19 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
             // KAN-13 Product Grouping fields
             formData.append("is_parent_bulk", String(isParentBulk));
-            if (!isParentBulk) {
+            if (isLinkedToParent && !isParentBulk) {
                 if (parentBulkProductId) formData.append("parent_bulk_product", parentBulkProductId);
                 if (conversionFactor) formData.append("conversion_factor", conversionFactor);
+                // Child products: force quantity to 0 (stock comes from parent)
+                formData.set("quantity", "0");
             }
 
-            // Explicitly set is_available to true so it shows up in Customer App
-            formData.append("is_available", "true");
+            // is_available: for child products use the toggle, otherwise default true
+            if (isLinkedToParent && parentBulkProductId) {
+                formData.append("is_available", String(childIsAvailable));
+            } else {
+                formData.append("is_available", "true");
+            }
 
             if (imageFile) {
                 formData.append("image", imageFile);
@@ -433,10 +441,11 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                 </div>
 
                 {/* Batch System Toggle */}
-                <div className="md:col-span-2 flex items-center space-x-2 rounded-md border p-4 bg-primary/5 border-primary/20">
+                <div className={`md:col-span-2 flex items-center space-x-2 rounded-md border p-4 bg-primary/5 border-primary/20 ${isLinkedToParent ? 'opacity-50' : ''}`}>
                     <Switch
                         id="hasBatches"
                         checked={hasBatches}
+                        disabled={isLinkedToParent}
                         onCheckedChange={(checked) => {
                             setHasBatches(checked);
                             if (checked && batches.length === 0) {
@@ -457,7 +466,9 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     <Label htmlFor="hasBatches" className="flex-1 cursor-pointer font-bold text-primary">
                         Enable Multi-Batch Inventory System
                         <span className="block text-xs font-normal text-muted-foreground">
-                            Turn this ON if you have same products with different MRPs, Barcodes, or Purchase Prices.
+                            {isLinkedToParent
+                                ? "Disabled: Batch management is handled by the parent bulk product."
+                                : "Turn this ON if you have same products with different MRPs, Barcodes, or Purchase Prices."}
                         </span>
                     </Label>
                 </div>
@@ -527,10 +538,17 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                     id="quantity"
                                     type="number"
                                     placeholder="0"
-                                    value={quantity}
+                                    value={isLinkedToParent ? quantity : quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
                                     required={trackInventory && !hasBatches}
+                                    disabled={isLinkedToParent}
+                                    className={isLinkedToParent ? 'opacity-50 cursor-not-allowed' : ''}
                                 />
+                                {isLinkedToParent && (
+                                    <p className="text-xs text-blue-600 font-medium">
+                                        ⓘ Stock is automatically synced from the parent bulk product. Manual editing is disabled.
+                                    </p>
+                                )}
                             </div>
                         )}
                     </>
@@ -708,6 +726,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                 {/* Product Grouping (Pack & Bulk sizing) KAN-13 */}
                 <div className="md:col-span-2 space-y-4 rounded-md border p-4 bg-muted/5 mt-4">
                     <h3 className="text-sm font-semibold text-primary">Fractional Sizing (Pack & Bulk)</h3>
+
+                    {/* Toggle 1: Is Master Bulk Product */}
                     <div className="flex items-center space-x-2">
                         <Switch
                             id="isParentBulk"
@@ -715,6 +735,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                             onCheckedChange={(checked) => {
                                 setIsParentBulk(checked);
                                 if (checked) {
+                                    // Cannot be both parent and child
+                                    setIsLinkedToParent(false);
                                     setParentBulkProductId("");
                                     setParentBulkProductSearch("");
                                     setConversionFactor("");
@@ -722,39 +744,94 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                             }}
                         />
                         <Label htmlFor="isParentBulk" className="flex-1 cursor-pointer">
-                            Is Master Bulk Product?
+                            Set as Master Bulk Product
                             <span className="block text-xs font-normal text-muted-foreground">
-                                E.g. A 50kg bag that is split into smaller packs. If ON, you cannot select a parent.
+                                Turn ON if this is the main large-size product (e.g. 50kg bag) from which smaller packs are derived.
                             </span>
                         </Label>
                     </div>
 
+                    {/* Toggle 2: Link to a Parent Bulk Product */}
                     {!isParentBulk && (
-                        <div className="grid gap-6 md:grid-cols-2 mt-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="space-y-2">
-                                <Label htmlFor="parentBulkProduct">Parent Bulk Product</Label>
-                                <Autocomplete
-                                    value={parentBulkProductSearch}
-                                    onChange={(val) => {
-                                        setParentBulkProductSearch(val);
-                                        if (!val) setParentBulkProductId("");
-                                    }}
-                                    onSelect={(id) => setParentBulkProductId(id)}
-                                    suggestions={parentProductSuggestions}
-                                    placeholder="Search parent product..."
-                                    isLoading={isSearchingParents}
-                                />
+                        <div className="flex items-center space-x-2 mt-2">
+                            <Switch
+                                id="isLinkedToParent"
+                                checked={isLinkedToParent}
+                                onCheckedChange={(checked) => {
+                                    setIsLinkedToParent(checked);
+                                    if (!checked) {
+                                        setParentBulkProductId("");
+                                        setParentBulkProductSearch("");
+                                        setConversionFactor("");
+                                        setChildIsAvailable(true);
+                                    }
+                                }}
+                            />
+                            <Label htmlFor="isLinkedToParent" className="flex-1 cursor-pointer">
+                                Link to a Master Bulk Product
+                                <span className="block text-xs font-normal text-muted-foreground">
+                                    Turn ON to link this product as a smaller pack (e.g. 5kg) of a master bulk product. Stock will be managed by the parent.
+                                </span>
+                            </Label>
+                        </div>
+                    )}
+
+                    {/* Child fields: Parent selection, Conversion Factor, Availability */}
+                    {isLinkedToParent && !isParentBulk && (
+                        <div className="space-y-4 mt-4 animate-in slide-in-from-top-2 duration-300">
+                            <div className="grid gap-6 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="parentBulkProduct">Parent Bulk Product *</Label>
+                                    <Autocomplete
+                                        value={parentBulkProductSearch}
+                                        onChange={(val) => {
+                                            setParentBulkProductSearch(val);
+                                            if (!val) setParentBulkProductId("");
+                                        }}
+                                        onSelect={(id) => setParentBulkProductId(id)}
+                                        suggestions={parentProductSuggestions}
+                                        placeholder="Search parent product..."
+                                        isLoading={isSearchingParents}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="conversionFactor">Conversion Factor (Ratio) *</Label>
+                                    <Input
+                                        id="conversionFactor"
+                                        type="number"
+                                        step="0.0001"
+                                        placeholder="e.g. 0.10 for 5kg from 50kg"
+                                        value={conversionFactor}
+                                        onChange={(e) => setConversionFactor(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        This is the weight ratio of this pack relative to the parent. E.g. 5kg ÷ 50kg = 0.10
+                                    </p>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="conversionFactor">Conversion Factor</Label>
-                                <Input
-                                    id="conversionFactor"
-                                    type="number"
-                                    step="0.0001"
-                                    placeholder="e.g. 0.10 for 5kg from 50kg"
-                                    value={conversionFactor}
-                                    onChange={(e) => setConversionFactor(e.target.value)}
-                                />
+
+                            {/* Availability Toggle for Child */}
+                            {parentBulkProductId && (
+                                <div className="flex items-center space-x-2 rounded-md border p-4 bg-blue-50/50 border-blue-200 animate-in slide-in-from-top-2 duration-300">
+                                    <Switch
+                                        id="childIsAvailable"
+                                        checked={childIsAvailable}
+                                        onCheckedChange={setChildIsAvailable}
+                                    />
+                                    <Label htmlFor="childIsAvailable" className="flex-1 cursor-pointer">
+                                        Show on Customer App (Online)
+                                        <span className="block text-xs font-normal text-muted-foreground">
+                                            If OFF, this pack size will only be available for POS (in-store) sales, not on the customer app.
+                                        </span>
+                                    </Label>
+                                </div>
+                            )}
+
+                            <div className="rounded-md border border-amber-200 bg-amber-50/50 p-3">
+                                <p className="text-xs text-amber-800">
+                                    <strong>⚠ Note:</strong> Once linked, this product&apos;s stock will be calculated automatically from the parent product.
+                                    If this product currently has stock, please transfer it to the parent&apos;s inventory first and set this product&apos;s stock to 0.
+                                </p>
                             </div>
                         </div>
                     )}
