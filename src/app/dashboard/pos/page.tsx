@@ -74,6 +74,7 @@ interface RetailerProfile {
     gst_number?: string;
     receipt_footer?: string;
     show_gst_on_receipt?: boolean;
+    printer_size?: string;
 }
 
 export default function POSPage() {
@@ -1103,6 +1104,9 @@ export default function POSPage() {
                             retailer_name: retailerProfile?.shop_name || activeSession.completedOrder.retailer_name,
                             retailer_address: retailerProfile ? `${retailerProfile.address_line1}, ${retailerProfile.city}` : activeSession.completedOrder.retailer_address,
                             retailer_phone: retailerProfile?.contact_phone || activeSession.completedOrder.retailer_phone,
+                            retailer_printer_size: activeSession.completedOrder.retailer_printer_size || retailerProfile?.printer_size || '80mm',
+                            ledger_previous_balance: activeSession.completedOrder.ledger_previous_balance,
+                            ledger_new_balance: activeSession.completedOrder.ledger_new_balance,
                         }} 
                     />
                 )}

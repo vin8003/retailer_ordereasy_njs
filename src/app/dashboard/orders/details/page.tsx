@@ -227,7 +227,9 @@ function OrderDetailContent() {
                                     product_name: item.product_name,
                                     quantity: item.quantity,
                                     unit_price: item.price || (item.total_price / item.quantity),
-                                    total_price: item.total_price
+                                    total_price: item.total_price,
+                                    mrp: item.mrp || null,
+                                    product_price: item.product_price || null,
                                 })),
                                 subtotal: order.subtotal,
                                 discount_amount: order.discount_amount || 0,
@@ -245,7 +247,10 @@ function OrderDetailContent() {
                                 order_source: order.source === 'pos' ? 'Store Order' : 'Online Order',
                                 delivery_address: order.order_type === 'delivery' || order.delivery_mode === 'delivery'
                                     ? (order.shipping_address?.address_line1 || order.delivery_address_text || 'Address not provided') 
-                                    : 'Self Pickup'
+                                    : 'Self Pickup',
+                                retailer_printer_size: order.retailer_printer_size || retailerProfile?.printer_size || '80mm',
+                                ledger_previous_balance: order.ledger_previous_balance,
+                                ledger_new_balance: order.ledger_new_balance,
                             }}
                         />
                     )}

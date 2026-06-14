@@ -13,6 +13,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine, CheckCircle, Smartphone, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import PhoneVerification from '@/components/auth/PhoneVerification';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 interface RetailerProfile {
     // Basic
@@ -58,6 +65,7 @@ interface RetailerProfile {
     // Receipt Customization
     receiptFooter?: string;
     showGstOnReceipt: boolean;
+    printerSize: '80mm' | '58mm';
 }
 
 export default function ProfilePage() {
@@ -117,6 +125,7 @@ export default function ProfilePage() {
                     shopImage: data.shop_image,
                     receiptFooter: data.receipt_footer,
                     showGstOnReceipt: data.show_gst_on_receipt ?? true,
+                    printerSize: data.printer_size || '80mm',
                 };
                 setProfile(mappedProfile);
                 setFormData(mappedProfile);
@@ -632,6 +641,25 @@ export default function ProfilePage() {
                                     checked={formData.showGstOnReceipt}
                                     onCheckedChange={val => setFormData({ ...formData, showGstOnReceipt: val })}
                                 />
+                            </div>
+                            <div className="flex items-center justify-between border rounded-lg p-4 bg-slate-50">
+                                <div className="space-y-0.5">
+                                    <Label>Printer Size</Label>
+                                    <div className="text-sm text-muted-foreground">Choose paper size for printed receipts</div>
+                                </div>
+                                <Select
+                                    disabled={!isEditing}
+                                    value={formData.printerSize || '80mm'}
+                                    onValueChange={val => setFormData({ ...formData, printerSize: val as '80mm' | '58mm' })}
+                                >
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="Select printer size" />
+                                    </SelectTrigger>
+                                    <SelectContent position="popper">
+                                        <SelectItem value="80mm">80mm (Standard)</SelectItem>
+                                        <SelectItem value="58mm">58mm (Compact)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label>Receipt Footer Message</Label>
