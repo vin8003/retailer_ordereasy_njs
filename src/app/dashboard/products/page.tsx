@@ -38,7 +38,7 @@ export default function ProductsPage() {
     // Filter States
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedBrand, setSelectedBrand] = useState("all");
-    const [stockFilter, setStockFilter] = useState("all"); // 'all', 'in', 'out', 'low'
+    const [stockFilter, setStockFilter] = useState("all"); // 'all', 'in', 'out', 'low', 'negative'
     const [statusFilter, setStatusFilter] = useState("active");
     const [isFeaturedFilter, setIsFeaturedFilter] = useState(false);
     const [isSeasonalFilter, setIsSeasonalFilter] = useState(false);
@@ -151,6 +151,7 @@ export default function ProductsPage() {
             if (stockFilter === "in") params.in_stock = "true";
             if (stockFilter === "out") params.in_stock = "false";
             if (stockFilter === "low") params.low_stock = "true";
+            if (stockFilter === "negative") params.negative_stock = "true";
 
             if (isFeaturedFilter) params.is_featured = "true";
             if (isSeasonalFilter) params.is_seasonal = "true";
@@ -273,6 +274,7 @@ export default function ProductsPage() {
             if (stockFilter === "in") params.in_stock = "true";
             if (stockFilter === "out") params.in_stock = "false";
             if (stockFilter === "low") params.low_stock = "true";
+            if (stockFilter === "negative") params.negative_stock = "true";
 
             if (isFeaturedFilter) params.is_featured = "true";
             if (isSeasonalFilter) params.is_seasonal = "true";
@@ -350,6 +352,13 @@ export default function ProductsPage() {
                     <div className="text-sm font-medium mb-1 opacity-80 text-destructive">Out of Stock</div>
                     <div className="text-2xl font-bold">Filters</div>
                 </div>
+                <div
+                    onClick={() => setStockFilter("negative")}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${stockFilter === "negative" ? "bg-red-500 text-white border-red-500" : "bg-card hover:bg-muted"}`}
+                >
+                    <div className="text-sm font-medium mb-1 opacity-80 text-red-500">Negative Stock</div>
+                    <div className="text-2xl font-bold">Filters</div>
+                </div>
             </div>
 
             <div className="flex flex-col gap-4">
@@ -398,7 +407,15 @@ export default function ProductsPage() {
                     >
                         Low Stock (&lt;=10)
                     </Button>
-
+                    <Button
+                        variant={stockFilter === "negative" ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => setStockFilter("negative")}
+                        className="rounded-full bg-red-100 text-red-800 hover:bg-red-200 border-red-200"
+                    >
+                        Negative Stock (&lt;0)
+                    </Button>
+ 
                     <div className="h-4 w-px bg-border mx-2 hidden sm:block"></div>
 
                     <Button

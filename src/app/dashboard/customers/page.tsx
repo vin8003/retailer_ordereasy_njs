@@ -57,7 +57,6 @@ interface RetailerCustomer {
 export default function CustomersPage() {
     const router = useRouter();
     const [customers, setCustomers] = useState<RetailerCustomer[]>([]);
-    const [filteredCustomers, setFilteredCustomers] = useState<RetailerCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
@@ -66,6 +65,8 @@ export default function CustomersPage() {
     // Filter States
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [duePaymentFilter, setDuePaymentFilter] = useState('All');
+    const [customerTypeFilter, setCustomerTypeFilter] = useState('All');
     const [sortBy, setSortBy] = useState('Joined Date');
 
     // Edit Modal State
@@ -84,6 +85,23 @@ export default function CustomersPage() {
             const params: any = {};
             if (searchQuery) params.search = searchQuery;
             
+            if (statusFilter !== 'All') {
+                params.status = statusFilter === 'Blacklisted' ? 'blacklisted' : 'active';
+            }
+            if (duePaymentFilter !== 'All') {
+                params.due_payment = duePaymentFilter === 'Due Only' ? 'true' : 'false';
+            }
+            if (customerTypeFilter !== 'All') {
+                params.customer_type = customerTypeFilter === 'App Users' ? 'registered' : 'shadow';
+            }
+            
+            let sortParam = 'joined_date';
+            if (sortBy === 'Most Orders') sortParam = 'most_orders';
+            else if (sortBy === 'Highest Spent') sortParam = 'highest_spent';
+            else if (sortBy === 'Lowest Rating') sortParam = 'lowest_rating';
+            else if (sortBy === 'Recent Activity') sortParam = 'recent_activity';
+            params.sort_by = sortParam;
+
             if (isAppend && nextPage) {
                 const url = new URL(nextPage);
                 const p = url.searchParams.get('page');
@@ -127,47 +145,14 @@ export default function CustomersPage() {
             setLoading(false);
             setIsFetchingMore(false);
         }
-    }, [searchQuery, nextPage]);
+    }, [searchQuery, statusFilter, duePaymentFilter, customerTypeFilter, sortBy, nextPage]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchCustomers(false);
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchQuery]);
-
-    useEffect(() => {
-        let result = [...customers];
-
-        // 2. Status Filter
-        if (statusFilter !== 'All') {
-            const isBlacklisted = statusFilter === 'Blacklisted';
-            result = result.filter((c) => c.isBlacklisted === isBlacklisted);
-        }
-
-        // 3. Sort
-        result.sort((a, b) => {
-            switch (sortBy) {
-                case 'Most Orders':
-                    return b.totalOrders - a.totalOrders;
-                case 'Highest Spent':
-                    return b.totalSpent - a.totalSpent;
-                case 'Lowest Rating':
-                    return a.averageRating - b.averageRating;
-                case 'Recent Activity':
-                    const dateA = a.lastOrderDate ? new Date(a.lastOrderDate).getTime() : 0;
-                    const dateB = b.lastOrderDate ? new Date(b.lastOrderDate).getTime() : 0;
-                    return dateB - dateA;
-                case 'Joined Date':
-                default:
-                    const joinedA = a.joinedDate ? new Date(a.joinedDate).getTime() : 0;
-                    const joinedB = b.joinedDate ? new Date(b.joinedDate).getTime() : 0;
-                    return joinedB - joinedA;
-            }
-        });
-
-        setFilteredCustomers(result);
-    }, [customers, statusFilter, sortBy]);
+    }, [searchQuery, statusFilter, duePaymentFilter, customerTypeFilter, sortBy]);
 
     const handleEditClick = (e: React.MouseEvent, customer: RetailerCustomer) => {
         e.stopPropagation();
@@ -275,6 +260,26 @@ export default function CustomersPage() {
                             <SelectItem value="Blacklisted">Blacklisted</SelectItem>
                         </SelectContent>
                     </Select>
+                    <Select value={duePaymentFilter} onValueChange={setDuePaymentFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Due Payment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">All Payments</SelectItem>
+                            <SelectItem value="Due Only">Due Only</SelectItem>
+                            <SelectItem value="No Due">No Due</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={customerTypeFilter} onValueChange={setCustomerTypeFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Customer Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="All">All Types</SelectItem>
+                            <SelectItem value="App Users">App Users Only</SelectItem>
+                            <SelectItem value="Walk-in">Walk-in Only</SelectItem>
+                        </SelectContent>
+                    </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Sort By" />
@@ -307,14 +312,14 @@ export default function CustomersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredCustomers.length === 0 ? (
+                            {customers.length === 0 ? (
                                 <TableRow key="no-customers">
                                     <TableCell colSpan={7} className="text-center h-24">
                                         No customers found.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredCustomers.map((customer) => (
+                                customers.map((customer) => (
                                     <TableRow
                                         key={customer.customerId}
                                         className="cursor-pointer hover:bg-slate-50 relative group"
