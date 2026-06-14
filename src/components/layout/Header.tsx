@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { authService } from '@/services/api';
 
+import { ShoppingBag } from 'lucide-react';
+
 const Header = () => {
     const [shopName, setShopName] = useState<string>('Retailer');
 
@@ -10,10 +12,6 @@ const Header = () => {
         const fetchProfile = async () => {
             try {
                 const response = await authService.fetchProfile();
-                // Assuming the response matches the Flutter profile model which likely has store_name or shop_name
-                // Based on analysis, let's assume 'shop_name' or similar. 
-                // If not found, fallback to 'Retailer'.
-                // We will adjust this if the API response structure is known to be different.
                 if (response.data && response.data.shop_name) {
                     setShopName(response.data.shop_name);
                 } else if (response.data && response.data.user && response.data.user.shop_name) {
@@ -27,11 +25,26 @@ const Header = () => {
         fetchProfile();
     }, []);
 
+    // Get initials for shop icon
+    const getInitials = (name: string) => {
+        return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'R';
+    };
+
     return (
-        <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10">
-            <h2 className="text-lg font-semibold">Retailer Dashboard</h2>
+        <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm shadow-black/[0.01]">
+            <div className="flex items-center gap-2">
+                {/* Mobile Shop Branding */}
+                <div className="flex items-center gap-2.5 md:hidden">
+                    <div className="size-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-md shadow-primary/20 shrink-0">
+                        {getInitials(shopName)}
+                    </div>
+                    <span className="text-base font-bold text-foreground truncate max-w-[150px] sm:max-w-[250px]">{shopName}</span>
+                </div>
+                {/* Desktop title */}
+                <h2 className="text-lg font-semibold hidden md:block text-gray-800">Retailer Dashboard</h2>
+            </div>
             <div className="flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground hidden sm:block">
                     Welcome back, <span className="font-medium text-foreground">{shopName}</span>!
                 </div>
             </div>

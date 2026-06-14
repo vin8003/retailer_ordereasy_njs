@@ -13,7 +13,10 @@ import {
     Award,
     Star,
     Clock,
-    LogOut
+    LogOut,
+    Calculator,
+    Package,
+    BookOpen
 } from 'lucide-react';
 import {
     Drawer,
@@ -29,11 +32,14 @@ const BottomNav = () => {
 
     const mainNavItems = [
         { label: 'Home', icon: LayoutDashboard, href: '/dashboard' },
-        { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
+        { label: 'POS', icon: Calculator, href: '/dashboard/pos' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
     ];
 
     const moreNavItems = [
+        { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
+        { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
+        { label: 'Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
         { label: 'Profile', icon: User, href: '/dashboard/profile' },
         { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },

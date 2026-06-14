@@ -145,19 +145,19 @@ export default function DashboardPage() {
                     </select>
 
                     {timeRange === 'custom' && (
-                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-border shadow-sm">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 bg-white p-2 sm:p-1 rounded-xl border border-border shadow-sm w-full sm:w-auto">
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="p-1.5 bg-transparent text-sm outline-none px-3"
+                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium"
                             />
-                            <span className="text-muted-foreground text-xs font-bold uppercase">to</span>
+                            <span className="text-muted-foreground text-xs font-black uppercase sm:px-1">to</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="p-1.5 bg-transparent text-sm outline-none px-3"
+                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium"
                             />
                         </div>
                     )}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/services/api';
 import Link from 'next/link';
-import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown, RotateCcw } from 'lucide-react';
+import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown, RotateCcw, Loader2 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
@@ -114,7 +114,7 @@ export default function PurchasesPage() {
             <Toaster position="top-right" />
 
             {/* Header */}
-            <div className="flex justify-between items-end mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                         <div className="p-2.5 bg-primary/10 text-primary rounded-xl"><Package size={28} /></div>
@@ -122,19 +122,19 @@ export default function PurchasesPage() {
                     </h1>
                     <p className="text-gray-500 mt-2 ml-14">Track distributor stock inwards and manage supplier khata.</p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-3 w-full sm:w-auto">
                     <button 
                         onClick={() => {
                             setSelectedInvoiceForReturn(undefined);
                             setIsReturnModalOpen(true);
                         }}
-                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95"
+                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 text-sm flex-1 sm:flex-initial"
                     >
-                        <RotateCcw size={20} /> Create Return
+                        <RotateCcw size={18} /> Create Return
                     </button>
-                    <Link href="/dashboard/purchases/new">
-                        <button className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 hover:-translate-y-0.5">
-                            <Plus size={20} /> Record Inward Stock
+                    <Link href="/dashboard/purchases/new" className="flex-1 sm:flex-initial">
+                        <button className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 hover:-translate-y-0.5 text-sm">
+                            <Plus size={18} /> Record Inward Stock
                         </button>
                     </Link>
                 </div>
@@ -234,7 +234,8 @@ export default function PurchasesPage() {
                         </span>
                     )}
                 </div>
-                <div className="overflow-x-auto">
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-white border-b border-gray-100 text-xs uppercase tracking-wider text-gray-400 font-bold">
@@ -361,6 +362,88 @@ export default function PurchasesPage() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="block md:hidden divide-y divide-gray-100">
+                    {isLoading ? (
+                        <div className="p-12 text-center text-gray-400">
+                            <Loader2 className="animate-spin mx-auto mb-4" />
+                            Loading records...
+                        </div>
+                    ) : invoices.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400">
+                            <AlertCircle size={32} className="text-gray-300 mx-auto mb-3" />
+                            <p className="text-base font-bold text-gray-600">No purchases found</p>
+                        </div>
+                    ) : (
+                        invoices.map((item) => (
+                            <div key={`${item.type}-${item.id}`} className={`p-4 active:bg-gray-50 transition-colors flex flex-col gap-3 ${item.type === 'return' ? 'bg-red-50/10 border-l-4 border-l-red-500' : ''}`}>
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <span className={`font-bold text-sm ${item.type === 'return' ? 'text-red-700' : 'text-gray-800'}`}>
+                                            {item.type === 'invoice' ? (item.invoice_number || `INV-${item.id}`) : (item.return_number || `RET-${item.id}`)}
+                                        </span>
+                                        {item.type === 'return' && (
+                                            <span className="text-[10px] text-red-400 font-semibold mt-0.5">Against {item.invoice_number}</span>
+                                        )}
+                                        <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
+                                            {new Date(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1.5">
+                                        <span className={`font-extrabold text-base ${item.type === 'return' ? 'text-red-600' : 'text-gray-900'}`}>
+                                            {item.type === 'return' ? '-' : ''}₹{Number(item.total_amount).toLocaleString('en-IN')}
+                                        </span>
+                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                            item.type === 'return' ? 'bg-red-100 text-red-700' :
+                                            item.payment_status === 'PAID' ? 'bg-green-100 text-green-700' :
+                                            item.payment_status === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-red-100 text-red-700'
+                                        }`}>
+                                            {item.type === 'return' ? 'RETURN' : (item.payment_status || 'UNPAID')}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-50 text-xs font-semibold text-gray-600">
+                                    <div className="flex items-center gap-1.5 truncate max-w-[70%]">
+                                        <Truck size={12} className="text-gray-400 shrink-0" />
+                                        <span className="truncate">{item.supplier_name || 'Unknown Distributor'}</span>
+                                    </div>
+                                    <div className="flex gap-3 items-center shrink-0">
+                                        <span>{item.items?.length || 0} items</span>
+                                        <div className="flex gap-1">
+                                            {item.type === 'invoice' ? (
+                                                <>
+                                                    <Link href={`/dashboard/purchases/edit?id=${item.id}`}>
+                                                        <button className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded" title="Edit Bill">
+                                                            <Pencil size={14} />
+                                                        </button>
+                                                    </Link>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedInvoiceForReturn(item.id);
+                                                            setIsReturnModalOpen(true);
+                                                        }}
+                                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                        title="Return"
+                                                    >
+                                                        <RotateCcw size={14} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <Link href={`/dashboard/purchases/return-detail?id=${item.id}`}>
+                                                    <button className="p-1.5 text-red-400 hover:text-red-700 hover:bg-red-100 rounded">
+                                                        <ArrowRight size={14} />
+                                                    </button>
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 

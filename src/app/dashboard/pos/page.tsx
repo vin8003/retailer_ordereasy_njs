@@ -77,6 +77,19 @@ interface RetailerProfile {
 }
 
 export default function POSPage() {
+    const [isMobileScreen, setIsMobileScreen] = useState(false);
+    const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const checkSize = () => {
+            setIsMobileScreen(window.innerWidth < 640);
+        };
+        checkSize();
+        window.addEventListener('resize', checkSize);
+        return () => window.removeEventListener('resize', checkSize);
+    }, []);
+
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -880,11 +893,40 @@ export default function POSPage() {
     };
 
     return (
-        <div className="flex h-screen bg-white pb-12 font-sans overflow-hidden">
+        <div className="flex flex-col lg:flex-row h-screen bg-white pb-12 font-sans overflow-hidden relative">
             <Toaster position="top-right" />
+
+            {/* Mobile Screen Warning Dialog */}
+            {isMobileScreen && !dismissMobileWarning && (
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[999] flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2rem] w-full max-w-sm p-8 text-center shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-300 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 border border-amber-100 shrink-0">
+                            <AlertCircle size={32} />
+                        </div>
+                        <h3 className="text-xl font-black text-gray-900 mb-2">Desktop Recommended</h3>
+                        <p className="text-sm text-gray-500 leading-relaxed mb-8">
+                            Point of Sale billing terminal is optimized for desktop viewports or tablet screens. Using it on phones may result in a cramped layout.
+                        </p>
+                        <div className="flex flex-col w-full gap-3">
+                            <button
+                                onClick={() => setDismissMobileWarning(true)}
+                                className="w-full bg-primary hover:bg-primary/95 text-white py-4 rounded-xl font-bold transition-all shadow-md active:scale-98"
+                            >
+                                Proceed Anyway
+                            </button>
+                            <button
+                                onClick={() => { window.location.href = '/dashboard'; }}
+                                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-600 py-4 rounded-xl font-bold transition-all"
+                            >
+                                Back to Dashboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {/* Left Panel: Products & Search (50%) - FIXED / FLUSH */}
-            <div className="w-1/2 flex flex-col bg-white border-r border-gray-100 overflow-hidden relative">
+            <div className="w-full lg:w-1/2 h-[50vh] lg:h-full flex flex-col bg-white border-b lg:border-b-0 lg:border-r border-gray-100 overflow-hidden relative">
                 
                 {/* Header & Search */}
                 <div className="p-6 border-b border-gray-100 bg-white z-10">
@@ -1013,7 +1055,7 @@ export default function POSPage() {
             </div>
 
             {/* Right Panel: Cart & Checkout (50%) - FIXED / FLUSH */}
-            <div className="w-1/2 flex flex-col bg-white border-l border-gray-100 overflow-hidden z-20 relative shadow-2xl shadow-black/5">
+            <div className="w-full lg:w-1/2 h-[50vh] lg:h-full flex flex-col bg-white border-t lg:border-t-0 lg:border-l border-gray-100 overflow-hidden z-20 relative shadow-2xl shadow-black/5">
                 
                 {/* Session Tabs */}
                 <div className="flex bg-gray-50/50 border-b border-gray-100 overflow-x-auto scrollbar-hide">
