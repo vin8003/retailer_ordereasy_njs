@@ -178,7 +178,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         <DropdownMenuTrigger asChild>
                                             <Button
                                                 variant="ghost"
-                                                className="h-8 w-8 p-0"
+                                                className="h-12 w-12 p-0 min-h-[48px] min-w-[48px]"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <span className="sr-only">Open menu</span>

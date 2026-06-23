@@ -15,13 +15,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "OrderEasy Retailer",
-  description: "OrderEasy Retailer Management Portal",
+  description: "Retailer management dashboard for OrderEasy",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 import NotificationWrapper from "@/app/components/NotificationWrapper";
