@@ -910,14 +910,8 @@ export default function POSPage() {
                         </p>
                         <div className="flex flex-col w-full gap-3">
                             <button
-                                onClick={() => setDismissMobileWarning(true)}
-                                className="w-full bg-primary hover:bg-primary/95 text-white py-4 rounded-xl font-bold transition-all shadow-md active:scale-98"
-                            >
-                                Proceed Anyway
-                            </button>
-                            <button
                                 onClick={() => { window.location.href = '/dashboard'; }}
-                                className="w-full bg-gray-50 hover:bg-gray-100 text-gray-600 py-4 rounded-xl font-bold transition-all"
+                                className="w-full bg-primary hover:bg-primary/95 text-white py-4 rounded-xl font-bold transition-all shadow-md active:scale-98"
                             >
                                 Back to Dashboard
                             </button>
@@ -1215,7 +1209,7 @@ export default function POSPage() {
                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center justify-center bg-gray-100 rounded-lg p-0.5 w-fit mx-auto border border-gray-200/50">
-                                                    <button onClick={() => updateQuantity(item.id, -1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
+                                                    <button onClick={() => updateQuantity(item.id, -1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center">
                                                         <Minus size={10} />
                                                     </button>
                                                     <input 
@@ -1223,9 +1217,9 @@ export default function POSPage() {
                                                         step="any"
                                                         value={item.cart_quantity} 
                                                         onChange={(e) => setQuantity(item.id, e.target.value, item.batch_id)}
-                                                        className="w-12 text-center text-xs font-black bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                        className="w-12 text-center text-xs font-black bg-transparent outline-none border-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none min-h-[48px]"
                                                     />
-                                                    <button onClick={() => updateQuantity(item.id, 1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors">
+                                                    <button onClick={() => updateQuantity(item.id, 1, item.batch_id)} className="p-1 hover:bg-white rounded shadow-sm text-gray-600 transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center">
                                                         <Plus size={10} />
                                                     </button>
                                                 </div>
@@ -1239,7 +1233,7 @@ export default function POSPage() {
                                             <td className="px-4 py-4 text-right">
                                                 <button 
                                                     onClick={() => removeFromCart(item.id, item.batch_id)}
-                                                    className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                    className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 min-h-[48px] min-w-[48px] flex items-center justify-center"
                                                 >
                                                     <X size={14} />
                                                 </button>

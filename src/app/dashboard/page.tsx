@@ -108,7 +108,7 @@ export default function DashboardPage() {
                 <div className="text-red-500 font-medium">{error}</div>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+                    className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 min-h-[48px] min-w-[48px]"
                 >
                     Retry
                 </button>
@@ -135,7 +135,7 @@ export default function DashboardPage() {
                     <select
                         value={timeRange}
                         onChange={(e) => setTimeRange(e.target.value)}
-                        className="p-2.5 border border-border bg-white rounded-xl text-sm font-medium shadow-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        className="p-2.5 border border-border bg-white rounded-xl text-sm font-medium shadow-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all w-full sm:w-auto min-h-[48px]"
                     >
                         <option value="all_time">All Time</option>
                         <option value="today">Today</option>
@@ -145,19 +145,19 @@ export default function DashboardPage() {
                     </select>
 
                     {timeRange === 'custom' && (
-                        <div className="flex flex-col sm:flex-row items-center gap-2 bg-white p-2 sm:p-1 rounded-xl border border-border shadow-sm w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-white p-2 sm:p-1 rounded-xl border border-border shadow-sm w-full sm:w-auto">
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium"
+                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium min-h-[48px]"
                             />
                             <span className="text-muted-foreground text-xs font-black uppercase sm:px-1">to</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium"
+                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium min-h-[48px]"
                             />
                         </div>
                     )}
