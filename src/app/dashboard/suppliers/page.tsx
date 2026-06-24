@@ -100,76 +100,78 @@ export default function SuppliersPage() {
     const totalAdvance = suppliers.filter(s => Number(s.balance_due) < 0).reduce((sum, s) => sum + Math.abs(Number(s.balance_due)), 0);
 
     return (
-        <div className="p-8 max-w-7xl mx-auto font-sans">
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto font-sans">
             <Toaster position="top-right" />
             
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-10">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                        <div className="p-2.5 bg-primary/10 text-primary rounded-xl overflow-hidden relative">
+                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                        <div className="p-2 sm:p-2.5 bg-primary/10 text-primary rounded-xl overflow-hidden relative">
                              <div className="absolute inset-0 bg-primary/20 animate-pulse opacity-50"></div>
-                            <BookOpen size={28} className="relative z-10" />
+                            <BookOpen size={24} className="relative z-10 sm:hidden" />
+                            <BookOpen size={28} className="relative z-10 hidden sm:block" />
                         </div>
                         Khata & Suppliers
                     </h1>
-                    <p className="text-gray-500 mt-2 ml-14">Manage distributor relations and outstanding credit balances.</p>
+                    <p className="text-gray-500 mt-2 ml-12 sm:ml-14 text-sm sm:text-base">Manage distributor relations and outstanding credit balances.</p>
                 </div>
                 <button 
                     onClick={() => setShowAddModal(true)}
-                    className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 px-6 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all hover:-translate-y-1 active:scale-95"
+                    className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 px-4 py-3 sm:px-6 sm:py-4 rounded-xl sm:rounded-2xl font-bold flex items-center gap-2 transition-all hover:-translate-y-1 active:scale-95"
                 >
                     <UserPlus size={20} /> Add New Distributor
                 </button>
             </div>
 
             {/* Top Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                <div className="bg-white p-6 rounded-[2rem] border border-red-100 shadow-sm relative overflow-hidden group">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-6 md:mb-10">
+                <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-red-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute -right-6 -top-6 bg-red-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                     <div className="relative z-10">
                         <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1">Total Debt</p>
-                        <h3 className="text-3xl font-black text-red-600 tracking-tight">₹{totalDebt.toLocaleString('en-IN')}</h3>
+                        <h3 className="text-2xl sm:text-3xl font-black text-red-600 tracking-tight">₹{totalDebt.toLocaleString('en-IN')}</h3>
                         <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">LIFETIME ALL SUPPLIERS</p>
                     </div>
                 </div>
 
                 {totalAdvance > 0 && (
-                    <div className="bg-white p-6 rounded-[2rem] border border-green-100 shadow-sm relative overflow-hidden group">
+                    <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-green-100 shadow-sm relative overflow-hidden group">
                         <div className="absolute -right-6 -top-6 bg-green-50 w-24 h-24 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                         <div className="relative z-10">
                             <p className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Advance Paid</p>
-                            <h3 className="text-3xl font-black text-green-600 tracking-tight">₹{totalAdvance.toLocaleString('en-IN')}</h3>
+                            <h3 className="text-2xl sm:text-3xl font-black text-green-600 tracking-tight">₹{totalAdvance.toLocaleString('en-IN')}</h3>
                             <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Extra payments pool</p>
                         </div>
                     </div>
                 )}
+
+                <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Credit Invoices</p>
+                        <h3 className="text-2xl sm:text-3xl font-black text-gray-900">{suppliers.filter(s => Number(s.balance_due) > 0).length}</h3>
+                    </div>
+                    <div className="size-10 sm:size-14 bg-orange-50 rounded-xl sm:rounded-2xl flex items-center justify-center text-orange-500 flex-shrink-0">
+                        <CreditCard size={20} className="sm:hidden" />
+                        <CreditCard size={28} className="hidden sm:block" />
+                    </div>
+                </div>
                 
-                <div className={`bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm group hover:border-primary/20 transition-all cursor-pointer ${totalAdvance > 0 ? '' : 'md:col-span-2'}`}>
+                <div className={`bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-gray-100 shadow-sm group hover:border-primary/20 transition-all cursor-pointer ${totalAdvance > 0 ? '' : 'col-span-2 md:col-span-2'}`}>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Largest Creditor</p>
                     {suppliers.length > 0 ? (
                         <>
-                            <h3 className="text-xl font-black text-gray-900 line-clamp-1">{suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].company_name}</h3>
-                            <p className="text-sm text-primary font-bold mt-1 uppercase tracking-wider">₹{Math.max(0, Number(suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].balance_due)).toLocaleString('en-IN')} Due</p>
+                            <h3 className="text-lg sm:text-xl font-black text-gray-900 line-clamp-1">{suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].company_name}</h3>
+                            <p className="text-xs sm:text-sm text-primary font-bold mt-1 uppercase tracking-wider">₹{Math.max(0, Number(suppliers.sort((a,b) => Number(b.balance_due) - Number(a.balance_due))[0].balance_due)).toLocaleString('en-IN')} Due</p>
                         </>
                     ) : (
-                        <h3 className="text-xl font-bold text-gray-300">No data</h3>
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-300">No data</h3>
                     )}
-                </div>
-
-                <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Credit Invoices</p>
-                        <h3 className="text-3xl font-black text-gray-900">{suppliers.filter(s => Number(s.balance_due) > 0).length}</h3>
-                    </div>
-                    <div className="size-14 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500">
-                        <CreditCard size={28} />
-                    </div>
                 </div>
             </div>
 
             {/* List Section */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                <div className="p-8 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-4 sm:p-8 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <h3 className="text-xl font-black text-gray-900">Distributor List</h3>
                     <div className="relative w-full md:w-96">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -183,7 +185,7 @@ export default function SuppliersPage() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto p-4">
+                <div className="hidden md:block overflow-x-auto p-4">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-black border-b border-gray-50">
@@ -258,6 +260,66 @@ export default function SuppliersPage() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                <div className="block md:hidden divide-y divide-gray-100">
+                    {isLoading ? (
+                        <div className="p-12 text-center text-gray-400">
+                            <Loader2 className="animate-spin mx-auto mb-4" />
+                            Loading ledger summary...
+                        </div>
+                    ) : filteredSuppliers.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400">
+                            <p className="text-base font-bold text-gray-600 mb-1">No suppliers found</p>
+                            <p className="text-xs">Add a new distributor to start managing their khata.</p>
+                        </div>
+                    ) : (
+                        filteredSuppliers.map(supplier => (
+                            <div key={supplier.id} className="p-4 flex flex-col gap-3 hover:bg-gray-50/50 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center font-black text-base border border-gray-100 uppercase flex-shrink-0">
+                                            {supplier.company_name.charAt(0)}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="font-black text-gray-900 text-sm uppercase tracking-tight truncate max-w-[150px]">{supplier.company_name}</div>
+                                            <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
+                                                <User size={10} className="text-gray-400 flex-shrink-0" />
+                                                <span className="truncate max-w-[100px]">{supplier.contact_person || 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right flex-shrink-0">
+                                        <div className={`text-base font-black ${Number(supplier.balance_due) > 0 ? 'text-red-600' : (Number(supplier.balance_due) < 0 ? 'text-green-600' : 'text-gray-900')}`}>
+                                            ₹{Math.abs(Number(supplier.balance_due)).toLocaleString('en-IN')}
+                                        </div>
+                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                                            {Number(supplier.balance_due) > 0 ? 'Due Amount' : (Number(supplier.balance_due) < 0 ? 'Advance Paid' : 'Settled')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between bg-gray-50/70 p-2.5 rounded-xl border border-gray-100/50">
+                                    <div className="flex flex-col gap-0.5 text-xs text-gray-600 min-w-0">
+                                        <div className="flex items-center gap-1.5 font-bold">
+                                            <Phone size={12} className="text-gray-400 flex-shrink-0" />
+                                            <span>{supplier.phone_number}</span>
+                                        </div>
+                                        {supplier.email && (
+                                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                                <Mail size={11} className="text-gray-400 flex-shrink-0" />
+                                                <span className="truncate max-w-[160px]">{supplier.email}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Link href={`/dashboard/suppliers/ledger?id=${supplier.id}`} className="flex-shrink-0">
+                                        <button className="bg-white hover:bg-primary text-gray-500 hover:text-white px-3 py-2 rounded-lg border border-gray-200 transition-all flex items-center gap-1 text-[11px] font-bold shadow-sm">
+                                            Ledger <ArrowRight size={12} />
+                                        </button>
+                                    </Link>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 

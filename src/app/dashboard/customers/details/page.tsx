@@ -418,55 +418,104 @@ function CustomerDetailContent() {
                                             No ledger entries found for this customer.
                                         </div>
                                     ) : (
-                                        <div className="border rounded-lg overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow className="bg-slate-50">
-                                                        <TableHead>Date</TableHead>
-                                                        <TableHead>Type</TableHead>
-                                                        <TableHead>Details</TableHead>
-                                                        <TableHead className="text-right">Amount</TableHead>
-                                                        <TableHead className="text-right">Balance</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {ledger.map((entry: any) => (
-                                                        <TableRow key={entry.id}>
-                                                            <TableCell className="text-xs">
-                                                                {new Date(entry.created_at).toLocaleDateString('en-IN', {
-                                                                    day: '2-digit',
-                                                                    month: 'short',
-                                                                    year: '2-digit',
-                                                                    hour: '2-digit',
-                                                                    minute: '2-digit'
-                                                                })}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Badge variant={entry.transaction_type === 'PAYMENT' ? "secondary" : "outline"} className={entry.transaction_type === 'PAYMENT' ? "bg-green-100 text-green-700" : ""}>
+                                        <>
+                                            {/* Desktop Ledger Table */}
+                                            <div className="hidden md:block border rounded-lg overflow-hidden">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow className="bg-slate-50">
+                                                            <TableHead>Date</TableHead>
+                                                            <TableHead>Type</TableHead>
+                                                            <TableHead>Details</TableHead>
+                                                            <TableHead className="text-right">Amount</TableHead>
+                                                            <TableHead className="text-right">Balance</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {ledger.map((entry: any) => (
+                                                            <TableRow key={entry.id}>
+                                                                <TableCell className="text-xs">
+                                                                    {new Date(entry.created_at).toLocaleDateString('en-IN', {
+                                                                        day: '2-digit',
+                                                                        month: 'short',
+                                                                        year: '2-digit',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit'
+                                                                    })}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant={entry.transaction_type === 'PAYMENT' ? "secondary" : "outline"} className={entry.transaction_type === 'PAYMENT' ? "bg-green-100 text-green-700" : ""}>
+                                                                        {entry.transaction_type}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="text-sm">
+                                                                        {entry.order_number ? `Order #${entry.order_number}` : entry.notes}
+                                                                    </div>
+                                                                    {entry.payment_mode && (
+                                                                        <div className="text-[10px] text-muted-foreground uppercase">
+                                                                            Mode: {entry.payment_mode}
+                                                                        </div>
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell className={`text-right font-medium ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
+                                                                    {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
+                                                                </TableCell>
+                                                                <TableCell className="text-right font-bold">
+                                                                    {formatCurrency(entry.balance_after)}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+
+                                            {/* Mobile Ledger List */}
+                                            <div className="block md:hidden space-y-3">
+                                                {ledger.map((entry: any) => (
+                                                    <div 
+                                                        key={entry.id} 
+                                                        className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm flex flex-col gap-2.5"
+                                                    >
+                                                        <div className="flex justify-between items-center">
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant={entry.transaction_type === 'PAYMENT' ? "secondary" : "outline"} className={`text-[9px] font-black uppercase tracking-wider border-none h-4 px-1.5 py-0 ${entry.transaction_type === 'PAYMENT' ? "bg-green-50 text-green-700" : ""}`}>
                                                                     {entry.transaction_type}
                                                                 </Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="text-sm">
-                                                                    {entry.order_number ? `Order #${entry.order_number}` : entry.notes}
-                                                                </div>
-                                                                {entry.payment_mode && (
-                                                                    <div className="text-[10px] text-muted-foreground uppercase">
-                                                                        Mode: {entry.payment_mode}
-                                                                    </div>
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell className={`text-right font-medium ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
+                                                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                                                    {new Date(entry.created_at).toLocaleDateString('en-IN', {
+                                                                        day: '2-digit',
+                                                                        month: 'short',
+                                                                        year: '2-digit',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit'
+                                                                    })}
+                                                                </span>
+                                                            </div>
+                                                            <span className={`text-sm font-extrabold ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
                                                                 {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-bold">
-                                                                {formatCurrency(entry.balance_after)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-50">
+                                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                                <span className="font-bold text-gray-700 truncate">
+                                                                    {entry.order_number ? `Order #${entry.order_number}` : entry.notes || 'No description'}
+                                                                </span>
+                                                                {entry.payment_mode && (
+                                                                    <span className="text-[9px] text-muted-foreground uppercase font-semibold">
+                                                                        Mode: {entry.payment_mode}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col items-end shrink-0">
+                                                                <span className="text-[9px] text-muted-foreground uppercase font-bold">Balance</span>
+                                                                <span className="font-extrabold text-gray-900">{formatCurrency(entry.balance_after)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
                                     )}
                                 </TabsContent>
 

@@ -148,33 +148,35 @@ function SupplierLedgerDetails() {
     if (!supplier) return <div className="p-20 text-center">Supplier not found</div>;
 
     return (
-        <div className="p-8 max-w-6xl mx-auto font-sans min-h-screen pb-32">
+        <div className="p-4 sm:p-8 max-w-6xl mx-auto font-sans min-h-screen pb-32">
             <Toaster position="top-right" />
             
-            <div className="flex items-center gap-4 mb-10">
+            <div className="flex items-center gap-3 sm:gap-4 mb-6 md:mb-10">
                 <Link href="/dashboard/suppliers">
-                    <button className="p-3 hover:bg-white rounded-2xl border border-gray-100 transition-all text-gray-400 hover:text-gray-900 shadow-sm">
-                        <ChevronLeft size={24} />
+                    <button className="p-2 sm:p-3 hover:bg-white rounded-xl sm:rounded-2xl border border-gray-100 transition-all text-gray-400 hover:text-gray-900 shadow-sm">
+                        <ChevronLeft size={20} className="sm:hidden" />
+                        <ChevronLeft size={24} className="hidden sm:block" />
                     </button>
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">{supplier.company_name}</h1>
-                    <p className="text-gray-500 mt-1 font-medium flex items-center gap-2">
-                        <History size={16} /> Transaction History & Ledger
+                    <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight uppercase">{supplier.company_name}</h1>
+                    <p className="text-gray-500 mt-1 text-xs sm:text-base font-medium flex items-center gap-1.5 sm:gap-2">
+                        <History size={14} className="sm:hidden" />
+                        <History size={16} className="hidden sm:block" /> Transaction History & Ledger
                     </p>
                 </div>
             </div>
 
             {/* Date Filter Bar */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-8 flex flex-wrap items-center gap-3">
-                <Calendar size={16} className="text-gray-400 shrink-0" />
-                <span className="text-xs font-black text-gray-400 uppercase tracking-widest shrink-0">Filter Transactions:</span>
-                <div className="flex flex-wrap gap-2">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 mb-6 md:mb-8 flex flex-wrap items-center gap-2 sm:gap-3">
+                <Calendar size={16} className="text-gray-400 shrink-0 hidden sm:inline" />
+                <span className="text-xs font-black text-gray-400 uppercase tracking-widest shrink-0">Filter:</span>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {DATE_FILTERS.map(f => (
                         <button
                             key={f.key}
                             onClick={() => handleFilterChange(f.key)}
-                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                            className={`px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all ${
                                 filter === f.key
                                     ? 'bg-gray-900 text-white shadow-md'
                                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
@@ -203,21 +205,21 @@ function SupplierLedgerDetails() {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 mb-6 md:mb-10">
                 {/* Summary Card */}
-                <div className="lg:col-span-2 bg-gray-900 p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
+                <div className="lg:col-span-2 bg-gray-900 p-6 sm:p-10 rounded-3xl sm:rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-500">
                         <Wallet size={120} />
                     </div>
                     <div className="relative z-10">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em] mb-4">Total Outstanding</p>
-                        <h2 className="text-6xl font-black tracking-tighter mb-8">
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em] mb-3 sm:mb-4">Total Outstanding</p>
+                        <h2 className="text-3xl sm:text-6xl font-black tracking-tighter mb-6 sm:mb-8">
                             ₹{Number(supplier.balance_due).toLocaleString('en-IN')}
                         </h2>
                         <div className="flex flex-wrap gap-4">
                             <button 
                                 onClick={() => setShowPaymentModal(true)}
-                                className="bg-white text-gray-900 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-primary hover:text-white transition-all shadow-lg active:scale-95 flex items-center gap-2"
+                                className="w-full sm:w-auto justify-center bg-white text-gray-900 px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider hover:bg-primary hover:text-white transition-all shadow-lg active:scale-95 flex items-center gap-2"
                             >
                                 <Banknote size={18} /> Record New Payment
                             </button>
@@ -225,28 +227,28 @@ function SupplierLedgerDetails() {
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col justify-center">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">Contact Info</p>
-                    <div className="space-y-6">
+                <div className="bg-white p-6 sm:p-8 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col justify-center">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 sm:mb-6">Contact Info</p>
+                    <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:space-y-6">
                         <div>
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Contact Person</p>
-                            <p className="text-lg font-bold text-gray-900">{supplier.contact_person || 'N/A'}</p>
+                            <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.contact_person || 'N/A'}</p>
                         </div>
                         <div>
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Mobile Number</p>
-                            <p className="text-lg font-bold text-gray-900">{supplier.phone_number}</p>
+                            <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.phone_number}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Ledger Table */}
-            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-xl font-black text-gray-900">Account Statement</h3>
+            <div className="bg-white rounded-3xl sm:rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+                <div className="p-4 sm:p-8 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg sm:text-xl font-black text-gray-900">Account Statement</h3>
                 </div>
 
-                <div className="overflow-x-auto p-4">
+                <div className="hidden md:block overflow-x-auto p-4">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-black border-b border-gray-50">
@@ -303,6 +305,50 @@ function SupplierLedgerDetails() {
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                <div className="block md:hidden divide-y divide-gray-100">
+                    {ledger.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400">No transactions recorded yet.</div>
+                    ) : (
+                        ledger.map(entry => (
+                            <div key={entry.id} className="p-4 flex flex-col gap-3 hover:bg-gray-50/50 transition-colors">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col gap-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar size={12} className="text-gray-400 flex-shrink-0" />
+                                            <span className="text-xs font-bold text-gray-500">{new Date(entry.date).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="font-bold text-gray-900 text-sm mt-0.5 line-clamp-2">
+                                            {entry.notes || (entry.transaction_type === 'CREDIT' ? 'Goods Received' : 'Payment Made')}
+                                        </div>
+                                        {entry.payment_mode && (
+                                            <span className="text-[10px] text-gray-400 font-medium">Mode: {entry.payment_mode}</span>
+                                        )}
+                                    </div>
+                                    <div className="text-right flex-shrink-0">
+                                        <div className={`text-lg font-black flex items-center justify-end gap-1 ${entry.transaction_type === 'DEBIT' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {entry.transaction_type === 'DEBIT' ? '-' : '+'} ₹{Number(entry.amount).toLocaleString('en-IN')}
+                                        </div>
+                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                                            {entry.transaction_type === 'DEBIT' ? 'Debit (Payment)' : 'Credit (Purchase)'}
+                                        </div>
+                                    </div>
+                                </div>
+                                {entry.reference_invoice_number && (
+                                    <div className="flex items-center justify-between bg-gray-50 p-2 rounded-xl border border-gray-100/50">
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                            <Receipt size={12} className="text-gray-400" />
+                                            <span className="font-medium">Ref Invoice</span>
+                                        </div>
+                                        <span className="bg-white text-gray-600 px-2 py-0.5 rounded border border-gray-200 text-[10px] font-black uppercase tracking-wider">
+                                            #{entry.reference_invoice_number}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 

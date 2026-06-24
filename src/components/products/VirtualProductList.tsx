@@ -356,149 +356,272 @@ function SwipeableRow({
                 onClick={handleClick}
                 style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? 'transform 0.2s ease-out' : 'none' }}
                 className={`
-                    p-4 md:grid md:grid-cols-[80px_1fr_1fr_100px_100px_80px_50px] gap-4 items-center flex flex-col md:flex-row relative z-10 cursor-pointer
+                    relative z-10 cursor-pointer w-full
                     ${selectionMode ? (isSelected ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200" : "bg-background") : (isHighlighted ? "bg-green-100/50 dark:bg-green-900/30 transition-colors duration-500" : "hover:bg-muted/50 transition-colors bg-background")}
                 `}
             >
-                {/* Mobile-first card view or grid row */}
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Checkbox for Selection Mode */}
-                    {selectionMode && (
-                        <div className="flex-shrink-0">
-                            <div className={`w-5 h-5 rounded-sm border flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600 shadow-sm" : "border-gray-300"}`}>
-                                {isSelected && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                {/* Desktop View */}
+                <div className="hidden md:grid md:grid-cols-[80px_1fr_1fr_100px_100px_80px_50px] gap-4 items-center p-4 w-full">
+                    <div className="flex items-center gap-3">
+                        {selectionMode && (
+                            <div className="flex-shrink-0">
+                                <div className={`w-5 h-5 rounded-sm border flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600 shadow-sm" : "border-gray-300"}`}>
+                                    {isSelected && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                            </div>
+                        )}
+                        <div className="h-12 w-12 rounded bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {product.image ? (
+                                <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = '';
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        (e.target as HTMLImageElement).parentElement!.classList.add('bg-muted');
+                                    }}
+                                />
+                            ) : (
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+                        <div className="truncate">{product.name}</div>
+                        {product.is_active === false && (
+                            <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
+                        )}
+                    </div>
+
+                    <div className="text-sm text-muted-foreground truncate">
+                        {product.category_name || 'Uncategorized'}
+                    </div>
+
+                    <div
+                        className={`text-sm cursor-pointer p-2 -ml-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10`}
+                        onClick={(e) => { 
+                            if (product.track_inventory) {
+                                e.stopPropagation(); 
+                                onStockClick?.(); 
+                            }
+                        }}
+                    >
+                        {product.track_inventory ? (
+                            <span className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
+                                {product.quantity} {product.unit}
+                            </span>
+                        ) : (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">
+                                Available (∞)
+                            </Badge>
+                        )}
+                    </div>
+
+                    <div className="text-right">
+                        <div
+                            className="cursor-pointer p-2 -mr-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 inline-block"
+                            onClick={(e) => { e.stopPropagation(); onPriceClick?.(); }}
+                        >
+                            <div className="font-bold text-right">₹{Number(product.price).toFixed(2)}</div>
+                            {product.original_price && Number(product.original_price) > Number(product.price) && (
+                                <div className="text-xs text-muted-foreground line-through text-right">
+                                    ₹{Number(product.original_price).toFixed(2)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="text-center">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); onToggleFeatured?.(product); }}
+                            className={`${product.is_featured ? "text-yellow-500" : "text-gray-300"} hover:text-yellow-600 hover:bg-transparent`}
+                        >
+                            <Star className="h-5 w-5" fill={product.is_featured ? "currentColor" : "none"} />
+                        </Button>
+                    </div>
+
+                    <div className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onEdit) onEdit(product);
+                                        else router.push(`/dashboard/products/edit?id=${product.id}`);
+                                    }}
+                                >
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/dashboard/products/ledger?id=${product.id}`);
+                                    }}
+                                >
+                                    <History className="mr-2 h-4 w-4" />
+                                    View History
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleSelectionMode && onToggleSelectionMode();
+                                        onToggleSelect && onToggleSelect(product.id);
+                                    }}
+                                >
+                                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                    Select
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete?.(product);
+                                    }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+
+                {/* Mobile View */}
+                <div className="flex md:hidden items-center justify-between w-full gap-3 p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                        {selectionMode && (
+                            <div className="flex-shrink-0">
+                                <div className={`w-5 h-5 rounded-sm border flex items-center justify-center ${isSelected ? "bg-blue-600 border-blue-600 shadow-sm" : "border-gray-300"}`}>
+                                    {isSelected && <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                            </div>
+                        )}
+                        <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {product.image ? (
+                                <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = '';
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        (e.target as HTMLImageElement).parentElement!.classList.add('bg-muted');
+                                    }}
+                                />
+                            ) : (
+                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            )}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-sm truncate text-foreground flex items-center gap-1.5">
+                                {product.name}
+                                {product.is_active === false && (
+                                    <Badge variant="destructive" className="text-[8px] px-1 py-0 h-3 border-none shrink-0">Inactive</Badge>
+                                )}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate">{product.category_name || 'Uncategorized'}</span>
+                            <div 
+                                className="mt-0.5 text-xs cursor-pointer inline-block"
+                                onClick={(e) => { 
+                                    if (product.track_inventory) {
+                                        e.stopPropagation(); 
+                                        onStockClick?.(); 
+                                    }
+                                }}
+                            >
+                                {product.track_inventory ? (
+                                    <span className={product.quantity < 10 ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
+                                        Stock: {product.quantity} {product.unit}
+                                    </span>
+                                ) : (
+                                    <span className="text-blue-500 font-semibold">Stock: ∞</span>
+                                )}
                             </div>
                         </div>
-                    )}
-
-                    <div className="h-12 w-12 rounded bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 mb-2 md:mb-0">
-                        {product.image ? (
-                            <img
-                                src={product.image}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '';
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                    (e.target as HTMLImageElement).parentElement!.classList.add('bg-muted');
-                                }}
-                            />
-                        ) : (
-                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                        )}
                     </div>
-                </div>
 
-                <div className="font-medium flex-1 w-full md:w-auto overflow-hidden text-ellipsis whitespace-nowrap">
-                    <div className="truncate">{product.name}</div>
-                    {product.is_active === false && (
-                        <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
-                    )}
-                </div>
-
-                <div className="text-sm text-muted-foreground w-full md:w-auto truncate md:text-left text-left">
-                    {product.category_name || 'Uncategorized'}
-                </div>
-
-                <div
-                    className={`text-sm md:text-left text-left w-full md:w-auto cursor-pointer p-2 -ml-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10`}
-                    onClick={(e) => { 
-                        if (product.track_inventory) {
-                            e.stopPropagation(); 
-                            onStockClick?.(); 
-                        }
-                    }}
-                >
-                    {product.track_inventory ? (
-                        <span className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
-                            {product.quantity} {product.unit}
-                        </span>
-                    ) : (
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">
-                            Available (∞)
-                        </Badge>
-                    )}
-                </div>
-
-                <div className="text-right w-full md:w-auto flex flex-row md:flex-col justify-between md:justify-center items-center md:items-end">
-                    <span className="md:hidden text-muted-foreground text-sm">Price:</span>
-                    <div
-                        className="cursor-pointer p-2 -mr-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10"
-                        onClick={(e) => { e.stopPropagation(); onPriceClick?.(); }}
-                    >
-                        <div className="font-bold">₹{Number(product.price).toFixed(2)}</div>
-                        {product.original_price && Number(product.original_price) > Number(product.price) && (
-                            <div className="text-xs text-muted-foreground line-through">
-                                ₹{Number(product.original_price).toFixed(2)}
-                            </div>
-                        )}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <div 
+                            className="text-right cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); onPriceClick?.(); }}
+                        >
+                            <div className="font-extrabold text-sm text-foreground">₹{Number(product.price).toFixed(2)}</div>
+                            {product.original_price && Number(product.original_price) > Number(product.price) && (
+                                <div className="text-[10px] text-muted-foreground line-through">
+                                    ₹{Number(product.original_price).toFixed(2)}
+                                </div>
+                            )}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); onToggleFeatured?.(product); }}
+                            className={`h-8 w-8 p-0 ${product.is_featured ? "text-yellow-500" : "text-gray-300"} hover:bg-transparent`}
+                        >
+                            <Star className="h-4 w-4" fill={product.is_featured ? "currentColor" : "none"} />
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onEdit) onEdit(product);
+                                        else router.push(`/dashboard/products/edit?id=${product.id}`);
+                                    }}
+                                >
+                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/dashboard/products/ledger?id=${product.id}`);
+                                    }}
+                                >
+                                    <History className="mr-2 h-4 w-4" /> View History
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleSelectionMode?.();
+                                        onToggleSelect?.(product.id);
+                                    }}
+                                >
+                                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Select
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete?.(product);
+                                    }}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                </div>
-
-                <div className="text-center absolute top-4 right-14 md:static md:w-auto">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onToggleFeatured?.(product)}
-                        className={`${product.is_featured ? "text-yellow-500" : "text-gray-300"} hover:text-yellow-600 hover:bg-transparent`}
-                    >
-                        <Star className="h-5 w-5" fill={product.is_featured ? "currentColor" : "none"} />
-                    </Button>
-                </div>
-
-                <div className="absolute top-4 right-4 md:static md:w-auto">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onEdit) onEdit(product);
-                                    else router.push(`/dashboard/products/edit?id=${product.id}`);
-                                }}
-                            >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/dashboard/products/ledger?id=${product.id}`);
-                                }}
-                            >
-                                <History className="mr-2 h-4 w-4" />
-                                View History
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleSelectionMode && onToggleSelectionMode();
-                                    onToggleSelect && onToggleSelect(product.id);
-                                }}
-                            >
-                                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                Select
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete?.(product);
-                                }}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
                 </div>
             </div>
         </div>

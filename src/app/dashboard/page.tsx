@@ -122,20 +122,20 @@ export default function DashboardPage() {
                       timeRange === 'custom' ? "Custom Range" : "All Time";
 
     return (
-        <div className="space-y-8 pb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-6 pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-4xl font-extrabold tracking-tight text-foreground">Overview</h2>
-                    <p className="text-muted-foreground mt-1 text-lg">
+                    <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">Overview</h2>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-lg">
                         Welcome back, <span className="text-primary font-semibold">{profile?.shop_name || profile?.username || "Retailer"}</span>! 
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     <select
                         value={timeRange}
                         onChange={(e) => setTimeRange(e.target.value)}
-                        className="p-2.5 border border-border bg-white rounded-xl text-sm font-medium shadow-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        className="p-2 sm:p-2.5 border border-border bg-white rounded-xl text-xs sm:text-sm font-medium shadow-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                     >
                         <option value="all_time">All Time</option>
                         <option value="today">Today</option>
@@ -145,26 +145,26 @@ export default function DashboardPage() {
                     </select>
 
                     {timeRange === 'custom' && (
-                        <div className="flex flex-col sm:flex-row items-center gap-2 bg-white p-2 sm:p-1 rounded-xl border border-border shadow-sm w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row items-center gap-1.5 bg-white p-1.5 rounded-xl border border-border shadow-sm w-full sm:w-auto">
                             <input
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium"
+                                className="p-1 bg-transparent text-xs sm:text-sm outline-none px-2 w-full sm:w-auto text-center sm:text-left font-medium"
                             />
-                            <span className="text-muted-foreground text-xs font-black uppercase sm:px-1">to</span>
+                            <span className="text-muted-foreground text-[10px] font-black uppercase sm:px-1">to</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
-                                className="p-1.5 bg-transparent text-sm outline-none px-3 w-full sm:w-auto text-center sm:text-left font-medium"
+                                className="p-1 bg-transparent text-xs sm:text-sm outline-none px-2 w-full sm:w-auto text-center sm:text-left font-medium"
                             />
                         </div>
                     )}
                 </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Total Orders"
                     value={stats?.total_orders ?? 0}
@@ -195,30 +195,30 @@ export default function DashboardPage() {
                 />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
                 {/* Payment Breakdown */}
                 <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-gray-800">
-                    <CardHeader className="pb-2 border-b border-border/50 bg-muted/10">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                            <Banknote className="h-5 w-5 text-emerald-500" />
+                    <CardHeader className="pb-2 border-b border-border/50 bg-muted/10 p-4 sm:p-6">
+                        <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
+                            <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500" />
                             Payment Breakdown
                         </CardTitle>
-                        <CardDescription>Cash vs Digital split ({timeLabel})</CardDescription>
+                        <CardDescription className="text-xs">Cash vs Digital split ({timeLabel})</CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-6">
-                        <div className="space-y-6">
+                    <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+                        <div className="space-y-4 sm:space-y-6">
                             <div className="flex justify-between items-end">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Cash in Hand</p>
-                                    <p className="text-3xl font-black">₹{stats?.cash_sales?.toLocaleString() || 0}</p>
+                                <div className="space-y-0.5">
+                                    <p className="text-[10px] sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Cash in Hand</p>
+                                    <p className="text-xl sm:text-3xl font-black">₹{stats?.cash_sales?.toLocaleString() || 0}</p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Digital</p>
-                                    <p className="text-3xl font-black">₹{stats?.digital_sales?.toLocaleString() || 0}</p>
+                                <div className="text-right space-y-0.5">
+                                    <p className="text-[10px] sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Digital</p>
+                                    <p className="text-xl sm:text-3xl font-black">₹{stats?.digital_sales?.toLocaleString() || 0}</p>
                                 </div>
                             </div>
                             
-                            <div className="relative h-4 w-full bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden flex">
+                            <div className="relative h-3 sm:h-4 w-full bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden flex">
                                 <div 
                                     className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
                                     style={{ 
@@ -228,14 +228,14 @@ export default function DashboardPage() {
                                 <div className="h-full bg-blue-500 flex-1 transition-all duration-1000 ease-out" />
                             </div>
                             
-                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                                    <div className="size-2 rounded-full bg-emerald-500" />
+                            <div className="flex justify-between text-[8px] sm:text-[10px] font-bold uppercase tracking-widest">
+                                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                    <div className="size-1.5 sm:size-2 rounded-full bg-emerald-500" />
                                     {stats && stats.total_revenue > 0 ? ((stats.cash_sales / stats.total_revenue) * 100).toFixed(0) : 0}% Cash
                                 </div>
-                                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                                <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
                                     {stats && stats.total_revenue > 0 ? ((stats.digital_sales / stats.total_revenue) * 100).toFixed(0) : 0}% Digital
-                                    <div className="size-2 rounded-full bg-blue-500" />
+                                    <div className="size-1.5 sm:size-2 rounded-full bg-blue-500" />
                                 </div>
                             </div>
                         </div>
@@ -244,28 +244,28 @@ export default function DashboardPage() {
 
                 {/* Channel Performance */}
                 <Card className="border-none shadow-sm overflow-hidden bg-white dark:bg-gray-800">
-                    <CardHeader className="pb-2 border-b border-border/50 bg-muted/10">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-purple-500" />
+                    <CardHeader className="pb-2 border-b border-border/50 bg-muted/10 p-4 sm:p-6">
+                        <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
                             Channel Performance
                         </CardTitle>
-                        <CardDescription>POS vs Online Store ({timeLabel})</CardDescription>
+                        <CardDescription className="text-xs">POS vs Online Store ({timeLabel})</CardDescription>
                     </CardHeader>
-                    <CardContent className="pt-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center">
-                                <div className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm mb-3">
-                                    <MonitorIcon className="h-5 w-5 text-slate-600" />
+                    <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                            <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+                                <div className="p-1.5 sm:p-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm mb-2 sm:mb-3">
+                                    <MonitorIcon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
                                 </div>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">POS Sales</p>
-                                <p className="text-2xl font-black text-slate-900 dark:text-white">₹{stats?.pos_sales?.toLocaleString() || 0}</p>
+                                <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 sm:mb-1">POS Sales</p>
+                                <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white">₹{stats?.pos_sales?.toLocaleString() || 0}</p>
                             </div>
-                            <div className="p-4 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 flex flex-col items-center justify-center text-center">
-                                <div className="p-2 bg-white dark:bg-indigo-900/30 rounded-xl shadow-sm mb-3">
-                                    <Globe className="h-5 w-5 text-indigo-600" />
+                            <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 flex flex-col items-center justify-center text-center">
+                                <div className="p-1.5 sm:p-2 bg-white dark:bg-indigo-900/30 rounded-xl shadow-sm mb-2 sm:mb-3">
+                                    <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
                                 </div>
-                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Online Store</p>
-                                <p className="text-2xl font-black text-indigo-900 dark:text-indigo-100">₹{stats?.online_sales?.toLocaleString() || 0}</p>
+                                <p className="text-[8px] sm:text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5 sm:mb-1">Online Store</p>
+                                <p className="text-lg sm:text-2xl font-black text-indigo-900 dark:text-indigo-100">₹{stats?.online_sales?.toLocaleString() || 0}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -385,16 +385,16 @@ function StatCard({ title, value, icon: Icon, description, color }: any) {
     return (
         <Card className="relative overflow-hidden group border-none">
             <div className={`absolute top-0 right-0 size-24 ${color} opacity-[0.03] blur-2xl rounded-full -mr-8 -mt-8 group-hover:opacity-10 transition-opacity`} />
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
-                <div className={`p-2 rounded-xl scale-90 group-hover:scale-100 transition-transform ${color} bg-opacity-10 ${color.replace('bg-', 'text-')}`}>
-                    <Icon className="h-4 w-4" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1.5 p-3 sm:p-6 sm:pb-2">
+                <CardTitle className="text-[10px] sm:text-sm font-bold text-muted-foreground uppercase tracking-wider truncate">{title}</CardTitle>
+                <div className={`p-1.5 sm:p-2 rounded-xl scale-90 sm:scale-95 group-hover:scale-100 transition-transform ${color} bg-opacity-10 ${color.replace('bg-', 'text-')} shrink-0`}>
+                    <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
             </CardHeader>
-            <CardContent>
-                <div className="text-3xl font-black text-foreground tracking-tight">{value}</div>
-                <div className="flex items-center gap-1.5 mt-2">
-                    <p className="text-xs font-semibold text-muted-foreground/80">{description}</p>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+                <div className="text-xl sm:text-3xl font-black text-foreground tracking-tight truncate">{value}</div>
+                <div className="flex items-center gap-1.5 mt-1 sm:mt-2">
+                    <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground/80 truncate">{description}</p>
                 </div>
             </CardContent>
         </Card>
