@@ -135,72 +135,73 @@ export default function OperatingHoursPage() {
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto space-y-6">
-            <div className="flex justify-between items-center">
+        <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Operating Hours</h1>
-                    <p className="text-muted-foreground mt-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Operating Hours</h1>
+                    <p className="text-muted-foreground text-sm sm:text-base mt-2">
                         Set your store's regular working hours. Orders placed outside these hours will be scheduled for processing when you open next.
                     </p>
                 </div>
-                <Button onClick={handleSave} disabled={isSaving}>
+                <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto shadow-md shrink-0">
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Save Changes
                 </Button>
             </div>
 
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 space-y-0 pb-2">
                     <div className="space-y-1">
-                        <CardTitle>Weekly Schedule</CardTitle>
-                        <CardDescription>Configure open and close times for each day of the week.</CardDescription>
+                        <CardTitle className="text-lg sm:text-xl">Weekly Schedule</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">Configure open and close times for each day of the week.</CardDescription>
                     </div>
-                    <Button variant="outline" size="sm" onClick={copyMondayToAll} className="h-8">
-                        <Copy className="mr-2 h-4 w-4" />
+                    <Button variant="outline" size="sm" onClick={copyMondayToAll} className="w-full sm:w-auto h-9 sm:h-8 text-xs sm:text-sm font-semibold">
+                        <Copy className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                         Copy Monday to All
                     </Button>
                 </CardHeader>
-                <CardContent className="pt-6">
-                    <div className="space-y-6">
+                <CardContent className="p-3 sm:p-6 pt-3 sm:pt-6">
+                    <div className="space-y-3 sm:space-y-4">
                         {hours.map((hour) => {
                             const dayConfig = DAYS.find(d => d.value === hour.day_of_week);
                             return (
-                                <div key={hour.day_of_week} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg bg-card">
-                                    <div className="flex items-center gap-4 w-48">
+                                <div key={hour.day_of_week} className="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2.5 sm:p-4 border rounded-lg bg-card">
+                                    <div className="flex items-center gap-2.5 sm:gap-4 w-24 sm:w-48 shrink-0">
                                         <Switch
                                             checked={hour.is_open}
                                             onCheckedChange={(val) => updateDay(hour.day_of_week, 'is_open', val)}
                                         />
-                                        <Label className="font-medium text-base">
-                                            {dayConfig?.label}
+                                        <Label className="font-semibold text-sm sm:text-base capitalize">
+                                            <span className="sm:hidden">{dayConfig?.label.substring(0, 3)}</span>
+                                            <span className="hidden sm:inline">{dayConfig?.label}</span>
                                         </Label>
                                     </div>
 
                                     {hour.is_open ? (
-                                        <div className="flex items-center gap-4 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <Label className="text-sm text-muted-foreground w-12 text-right">Opens</Label>
+                                        <div className="flex items-center justify-end gap-1.5 sm:gap-4 flex-1">
+                                            <div className="flex items-center gap-1 sm:gap-2">
+                                                <Label className="text-xs sm:text-sm text-muted-foreground hidden sm:inline sm:w-12 text-right">Opens</Label>
                                                 <Input
                                                     type="time"
                                                     value={hour.opening_time}
                                                     onChange={(e) => updateDay(hour.day_of_week, 'opening_time', e.target.value)}
-                                                    className="w-32"
+                                                    className="w-20 sm:w-32 text-xs sm:text-sm p-1 sm:p-2 h-8 sm:h-10 text-center font-medium"
                                                 />
                                             </div>
-                                            <span className="text-muted-foreground">-</span>
-                                            <div className="flex items-center gap-2">
-                                                <Label className="text-sm text-muted-foreground w-12 text-right">Closes</Label>
+                                            <span className="text-muted-foreground text-xs sm:text-sm font-bold">-</span>
+                                            <div className="flex items-center gap-1 sm:gap-2">
+                                                <Label className="text-xs sm:text-sm text-muted-foreground hidden sm:inline sm:w-12 text-right">Closes</Label>
                                                 <Input
                                                     type="time"
                                                     value={hour.closing_time}
                                                     onChange={(e) => updateDay(hour.day_of_week, 'closing_time', e.target.value)}
-                                                    className="w-32"
+                                                    className="w-20 sm:w-32 text-xs sm:text-sm p-1 sm:p-2 h-8 sm:h-10 text-center font-medium"
                                                 />
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex-1 text-muted-foreground italic px-4">
-                                            Closed all day
+                                        <div className="flex-1 text-right text-muted-foreground italic text-xs sm:text-sm px-2 sm:px-4">
+                                            Closed
                                         </div>
                                     )}
                                 </div>

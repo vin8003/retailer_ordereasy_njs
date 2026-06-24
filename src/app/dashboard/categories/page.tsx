@@ -138,11 +138,11 @@ export default function CategoriesPage() {
     }
 
     return (
-        <div className="space-y-8 pb-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="space-y-6 sm:space-y-8 p-4 sm:p-0 pb-8">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-foreground">Categories</h1>
-                    <p className="text-muted-foreground mt-2 text-lg">
+                    <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">Categories</h1>
+                    <p className="text-muted-foreground mt-2 text-sm sm:text-lg">
                         Manage your store's categories. Renaming generic categories will create a private version for your store.
                     </p>
                 </div>
@@ -151,21 +151,21 @@ export default function CategoriesPage() {
                         placeholder="New category name" 
                         value={newCategoryName}
                         onChange={(e) => setNewCategoryName(e.target.value)}
-                        className="w-full md:w-64"
+                        className="w-full md:w-64 h-10"
                         disabled={isCreating}
                     />
-                    <Button type="submit" disabled={isCreating || !newCategoryName.trim()}>
+                    <Button type="submit" className="h-10 px-4 shrink-0" disabled={isCreating || !newCategoryName.trim()}>
                         {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
                         Create
                     </Button>
                 </form>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {categories.map((cat) => (
                     <Card key={cat.id} className="overflow-hidden border-none shadow-xl shadow-primary/5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 group">
-                        <CardHeader className="pb-4 border-b border-border/30 bg-muted/20">
-                            <CardTitle className="text-xl font-bold">
+                        <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-4 border-b border-border/30 bg-muted/20">
+                            <CardTitle className="text-sm sm:text-xl font-bold">
                                 <div className="flex items-start justify-between gap-2">
                                     <div className="flex-1 min-w-0">
                                         {editingId === cat.id ? (
@@ -173,7 +173,7 @@ export default function CategoriesPage() {
                                                 <Input
                                                     value={editingName}
                                                     onChange={(e) => setEditingName(e.target.value)}
-                                                    className="h-8 text-lg font-bold bg-background/80"
+                                                    className="h-8 text-xs sm:text-lg font-bold bg-background/80"
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') handleRenameSubmit(cat.id);
                                                         if (e.key === 'Escape') handleRenameCancel();
@@ -188,14 +188,14 @@ export default function CategoriesPage() {
                                                 </Button>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 group/title">
+                                            <div className="flex items-center gap-1.5 group/title">
                                                 <span className="truncate group-hover:text-primary transition-colors">{cat.name}</span>
                                                 <button 
                                                     onClick={() => handleRenameStart(cat)}
-                                                    className="opacity-0 group-hover/title:opacity-100 p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-opacity"
+                                                    className="opacity-100 sm:opacity-0 sm:group-hover/title:opacity-100 p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-opacity"
                                                     title="Rename category"
                                                 >
-                                                    <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <Edit2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
                                                 </button>
                                             </div>
                                         )}
@@ -204,20 +204,20 @@ export default function CategoriesPage() {
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                             onClick={() => handleDeleteCategory(cat.id, cat.name)}
                                             disabled={deletingId === cat.id}
                                             title="Delete category"
                                         >
-                                            {deletingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                            {deletingId === cat.id ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                                         </Button>
                                     </div>
                                 </div>
                             </CardTitle>
-                            {cat.description && <CardDescription className="line-clamp-1 mt-1">{cat.description}</CardDescription>}
+                            {cat.description && <CardDescription className="line-clamp-1 mt-0.5 text-[10px] sm:text-sm">{cat.description}</CardDescription>}
                         </CardHeader>
-                        <CardContent className="pt-6">
-                            <div className="aspect-[4/3] relative rounded-2xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group-hover:border-primary/30 transition-colors">
+                        <CardContent className="p-3 sm:p-6">
+                            <div className="aspect-[4/3] relative rounded-xl sm:rounded-2xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center bg-muted/10 overflow-hidden group-hover:border-primary/30 transition-colors">
                                 {cat.image ? (
                                     <div className="relative w-full h-full">
                                         <img 
@@ -225,37 +225,37 @@ export default function CategoriesPage() {
                                             alt={cat.name} 
                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                         />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
-                                            <p className="text-white text-xs font-bold uppercase tracking-widest translate-y-2 group-hover:translate-y-0 transition-transform">Edit Image</p>
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 sm:gap-3">
+                                            <p className="text-white text-[10px] sm:text-xs font-bold uppercase tracking-widest translate-y-2 group-hover:translate-y-0 transition-transform">Edit Image</p>
                                             <Button 
                                                 variant="default" 
                                                 size="sm"
                                                 onClick={() => triggerFileInput(cat.id)}
                                                 disabled={uploadingId === cat.id}
-                                                className="shadow-xl shadow-primary/40 rounded-full px-6"
+                                                className="shadow-xl shadow-primary/40 rounded-full px-4 sm:px-6 h-7 sm:h-9 text-[10px] sm:text-sm font-semibold"
                                             >
-                                                {uploadingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                                {uploadingId === cat.id ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />}
                                                 Change
                                             </Button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center p-6 space-y-4">
-                                        <div className="size-16 mx-auto rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner">
-                                            <ImageIcon className="h-8 w-8 text-primary/40" />
+                                    <div className="text-center p-3 sm:p-6 space-y-2 sm:space-y-4">
+                                        <div className="size-10 sm:size-16 mx-auto rounded-xl sm:rounded-3xl bg-primary/10 flex items-center justify-center shadow-inner">
+                                            <ImageIcon className="h-5 sm:h-8 w-5 sm:w-8 text-primary/40" />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-foreground">No image set</p>
-                                            <p className="text-[10px] text-muted-foreground mt-1">Recommended: 800x600px</p>
+                                            <p className="text-xs sm:text-sm font-bold text-foreground">No image</p>
+                                            <p className="text-[9px] text-muted-foreground hidden sm:block mt-1">Recommended: 800x600px</p>
                                         </div>
                                         <Button 
                                             variant="outline" 
                                             size="sm" 
-                                            className="rounded-full px-6 border-primary/20 hover:border-primary/50 text-primary"
+                                            className="rounded-full px-3 sm:px-6 h-7 sm:h-9 text-[10px] sm:text-sm border-primary/20 hover:border-primary/50 text-primary font-semibold"
                                             onClick={() => triggerFileInput(cat.id)}
                                             disabled={uploadingId === cat.id}
                                         >
-                                            {uploadingId === cat.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                            {uploadingId === cat.id ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Upload className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />}
                                             Upload Image
                                         </Button>
                                     </div>

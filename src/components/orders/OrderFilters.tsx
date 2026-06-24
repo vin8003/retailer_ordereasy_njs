@@ -23,17 +23,19 @@ export function OrderFilters({ currentStatus, onStatusChange }: OrderFiltersProp
 
     return (
         <Tabs value={currentStatus} onValueChange={onStatusChange} className="w-full">
-            <TabsList className="bg-muted/50 p-1">
-                {statuses.map((status) => (
-                    <TabsTrigger
-                        key={status.value}
-                        value={status.value}
-                        className="px-4 py-2 text-sm font-medium transition-all"
-                    >
-                        {status.label}
-                    </TabsTrigger>
-                ))}
-            </TabsList>
+            <div className="w-full overflow-x-auto whitespace-nowrap pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <TabsList className="bg-muted/50 p-1 flex justify-start w-max h-10">
+                    {statuses.map((status) => (
+                        <TabsTrigger
+                            key={status.value}
+                            value={status.value}
+                            className="px-4 py-2 text-sm font-medium transition-all shrink-0"
+                        >
+                            {status.label}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+            </div>
         </Tabs>
     );
 }

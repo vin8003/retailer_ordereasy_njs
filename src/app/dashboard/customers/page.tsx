@@ -231,7 +231,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Analytics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <StatCard title="Total Customers" value={totalCustomersCount.toString()} icon="users" color="text-blue-600" />
                 <StatCard title="Avg Rating" value={avgRatingValue.toFixed(1)} icon="star" color="text-yellow-500" />
                 <StatCard title="Total Revenue" value={formatCurrency(totalRevenueValue)} icon="indian-rupee" color="text-green-600" />
@@ -295,95 +295,163 @@ export default function CustomersPage() {
                 </CardContent>
             </Card>
 
-            {/* Table */}
-            <Card>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Customer</TableHead>
-                                <TableHead>Rating</TableHead>
-                                <TableHead>Orders</TableHead>
-                                <TableHead>Spent</TableHead>
-                                <TableHead>Last Active</TableHead>
-                                <TableHead className="text-right">Credit Balance</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {customers.length === 0 ? (
-                                <TableRow key="no-customers">
-                                    <TableCell colSpan={7} className="text-center h-24">
-                                        No customers found.
-                                    </TableCell>
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+                <Card>
+                    <CardContent className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Rating</TableHead>
+                                    <TableHead>Orders</TableHead>
+                                    <TableHead>Spent</TableHead>
+                                    <TableHead>Last Active</TableHead>
+                                    <TableHead className="text-right">Credit Balance</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead></TableHead>
                                 </TableRow>
-                            ) : (
-                                customers.map((customer) => (
-                                    <TableRow
-                                        key={customer.customerId}
-                                        className="cursor-pointer hover:bg-slate-50 relative group"
-                                        onClick={() => router.push(`/dashboard/customers/details?id=${customer.customerId}`)}
-                                    >
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar>
-                                                    <AvatarImage src={formatImageUrl(customer.profileImage)} />
-                                                    <AvatarFallback>{customer.customerName?.[0]?.toUpperCase() || 'C'}</AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium">{customer.customerName}</span>
-                                                        <Badge variant="outline" className={`text-[10px] h-4 px-1 ${
-                                                            (customer.registrationStatus === 'registered' || customer.isPhoneVerified) 
-                                                            ? 'border-blue-200 text-blue-700 bg-blue-50' 
-                                                            : 'border-slate-200 text-slate-600 bg-slate-50'
-                                                        }`}>
-                                                            {(customer.registrationStatus === 'registered' || customer.isPhoneVerified) ? 'App User' : 'Walk-in'}
-                                                        </Badge>
-                                                    </div>
-                                                    <span className="text-xs text-muted-foreground">ID: {customer.customerId} • {customer.phoneNumber}</span>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-yellow-500">★</span>
-                                                <span>{(customer.averageRating || 0).toFixed(1)}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{customer.totalOrders}</TableCell>
-                                        <TableCell>{formatCurrency(customer.totalSpent)}</TableCell>
-                                        <TableCell>
-                                            {customer.lastOrderDate
-                                                ? new Date(customer.lastOrderDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
-                                                : '-'}
-                                        </TableCell>
-                                        <TableCell className="text-right font-bold text-red-600">
-                                            {customer.currentBalance > 0 ? formatCurrency(customer.currentBalance) : '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={customer.isBlacklisted ? "destructive" : "secondary"} className={!customer.isBlacklisted ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
-                                                {customer.isBlacklisted ? 'Blacklisted' : 'Active'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="opacity-0 group-hover:opacity-100"
-                                                onClick={(e) => handleEditClick(e, customer)}
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
+                            </TableHeader>
+                            <TableBody>
+                                {customers.length === 0 ? (
+                                    <TableRow key="no-customers">
+                                        <TableCell colSpan={7} className="text-center h-24">
+                                            No customers found.
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                                ) : (
+                                    customers.map((customer) => (
+                                        <TableRow
+                                            key={customer.customerId}
+                                            className="cursor-pointer hover:bg-slate-50 relative group"
+                                            onClick={() => router.push(`/dashboard/customers/details?id=${customer.customerId}`)}
+                                        >
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar>
+                                                        <AvatarImage src={formatImageUrl(customer.profileImage)} />
+                                                        <AvatarFallback>{customer.customerName?.[0]?.toUpperCase() || 'C'}</AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-medium">{customer.customerName}</span>
+                                                            <Badge variant="outline" className={`text-[10px] h-4 px-1 ${
+                                                                (customer.registrationStatus === 'registered' || customer.isPhoneVerified) 
+                                                                ? 'border-blue-200 text-blue-700 bg-blue-50' 
+                                                                : 'border-slate-200 text-slate-600 bg-slate-50'
+                                                            }`}>
+                                                                {(customer.registrationStatus === 'registered' || customer.isPhoneVerified) ? 'App User' : 'Walk-in'}
+                                                            </Badge>
+                                                        </div>
+                                                        <span className="text-xs text-muted-foreground">ID: {customer.customerId} • {customer.phoneNumber}</span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-yellow-500">★</span>
+                                                    <span>{(customer.averageRating || 0).toFixed(1)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{customer.totalOrders}</TableCell>
+                                            <TableCell>{formatCurrency(customer.totalSpent)}</TableCell>
+                                            <TableCell>
+                                                {customer.lastOrderDate
+                                                    ? new Date(customer.lastOrderDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
+                                                    : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-red-600">
+                                                {customer.currentBalance > 0 ? formatCurrency(customer.currentBalance) : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={customer.isBlacklisted ? "destructive" : "secondary"} className={!customer.isBlacklisted ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}>
+                                                    {customer.isBlacklisted ? 'Blacklisted' : 'Active'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="opacity-0 group-hover:opacity-100"
+                                                    onClick={(e) => handleEditClick(e, customer)}
+                                                >
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="block md:hidden space-y-3">
+                {customers.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground bg-white rounded-xl border p-6">
+                        No customers found.
+                    </div>
+                ) : (
+                    customers.map((customer) => (
+                        <div
+                            key={customer.customerId}
+                            onClick={() => router.push(`/dashboard/customers/details?id=${customer.customerId}`)}
+                            className="bg-white rounded-xl border border-border/50 p-4 shadow-sm active:bg-slate-50 transition-all flex flex-col gap-3 cursor-pointer"
+                        >
+                            <div className="flex justify-between items-start gap-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <Avatar className="h-10 w-10 shrink-0">
+                                        <AvatarImage src={formatImageUrl(customer.profileImage)} />
+                                        <AvatarFallback>{customer.customerName?.[0]?.toUpperCase() || 'C'}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="font-bold text-sm text-foreground truncate">{customer.customerName}</span>
+                                            <Badge variant="outline" className={`text-[8px] h-3.5 px-1 py-0 border-none shrink-0 ${
+                                                (customer.registrationStatus === 'registered' || customer.isPhoneVerified) 
+                                                ? 'text-blue-700 bg-blue-50' 
+                                                : 'text-slate-600 bg-slate-50'
+                                            }`}>
+                                                {(customer.registrationStatus === 'registered' || customer.isPhoneVerified) ? 'App User' : 'Walk-in'}
+                                            </Badge>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground truncate">ID: {customer.customerId} • {customer.phoneNumber}</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1 shrink-0">
+                                    <Badge variant={customer.isBlacklisted ? "destructive" : "secondary"} className={`text-[8px] font-bold px-1.5 py-0 border-none h-4 ${!customer.isBlacklisted ? "bg-green-50 text-green-700" : ""}`}>
+                                        {customer.isBlacklisted ? 'Blacklisted' : 'Active'}
+                                    </Badge>
+                                    {customer.currentBalance > 0 && (
+                                        <span className="text-[9px] font-extrabold text-red-600 bg-red-50 border border-red-100 rounded px-1 mt-0.5">
+                                            Due: {formatCurrency(customer.currentBalance)}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center">
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-muted-foreground uppercase font-bold">Spent</span>
+                                    <span className="text-xs font-bold text-gray-900 mt-0.5">{formatCurrency(customer.totalSpent)}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-muted-foreground uppercase font-bold">Orders</span>
+                                    <span className="text-xs font-bold text-gray-900 mt-0.5">{customer.totalOrders}</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-muted-foreground uppercase font-bold">Rating</span>
+                                    <span className="text-xs font-bold text-yellow-600 flex items-center justify-center gap-0.5 mt-0.5">
+                                        ★ {(customer.averageRating || 0).toFixed(1)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
 
             <InfiniteScrollTrigger 
                 onLoadMore={() => fetchCustomers(true)}
@@ -436,11 +504,11 @@ export default function CustomersPage() {
 function StatCard({ title, value, icon, color }: { title: string; value: string; icon: string; color: string }) {
     return (
         <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-6">
                 <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-                        <p className="text-2xl font-bold">{value}</p>
+                    <div className="space-y-1 min-w-0">
+                        <p className="text-[11px] sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
+                        <p className="text-lg sm:text-2xl font-bold truncate">{value}</p>
                     </div>
                 </div>
             </CardContent>
