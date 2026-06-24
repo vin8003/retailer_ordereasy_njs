@@ -94,7 +94,7 @@ export default function NewPurchasePage() {
             try {
                 const [suppRes, prodRes] = await Promise.all([
                     api.get('/products/erp/suppliers/'),
-                    api.get('/products/')
+                    api.get('/products/?no_page=true')
                 ]);
                 setSuppliers(suppRes.data.results || suppRes.data);
                 setProducts(prodRes.data.results || prodRes.data);
