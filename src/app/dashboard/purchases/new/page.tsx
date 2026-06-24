@@ -193,7 +193,7 @@ export default function NewPurchasePage() {
                 supplier: selectedSupplier,
                 invoice_number: invoiceNumber,
                 invoice_date: invoiceDate,
-                total_amount: subtotal,
+                total_amount: Number(subtotal.toFixed(2)),
                 paid_amount: paidAmount,
                 notes: notes,
                 payment_status: paidAmount >= subtotal ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
@@ -201,7 +201,7 @@ export default function NewPurchasePage() {
                     product: r.product.id,
                     quantity: r.quantity,
                     purchase_price: r.purchase_price,
-                    total: r.total,
+                    total: Number(r.total.toFixed(2)),
                     new_price: r.new_price,
                     new_original_price: r.new_original_price,
                     mrp_updated: r.new_price !== Number(r.product.price) || r.new_original_price !== Number(r.product.original_price)
