@@ -7,21 +7,11 @@ import { cn } from '@/lib/utils';
 import { productService } from '@/services/api';
 // import { useDebounce } from '@/hooks/use-debounce'; 
 
-// We'll implement inline debounce for simplicity since we don't know if hooks exist
-function useDebounceValue<T>(value: T, delay: number): T {
-    const [debouncedValue, setDebouncedValue] = useState<T>(value);
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-        return () => clearTimeout(handler);
-    }, [value, delay]);
-    return debouncedValue;
-}
 
 interface Product {
     id: number;
     name: string;
+    barcode?: string;
     price?: string;
 }
 
@@ -34,9 +24,8 @@ interface ProductMultiSelectProps {
 export function ProductMultiSelect({ selectedIds, onSelectionChange, initialProducts = [] }: ProductMultiSelectProps) {
     const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const debouncedSearch = useDebounceValue(searchTerm, 300);
 
-    const [results, setResults] = useState<Product[]>([]);
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Cache for selected product names so we can display them even if not in search results
@@ -75,17 +64,17 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, initialProd
 
     // Fetch products based on search
     useEffect(() => {
-        const searchProducts = async () => {
+        const fetchAll = async () => {
             setLoading(true);
             try {
-                const response = await productService.searchProducts(debouncedSearch);
-                const products: Product[] = response.data.results || response.data;
-                setResults(products);
+                const response = await productService.fetchProducts({ no_page: 'true', is_active: 'true' });
+                const productsList: Product[] = response.data.results || response.data || [];
+                setAllProducts(productsList);
 
                 // Update cache
                 setSelectedProductsInfo(prev => {
                     const newMap = new Map(prev);
-                    products.forEach(p => newMap.set(String(p.id), p.name));
+                    productsList.forEach(p => newMap.set(String(p.id), p.name));
                     return newMap;
                 });
             } catch (error) {
@@ -96,9 +85,21 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, initialProd
         };
 
         if (open) {
-            searchProducts();
+            fetchAll();
         }
-    }, [debouncedSearch, open]);
+    }, [open]);
+
+    const results = (() => {
+        const searchLower = searchTerm.toLowerCase().trim();
+        if (!searchLower) return allProducts;
+        const words = searchLower.split(/\s+/).filter(Boolean);
+        return allProducts.filter(p => 
+            words.every(word => 
+                p.name.toLowerCase().includes(word) || 
+                (p.barcode && p.barcode.includes(word))
+            )
+        );
+    })();
 
     // Cleanup or specialized fetch logic - removed empty useEffect
 

@@ -166,10 +166,20 @@ function EditPurchaseContent() {
 
     const handleSearchKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && searchTerm) {
-            const matched = products.find(p => p.barcode === searchTerm);
+            const cleanedTerm = searchTerm.trim();
+            // 1. Exact barcode match
+            const matched = products.find(p => p.barcode === cleanedTerm);
             if (matched) {
                 e.preventDefault();
                 addProductToRows(matched);
+                return;
+            }
+            
+            // 2. Exactly one filtered suggestion
+            if (filteredSuggestions.length === 1) {
+                e.preventDefault();
+                addProductToRows(filteredSuggestions[0]);
+                return;
             }
         }
     };
@@ -226,12 +236,17 @@ function EditPurchaseContent() {
         }
     };
 
-    const filteredSuggestions = searchTerm.length > 1 
-        ? products.filter(p => 
-            p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            (p.barcode && p.barcode.includes(searchTerm))
-          ).slice(0, 5)
-        : [];
+    const filteredSuggestions = (() => {
+        const trimmed = searchTerm.trim().toLowerCase();
+        if (trimmed.length <= 1) return [];
+        const words = trimmed.split(/\s+/).filter(Boolean);
+        return products.filter(p => 
+            words.every(word => 
+                p.name.toLowerCase().includes(word) || 
+                (p.barcode && p.barcode.includes(word))
+            )
+        ).slice(0, 5);
+    })();
 
     if (isLoading) return (
         <div className="flex h-[80vh] items-center justify-center">

@@ -13,6 +13,7 @@ interface Product {
     name: string;
     price: number;
     unit: string;
+    barcode?: string;
     image_display_url?: string;
 }
 
@@ -24,26 +25,42 @@ interface ProductSelectorProps {
 export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
-    const [products, setProducts] = useState<Product[]>([]);
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (open) {
-            handleSearch();
+            fetchAllProducts();
         }
     }, [open]);
 
-    const handleSearch = async () => {
+    const fetchAllProducts = async () => {
         setIsLoading(true);
         try {
-            const response = await productService.searchProducts(search);
-            setProducts(response.data.results || response.data);
+            const response = await productService.fetchProducts({ no_page: 'true', is_active: 'true' });
+            setAllProducts(response.data.results || response.data || []);
         } catch (error) {
             console.error("Failed to fetch products", error);
         } finally {
             setIsLoading(false);
         }
     };
+
+    const handleSearch = () => {
+        // Real-time filtering is handled client-side
+    };
+
+    const filteredProducts = (() => {
+        const searchLower = search.toLowerCase().trim();
+        if (!searchLower) return allProducts;
+        const words = searchLower.split(/\s+/).filter(Boolean);
+        return allProducts.filter(p => 
+            words.every(word => 
+                p.name.toLowerCase().includes(word) || 
+                (p.barcode && p.barcode.includes(word))
+            )
+        );
+    })();
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -74,7 +91,7 @@ export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorPr
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                     <div className="space-y-2">
-                        {products.filter(p => !excludeIds.includes(p.id)).map((product) => (
+                        {filteredProducts.filter(p => !excludeIds.includes(p.id)).map((product) => (
                             <div
                                 key={product.id}
                                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -107,7 +124,7 @@ export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorPr
                                 </Button>
                             </div>
                         ))}
-                        {products.length === 0 && !isLoading && (
+                        {filteredProducts.length === 0 && !isLoading && (
                             <div className="text-center py-8 text-muted-foreground">
                                 No products found.
                             </div>

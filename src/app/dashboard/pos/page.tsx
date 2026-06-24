@@ -873,9 +873,16 @@ export default function POSPage() {
     };
 
     const filteredProducts = products.filter(p => {
-        const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           (p.barcode && p.barcode.includes(searchTerm)) ||
-                           (p.batches && p.batches.some(b => b.barcode && b.barcode.includes(searchTerm)));
+        const matchSearch = (() => {
+            const searchLower = searchTerm.toLowerCase().trim();
+            if (!searchLower) return true;
+            const words = searchLower.split(/\s+/).filter(Boolean);
+            return words.every(word => 
+                p.name.toLowerCase().includes(word) || 
+                (p.barcode && p.barcode.includes(word)) ||
+                (p.batches && p.batches.some(b => b.barcode && b.barcode.includes(word)))
+            );
+        })();
         const productCategory = p.category_name || 'Uncategorized';
         const matchCategory = activeCategory === 'All' || productCategory === activeCategory;
         return matchSearch && matchCategory;
