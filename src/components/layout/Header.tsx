@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { authService } from '@/services/api';
-
+import Image from 'next/image';
 import { ShoppingBag } from 'lucide-react';
 
 const Header = () => {
@@ -35,13 +35,17 @@ const Header = () => {
             <div className="flex items-center gap-2">
                 {/* Mobile Shop Branding */}
                 <div className="flex items-center gap-2.5 md:hidden">
-                    <div className="size-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-md shadow-primary/20 shrink-0">
-                        {getInitials(shopName)}
-                    </div>
+                    <Image
+                        src="/icon.png"
+                        alt="Order Easy Retailer Icon"
+                        width={36}
+                        height={36}
+                        className="rounded-lg object-contain shrink-0"
+                    />
                     <span className="text-base font-bold text-foreground truncate max-w-[150px] sm:max-w-[250px]">{shopName}</span>
                 </div>
                 {/* Desktop title */}
-                <h2 className="text-lg font-semibold hidden md:block text-gray-800">Retailer Dashboard</h2>
+                <h2 className="text-lg font-semibold hidden md:block text-gray-800">Order Easy Retailer Dashboard</h2>
             </div>
             <div className="flex items-center gap-4">
                 <div className="text-sm text-muted-foreground hidden sm:block">

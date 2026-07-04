@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -88,8 +89,8 @@ export default function SignupPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-            <Card className="w-full max-w-md my-8">
-                <CardHeader className="space-y-1 relative">
+            <Card className="w-full max-w-md my-8 shadow-2xl border-primary/10">
+                <CardHeader className="space-y-4 relative flex flex-col items-center pt-8">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -98,7 +99,14 @@ export default function SignupPage() {
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    <CardTitle className="text-2xl font-bold text-center">Retailer Signup</CardTitle>
+                    <Image
+                        src="/logo.png"
+                        alt="Order Easy Retailer Logo"
+                        width={240}
+                        height={75}
+                        className="h-18 w-auto object-contain mt-4"
+                        priority
+                    />
                     <CardDescription className="text-center">
                         Create a new account to join Order Easy
                     </CardDescription>

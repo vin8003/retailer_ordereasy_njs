@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { authService } from '@/services/api';
 import {
     LayoutDashboard,
@@ -80,13 +81,17 @@ const Sidebar = () => {
 
     return (
         <aside className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-full fixed left-0 top-0 shadow-xl shadow-primary/5">
-            <div className="p-8">
-                <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30">
-                        <ShoppingBag className="text-primary-foreground size-5" />
-                    </div>
-                    <h1 className="text-xl font-bold tracking-tight text-foreground">Retailer</h1>
-                </div>
+            <div className="p-6 border-b border-sidebar-border/50">
+                <Link href="/dashboard" className="flex items-center justify-center">
+                    <Image
+                        src="/logo.png"
+                        alt="Order Easy Retailer Logo"
+                        width={180}
+                        height={60}
+                        className="h-12 w-auto object-contain"
+                        priority
+                    />
+                </Link>
             </div>
 
             <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-2">

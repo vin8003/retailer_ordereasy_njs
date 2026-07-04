@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -81,9 +82,16 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader className="space-y-1">
-                    <CardTitle className="text-2xl font-bold text-center">Order Easy Retailer</CardTitle>
+            <Card className="w-full max-w-md shadow-2xl border-primary/10">
+                <CardHeader className="space-y-4 flex flex-col items-center pt-8">
+                    <Image
+                        src="/logo.png"
+                        alt="Order Easy Retailer Logo"
+                        width={260}
+                        height={80}
+                        className="h-20 w-auto object-contain"
+                        priority
+                    />
                     <CardDescription className="text-center">
                         Enter your credentials to access your dashboard
                     </CardDescription>
