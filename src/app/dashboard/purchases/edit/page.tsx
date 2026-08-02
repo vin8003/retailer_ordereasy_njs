@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
 
 interface Product {
     id: number;
@@ -73,7 +74,7 @@ function EditPurchaseContent() {
             toast.success("Supplier added successfully");
             setShowAddModal(false);
             
-            const suppRes = await api.get('/products/erp/suppliers/');
+            const suppRes = await api.get('/products/erp/suppliers/?no_page=true');
             setSuppliers(suppRes.data.results || suppRes.data);
             setSelectedSupplier(res.data.id.toString());
             
@@ -93,7 +94,7 @@ function EditPurchaseContent() {
         const fetchData = async () => {
             try {
                 const [suppRes, prodRes] = await Promise.all([
-                    api.get('/products/erp/suppliers/'),
+                    api.get('/products/erp/suppliers/?no_page=true'),
                     api.get('/products/?no_page=true')
                 ]);
                 setSuppliers(suppRes.data.results || suppRes.data);
@@ -303,16 +304,12 @@ function EditPurchaseContent() {
                                     <UserPlus size={12} /> Add New
                                 </button>
                             </div>
-                            <select 
+                            <SearchableSupplierSelect
+                                suppliers={suppliers}
                                 value={selectedSupplier}
-                                onChange={(e) => setSelectedSupplier(e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20 text-gray-900 font-medium"
-                            >
-                                <option value="">Select Supplier</option>
-                                {suppliers.map(s => (
-                                    <option key={s.id} value={s.id}>{s.company_name}</option>
-                                ))}
-                            </select>
+                                onChange={setSelectedSupplier}
+                                placeholder="Select Supplier"
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
