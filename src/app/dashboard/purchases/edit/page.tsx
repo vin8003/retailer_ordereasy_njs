@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/services/api';
+import { fetchAllPages } from '@/utils/fetchAllPages';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
@@ -74,8 +75,8 @@ function EditPurchaseContent() {
             toast.success("Supplier added successfully");
             setShowAddModal(false);
             
-            const suppRes = await api.get('/products/erp/suppliers/?no_page=true');
-            setSuppliers(suppRes.data.results || suppRes.data);
+            const allSuppliers = await fetchAllPages('/products/erp/suppliers/');
+            setSuppliers(allSuppliers);
             setSelectedSupplier(res.data.id.toString());
             
             setNewSupplier({
@@ -93,11 +94,11 @@ function EditPurchaseContent() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [suppRes, prodRes] = await Promise.all([
-                    api.get('/products/erp/suppliers/?no_page=true'),
+                const [allSuppliers, prodRes] = await Promise.all([
+                    fetchAllPages('/products/erp/suppliers/'),
                     api.get('/products/?no_page=true')
                 ]);
-                setSuppliers(suppRes.data.results || suppRes.data);
+                setSuppliers(allSuppliers);
                 const fetchedProducts = prodRes.data.results || prodRes.data;
                 setProducts(fetchedProducts);
 
