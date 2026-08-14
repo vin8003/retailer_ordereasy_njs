@@ -195,7 +195,7 @@ export default function NewPurchasePage() {
                 supplier: selectedSupplier,
                 invoice_number: invoiceNumber,
                 invoice_date: invoiceDate,
-                total_amount: Number(subtotal.toFixed(2)),
+                total_amount: Math.round(subtotal),
                 paid_amount: paidAmount,
                 notes: notes,
                 payment_status: paidAmount >= subtotal ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
@@ -203,7 +203,7 @@ export default function NewPurchasePage() {
                     product: r.product.id,
                     quantity: r.quantity,
                     purchase_price: r.purchase_price,
-                    total: Number(r.total.toFixed(2)),
+                    total: Math.round(r.total),
                     new_price: r.new_price,
                     new_original_price: r.new_original_price,
                     mrp_updated: r.new_price !== Number(r.product.price) || r.new_original_price !== Number(r.product.original_price)
@@ -420,7 +420,7 @@ export default function NewPurchasePage() {
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-right font-black text-gray-900">
-                                                    ₹{row.total.toFixed(2)}
+                                                    ₹{Math.round(row.total)}
                                                 </td>
                                                 <td className="p-4">
                                                     <button 
@@ -449,7 +449,7 @@ export default function NewPurchasePage() {
                         <div className="space-y-4 mb-8">
                             <div className="flex justify-between text-gray-500 font-medium">
                                 <span>Subtotal ({rows.length} Items)</span>
-                                <span>₹{subtotal.toFixed(2)}</span>
+                                <span>₹{Math.round(subtotal)}</span>
                             </div>
                             <div className="flex justify-between text-gray-500 font-medium">
                                 <span>GST / Taxes</span>
@@ -457,7 +457,7 @@ export default function NewPurchasePage() {
                             </div>
                             <div className="flex justify-between items-end pt-4 border-t border-dashed border-gray-200">
                                 <span className="text-lg font-bold text-gray-900">Total Bill</span>
-                                <span className="text-4xl font-black text-primary tracking-tighter">₹{subtotal.toFixed(2)}</span>
+                                <span className="text-4xl font-black text-primary tracking-tighter">₹{Math.round(subtotal)}</span>
                             </div>
                         </div>
 
@@ -477,7 +477,7 @@ export default function NewPurchasePage() {
                             </div>
                             <div className="mt-4 flex justify-between items-center px-1">
                                 <span className="text-xs font-bold text-gray-400">Remaining Balance</span>
-                                <span className="text-sm font-black text-red-500">₹{(subtotal - paidAmount).toFixed(2)}</span>
+                                <span className="text-sm font-black text-red-500">₹{Math.round(subtotal - paidAmount)}</span>
                             </div>
                         </div>
 
