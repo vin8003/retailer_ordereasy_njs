@@ -248,7 +248,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             return;
         }
 
-        if (hasBatches && batches.length === 0) {
+        if (hasBatches && batches.length === 0 && !isEditing) {
             toast.error("Please add at least one batch if Batch System is ON");
             return;
         }
@@ -279,7 +279,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("is_active", String(isActive));
             formData.append("is_seasonal", String(isSeasonal));
             formData.append("has_batches", String(hasBatches));
-            if (hasBatches) {
+            // Omit empty batches on edit so the API does not deactivate every batch.
+            if (hasBatches && batches.length > 0) {
                 formData.append("batches", JSON.stringify(batches));
             }
 
