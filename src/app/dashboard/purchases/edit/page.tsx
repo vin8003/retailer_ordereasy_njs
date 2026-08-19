@@ -7,7 +7,7 @@ import { fetchAllPages } from '@/utils/fetchAllPages';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
-    Info, AlertCircle, ShoppingCart, IndianRupee, UserPlus
+    Info, AlertCircle, ShoppingCart, IndianRupee, UserPlus, ImageIcon, X
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
@@ -55,6 +55,9 @@ function EditPurchaseContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [hasReturns, setHasReturns] = useState(false);
     const [refundAmount, setRefundAmount] = useState(0);
+    const [existingBillImage, setExistingBillImage] = useState<string | null>(null);
+    const [billImageFile, setBillImageFile] = useState<File | null>(null);
+    const [billImagePreview, setBillImagePreview] = useState<string | null>(null);
     
     // Add Supplier Modal State
     const [showAddModal, setShowAddModal] = useState(false);
@@ -112,6 +115,8 @@ function EditPurchaseContent() {
                     setNotes(inv.notes || '');
                     setHasReturns(inv.is_returned);
                     setRefundAmount(Number(inv.refund_amount));
+                    setExistingBillImage(inv.bill_image || null);
+                    setBillImagePreview(inv.bill_image || null);
                     
                     // Map items to rows
                     const mappedRows: PurchaseRow[] = inv.items.map((item: any) => {
@@ -228,6 +233,24 @@ function EditPurchaseContent() {
             };
 
             await api.put(`/products/erp/purchase-invoices/${invoiceId}/`, payload);
+            if (billImageFile) {
+                const formData = new FormData();
+                formData.append('bill_image', billImageFile);
+                try {
+                    await api.patch(`/products/erp/purchase-invoices/${invoiceId}/`, formData, {
+                        transformRequest: [(data, headers) => {
+                            if (headers) {
+                                delete headers['Content-Type'];
+                                delete headers['content-type'];
+                            }
+                            return data;
+                        }],
+                    });
+                } catch (imageErr) {
+                    console.error(imageErr);
+                    toast.error("Bill updated, but replacing the photo failed");
+                }
+            }
             toast.success("Purchase bill updated successfully!");
             router.push('/dashboard/purchases');
         } catch (error: any) {
@@ -334,6 +357,42 @@ function EditPurchaseContent() {
                                 onChange={(e) => setInvoiceDate(e.target.value)}
                                 className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20 text-gray-900 font-medium"
                             />
+                        </div>
+                        <div className="md:col-span-3 space-y-2">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                <ImageIcon size={14} /> Bill photo
+                            </label>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0] || null;
+                                        setBillImageFile(file);
+                                        setBillImagePreview(file ? URL.createObjectURL(file) : existingBillImage);
+                                    }}
+                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                />
+                                {billImagePreview && (
+                                    <div className="relative shrink-0">
+                                        <a href={billImagePreview} target="_blank" rel="noopener noreferrer" title="Open bill image">
+                                            <img src={billImagePreview} alt="Bill" className="size-16 rounded-xl object-cover border border-gray-100" />
+                                        </a>
+                                        {billImageFile && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setBillImageFile(null); setBillImagePreview(existingBillImage); }}
+                                                className="absolute -top-2 -right-2 bg-white border border-gray-200 rounded-full p-0.5 text-gray-400 hover:text-red-500"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            {existingBillImage && !billImageFile && (
+                                <p className="text-[11px] text-gray-400 font-medium">Current bill photo is attached. Choose a file to replace it.</p>
+                            )}
                         </div>
                     </div>
 

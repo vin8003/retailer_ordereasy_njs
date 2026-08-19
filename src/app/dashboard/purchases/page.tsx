@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/services/api';
 import Link from 'next/link';
-import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown, RotateCcw, Loader2 } from 'lucide-react';
+import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown, RotateCcw, Loader2, ImageIcon } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
@@ -265,7 +265,23 @@ export default function PurchasesPage() {
                                     if (item.type === 'invoice') {
                                         return (
                                             <tr key={`inv-${item.id}`} className="hover:bg-gray-50/50 transition-colors group">
-                                                <td className="p-4 pl-6 font-bold text-gray-900">{item.invoice_number || `INV-${item.id}`}</td>
+                                                <td className="p-4 pl-6 font-bold text-gray-900">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{item.invoice_number || `INV-${item.id}`}</span>
+                                                        {item.bill_image && (
+                                                            <a
+                                                                href={item.bill_image}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                title="View bill photo"
+                                                                className="shrink-0"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <img src={item.bill_image} alt="Bill" className="size-8 rounded-lg object-cover border border-gray-100" />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className="p-4 text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={14} className="text-gray-400" />
@@ -381,8 +397,19 @@ export default function PurchasesPage() {
                             <div key={`${item.type}-${item.id}`} className={`p-4 active:bg-gray-50 transition-colors flex flex-col gap-3 ${item.type === 'return' ? 'bg-red-50/10 border-l-4 border-l-red-500' : ''}`}>
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
-                                        <span className={`font-bold text-sm ${item.type === 'return' ? 'text-red-700' : 'text-gray-800'}`}>
+                                        <span className={`font-bold text-sm ${item.type === 'return' ? 'text-red-700' : 'text-gray-800'} flex items-center gap-2`}>
                                             {item.type === 'invoice' ? (item.invoice_number || `INV-${item.id}`) : (item.return_number || `RET-${item.id}`)}
+                                            {item.type === 'invoice' && item.bill_image && (
+                                                <a
+                                                    href={item.bill_image}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    title="View bill photo"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <ImageIcon size={14} className="text-primary" />
+                                                </a>
+                                            )}
                                         </span>
                                         {item.type === 'return' && (
                                             <span className="text-[10px] text-red-400 font-semibold mt-0.5">Against {item.invoice_number}</span>
