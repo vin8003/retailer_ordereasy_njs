@@ -31,7 +31,13 @@ export function Autocomplete({
     useEffect(() => {
         if (!isOpen) return;
         const q = (value || "").trim().toLowerCase();
-        const filtered = !q
+        // If the controlled value is a stored suggestion ID (bulk category picker),
+        // do not treat that ID as a name query — the list would empty after select.
+        const valueIsStoredId = suggestions.some((s) => {
+            if (typeof s === "string" || s == null) return false;
+            return String(s.id).toLowerCase() === q;
+        });
+        const filtered = !q || valueIsStoredId
             ? suggestions
             : suggestions.filter((s) => {
                 const name = typeof s === "string" ? s : (s?.name ?? "");
