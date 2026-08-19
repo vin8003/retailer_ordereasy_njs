@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine, CheckCircle, Smartphone, Printer } from 'lucide-react';
+import StoreLocationMap from '@/components/profile/StoreLocationMap';
 import { toast } from 'sonner';
 import PhoneVerification from '@/components/auth/PhoneVerification';
 import {
@@ -40,6 +41,8 @@ interface RetailerProfile {
     state: string;
     pincode: string;
     country: string;
+    latitude?: number | null;
+    longitude?: number | null;
 
     // Business
     businessType?: string;
@@ -108,6 +111,8 @@ export default function ProfilePage() {
                     state: data.state,
                     pincode: data.pincode,
                     country: data.country,
+                    latitude: data.latitude != null ? Number(data.latitude) : null,
+                    longitude: data.longitude != null ? Number(data.longitude) : null,
                     businessType: data.business_type,
                     gstNumber: data.gst_number,
                     panNumber: data.pan_number,
@@ -446,6 +451,12 @@ export default function ProfilePage() {
                                     <Input disabled={!isEditing} value={formData.country} onChange={e => setFormData({ ...formData, country: e.target.value })} />
                                 </div>
                             </div>
+                            <StoreLocationMap
+                                lat={formData.latitude}
+                                lng={formData.longitude}
+                                editable={isEditing}
+                                onChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+                            />
                         </CardContent>
                     </Card>
 
