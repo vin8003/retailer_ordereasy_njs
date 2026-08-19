@@ -247,7 +247,7 @@ function EditPurchaseContent() {
                 p.name.toLowerCase().includes(word) || 
                 (p.barcode && p.barcode.includes(word))
             )
-        ).slice(0, 5);
+        );
     })();
 
     if (isLoading) return (
@@ -355,6 +355,7 @@ function EditPurchaseContent() {
                                 
                                 {filteredSuggestions.length > 0 && (
                                     <div className="absolute z-20 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <div className="max-h-60 overflow-y-auto overscroll-contain">
                                         {filteredSuggestions.map(p => (
                                             <button
                                                 key={p.id}
@@ -373,6 +374,12 @@ function EditPurchaseContent() {
                                                 <Plus className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" size={20} />
                                             </button>
                                         ))}
+                                        </div>
+                                        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/50">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                {filteredSuggestions.length} of {products.length} products
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
                             </div>
