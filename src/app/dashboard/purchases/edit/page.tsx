@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
+import { findProductByBarcode, productListIsIncomplete, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
@@ -21,6 +22,9 @@ interface Product {
     price: number | string;
     original_price: number | string;
     image: string;
+    additional_barcodes?: string[];
+    has_batches?: boolean;
+    batches?: { id?: number; barcode?: string; batch_number?: string }[];
 }
 
 interface PurchaseRow {
@@ -99,10 +103,13 @@ function EditPurchaseContent() {
             try {
                 const [allSuppliers, prodRes] = await Promise.all([
                     fetchAllPages('/products/erp/suppliers/'),
-                    api.get('/products/?no_page=true')
+                    api.get('/products/?no_page=true&is_active=true')
                 ]);
                 setSuppliers(allSuppliers);
-                const fetchedProducts = prodRes.data.results || prodRes.data;
+                let fetchedProducts = unwrapProductList(prodRes.data);
+                if (productListIsIncomplete(prodRes.data, fetchedProducts)) {
+                    fetchedProducts = await fetchAllPages('/products/', { is_active: true });
+                }
                 setProducts(fetchedProducts);
 
                 if (invoiceId) {
@@ -175,7 +182,7 @@ function EditPurchaseContent() {
         if (e.key === 'Enter' && searchTerm) {
             const cleanedTerm = searchTerm.trim();
             // 1. Exact barcode match
-            const matched = products.find(p => p.barcode === cleanedTerm);
+            const matched = findProductByBarcode(products, cleanedTerm);
             if (matched) {
                 e.preventDefault();
                 addProductToRows(matched);
@@ -264,13 +271,7 @@ function EditPurchaseContent() {
     const filteredSuggestions = (() => {
         const trimmed = searchTerm.trim().toLowerCase();
         if (trimmed.length <= 1) return [];
-        const words = trimmed.split(/\s+/).filter(Boolean);
-        return products.filter(p => 
-            words.every(word => 
-                p.name.toLowerCase().includes(word) || 
-                (p.barcode && p.barcode.includes(word))
-            )
-        );
+        return products.filter(p => productMatchesQuery(p, trimmed));
     })();
 
     if (isLoading) return (

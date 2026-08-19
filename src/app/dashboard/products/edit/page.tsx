@@ -15,24 +15,37 @@ function EditProductContent() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        const id = Number(searchParams.get('id'));
+        if (!id) return;
+        let cancelled = false;
+
         const fetchProduct = async () => {
             setIsLoading(true);
-            try {
-                const id = Number(searchParams.get('id'));
-                if (!id) throw new Error("Invalid Product ID");
-                const response = await productService.fetchProductDetails(id);
-                setProduct(response.data);
-            } catch (err: any) {
-                console.error("Failed to load product", err);
-                setError("Failed to load product details");
-            } finally {
-                setIsLoading(false);
+            setError(null);
+            const attempts = 3;
+            let lastErr: any = null;
+            for (let i = 0; i < attempts; i++) {
+                try {
+                    const response = await productService.fetchProductDetails(id);
+                    if (cancelled) return;
+                    setProduct(response.data);
+                    setIsLoading(false);
+                    return;
+                } catch (err: any) {
+                    lastErr = err;
+                    if (i < attempts - 1) {
+                        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+                    }
+                }
             }
+            if (cancelled) return;
+            console.error("Failed to load product", lastErr);
+            setError("Failed to load product details");
+            setIsLoading(false);
         };
 
-        if (searchParams.get('id')) {
-            fetchProduct();
-        }
+        fetchProduct();
+        return () => { cancelled = true; };
     }, [searchParams]);
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading product...</div>;
