@@ -45,6 +45,7 @@ function OrderDetailContent() {
     const [isUpdatingEta, setIsUpdatingEta] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
     const [retailerProfile, setRetailerProfile] = useState<any>(null);
+    const resolvedOrderIdRef = useRef<number | null>(null);
 
     // Print Logic
     const receiptRef = useRef<HTMLDivElement>(null);
@@ -66,6 +67,7 @@ function OrderDetailContent() {
             if (!id) throw new Error("Invalid Order ID");
             const response = await orderService.fetchOrderDetails(id);
             setOrder(response.data);
+            resolvedOrderIdRef.current = Number(response.data?.id) || id;
         } catch (err: any) {
             console.error("Failed to load order", err);
             setError("Failed to load order details");
@@ -138,8 +140,12 @@ function OrderDetailContent() {
         const handleFcmUpdate = (event: any) => {
             const payload = event.detail;
             const updatedOrderId = payload.data?.order_id || payload.data?.id;
+            const incoming = Number(updatedOrderId);
+            const urlId = Number(id);
+            const resolvedId = resolvedOrderIdRef.current;
 
-            if (Number(updatedOrderId) === Number(id)) {
+            // ?number= links leave `id` null; compare against the fetched order id too.
+            if ((urlId && incoming === urlId) || (resolvedId && incoming === resolvedId)) {
                 fetchOrderDetails();
             }
         };
