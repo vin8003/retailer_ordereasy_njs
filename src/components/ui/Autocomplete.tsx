@@ -29,11 +29,17 @@ export function Autocomplete({
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (isOpen) {
-            setFilteredSuggestions(suggestions);
-            setActiveIndex(-1);
-        }
-    }, [suggestions, isOpen]);
+        if (!isOpen) return;
+        const q = (value || "").trim().toLowerCase();
+        const filtered = !q
+            ? suggestions
+            : suggestions.filter((s) => {
+                const name = typeof s === "string" ? s : (s?.name ?? "");
+                return String(name).toLowerCase().includes(q);
+            });
+        setFilteredSuggestions(filtered);
+        setActiveIndex(-1);
+    }, [suggestions, isOpen, value]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -93,7 +99,7 @@ export function Autocomplete({
                 placeholder={placeholder}
                 className="w-full"
             />
-            {isOpen && (filteredSuggestions.length > 0 || isLoading) && (
+            {isOpen && (
                 <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border rounded-md shadow-md max-h-60 overflow-auto animate-in fade-in zoom-in-95 duration-200">
                     {isLoading && filteredSuggestions.length === 0 ? (
                         <div className="p-2 text-sm text-muted-foreground animate-pulse">Loading...</div>
