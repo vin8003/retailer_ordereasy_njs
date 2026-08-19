@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
+import { findProductByBarcode, looksLikeBarcode, productListIsIncomplete, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
@@ -22,6 +23,9 @@ interface Product {
     price: number | string;
     original_price: number | string;
     image: string;
+    additional_barcodes?: string[];
+    has_batches?: boolean;
+    batches?: { id?: number; barcode?: string; batch_number?: string }[];
 }
 
 interface PurchaseRow {
@@ -98,10 +102,14 @@ export default function NewPurchasePage() {
             try {
                 const [allSuppliers, prodRes] = await Promise.all([
                     fetchAllPages('/products/erp/suppliers/'),
-                    api.get('/products/?no_page=true')
+                    api.get('/products/?no_page=true&is_active=true')
                 ]);
                 setSuppliers(allSuppliers);
-                setProducts(prodRes.data.results || prodRes.data);
+                let fetched = unwrapProductList(prodRes.data);
+                if (productListIsIncomplete(prodRes.data, fetched)) {
+                    fetched = await fetchAllPages('/products/', { is_active: true });
+                }
+                setProducts(fetched);
             } catch (error) {
                 toast.error("Failed to load setup data");
             } finally {
@@ -145,8 +153,8 @@ export default function NewPurchasePage() {
     const handleSearchKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && searchTerm) {
             const cleanedTerm = searchTerm.trim();
-            // 1. Exact barcode match
-            const matched = products.find(p => p.barcode === cleanedTerm);
+            // 1. Exact barcode on parent, extra codes, or a batch (same as POS)
+            const matched = findProductByBarcode(products, cleanedTerm);
             if (matched) {
                 e.preventDefault();
                 addProductToRows(matched);
@@ -160,13 +168,11 @@ export default function NewPurchasePage() {
                 return;
             }
             
-            // 3. If no suggestions and looks like barcode, open Quick Add
-            if (filteredSuggestions.length === 0) {
-                if (/^\d+$/.test(cleanedTerm) || cleanedTerm.length > 5) {
-                    e.preventDefault();
-                    setScanBarcode(cleanedTerm);
-                    setIsQuickAddOpen(true);
-                }
+            // 3. Unknown Barcode only for a numeric code that is not in this catalog
+            if (filteredSuggestions.length === 0 && looksLikeBarcode(cleanedTerm)) {
+                e.preventDefault();
+                setScanBarcode(cleanedTerm);
+                setIsQuickAddOpen(true);
             }
         }
     };
@@ -244,13 +250,7 @@ export default function NewPurchasePage() {
     const filteredSuggestions = (() => {
         const trimmed = searchTerm.trim().toLowerCase();
         if (trimmed.length <= 1) return [];
-        const words = trimmed.split(/\s+/).filter(Boolean);
-        return products.filter(p => 
-            words.every(word => 
-                p.name.toLowerCase().includes(word) || 
-                (p.barcode && p.barcode.includes(word))
-            )
-        );
+        return products.filter(p => productMatchesQuery(p, trimmed));
     })();
 
     if (isLoading) return (
