@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { orderDetailsHref, parseOrderNumberFromText } from '@/lib/orderLinks';
 
 interface LogEntry {
     id: number;
@@ -163,7 +164,20 @@ function LedgerContent() {
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex items-center gap-2 font-bold text-gray-900">
                                                         <FileText size={12} className="text-gray-400" />
-                                                        {log.reason || 'N/A'}
+                                                        {(() => {
+                                                            const orderNumber = parseOrderNumberFromText(log.reason);
+                                                            const href = orderDetailsHref({ orderNumber });
+                                                            if (!href) return log.reason || 'N/A';
+                                                            return (
+                                                                <Link
+                                                                    href={href}
+                                                                    className="text-primary hover:underline"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {log.reason}
+                                                                </Link>
+                                                            );
+                                                        })()}
                                                     </div>
                                                     <div className="flex items-center gap-2 font-bold text-gray-400 italic">
                                                         <User size={10} /> {log.created_by}

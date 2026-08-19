@@ -55,7 +55,14 @@ function OrderDetailContent() {
     const fetchOrderDetails = async () => {
         setIsLoading(true);
         try {
-            const id = Number(searchParams.get('id'));
+            let id = Number(searchParams.get('id'));
+            const orderNumber = searchParams.get('number');
+            if (!id && orderNumber) {
+                const listRes = await orderService.fetchOrders({ search: orderNumber });
+                const list = listRes.data.results || listRes.data || [];
+                const match = list.find((o: any) => String(o.order_number) === String(orderNumber)) || list[0];
+                id = Number(match?.id);
+            }
             if (!id) throw new Error("Invalid Order ID");
             const response = await orderService.fetchOrderDetails(id);
             setOrder(response.data);
@@ -122,7 +129,8 @@ function OrderDetailContent() {
 
     useEffect(() => {
         const id = searchParams.get('id');
-        if (id) {
+        const number = searchParams.get('number');
+        if (id || number) {
             fetchOrderDetails();
             fetchRetailerProfile();
         }

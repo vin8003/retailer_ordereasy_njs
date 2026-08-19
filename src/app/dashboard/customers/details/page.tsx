@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { orderDetailsHref } from '@/lib/orderLinks';
 import api, { customerService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -369,9 +371,17 @@ function CustomerDetailContent() {
                                         <div className="text-center py-10 text-muted-foreground">No recent orders found.</div>
                                     ) : (
                                         customer.recentOrders.map((order) => (
-                                            <div key={order.order_number} className="flex justify-between items-center p-4 border rounded-lg hover:bg-slate-50 transition-colors">
+                                            <div
+                                                key={order.order_number}
+                                                className="flex justify-between items-center p-4 border rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                                                role="link"
+                                                onClick={() => {
+                                                    const href = orderDetailsHref({ id: order.id, orderNumber: order.order_number });
+                                                    if (href) router.push(href);
+                                                }}
+                                            >
                                                 <div>
-                                                    <div className="font-semibold">Order #{order.order_number}</div>
+                                                    <div className="font-semibold text-primary hover:underline">Order #{order.order_number}</div>
                                                     <div className="text-sm text-muted-foreground">
                                                         {new Date(order.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
@@ -386,7 +396,8 @@ function CustomerDetailContent() {
                                                     <Badge variant="outline" className="text-xs capitalize">{order.status}</Badge>
 
                                                     {(order.status?.toLowerCase() === 'delivered' && !order.my_rating) && (
-                                                        <Button size="sm" variant="ghost" className="h-6 mt-1 text-xs text-blue-600 px-2" onClick={() => {
+                                                        <Button size="sm" variant="ghost" className="h-6 mt-1 text-xs text-blue-600 px-2" onClick={(e) => {
+                                                            e.stopPropagation();
                                                             setSelectedOrderId(order.id);
                                                             setShowRatingDialog(true);
                                                         }}>
@@ -450,7 +461,14 @@ function CustomerDetailContent() {
                                                                 </TableCell>
                                                                 <TableCell>
                                                                     <div className="text-sm">
-                                                                        {entry.order_number ? `Order #${entry.order_number}` : entry.notes}
+                                                                        {entry.order_number ? (
+                                                                            <Link
+                                                                                href={orderDetailsHref({ id: entry.order, orderNumber: entry.order_number }) || '#'}
+                                                                                className="text-primary font-semibold hover:underline"
+                                                                            >
+                                                                                {`Order #${entry.order_number}`}
+                                                                            </Link>
+                                                                        ) : entry.notes}
                                                                     </div>
                                                                     {entry.payment_mode && (
                                                                         <div className="text-[10px] text-muted-foreground uppercase">
@@ -499,7 +517,14 @@ function CustomerDetailContent() {
                                                         <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-50">
                                                             <div className="flex flex-col gap-0.5 min-w-0">
                                                                 <span className="font-bold text-gray-700 truncate">
-                                                                    {entry.order_number ? `Order #${entry.order_number}` : entry.notes || 'No description'}
+                                                                    {entry.order_number ? (
+                                                                        <Link
+                                                                            href={orderDetailsHref({ id: entry.order, orderNumber: entry.order_number }) || '#'}
+                                                                            className="text-primary hover:underline"
+                                                                        >
+                                                                            {`Order #${entry.order_number}`}
+                                                                        </Link>
+                                                                    ) : (entry.notes || 'No description')}
                                                                 </span>
                                                                 {entry.payment_mode && (
                                                                     <span className="text-[9px] text-muted-foreground uppercase font-semibold">
@@ -534,7 +559,14 @@ function CustomerDetailContent() {
                                                             {reward.type === 'earned' ? 'Earned' : 'Redeemed'}
                                                         </div>
                                                         <div className="text-xs text-muted-foreground">
-                                                            Order: {reward.order_number || '-'}
+                                                            {reward.order_number ? (
+                                                                <Link
+                                                                    href={orderDetailsHref({ orderNumber: reward.order_number }) || '#'}
+                                                                    className="text-primary hover:underline"
+                                                                >
+                                                                    Order: {reward.order_number}
+                                                                </Link>
+                                                            ) : 'Order: -'}
                                                         </div>
                                                     </div>
                                                 </div>
