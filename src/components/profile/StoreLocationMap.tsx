@@ -4,15 +4,25 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { LocateFixed } from 'lucide-react';
 
-const DEFAULT_CENTER = { lat: 27.2173, lng: 77.4892 }; // Bharatpur
+const FALLBACK_CENTER = { lat: 27.2173, lng: 77.4892 }; // map view only — never written
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const CARTO_TILES = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
 
 type Props = {
     lat?: number | null;
     lng?: number | null;
     editable: boolean;
     onChange: (lat: number, lng: number) => void;
+    address?: {
+        line1?: string | null;
+        line2?: string | null;
+        city?: string | null;
+        state?: string | null;
+        pincode?: string | null;
+        country?: string | null;
+    };
 };
 
 declare global {
@@ -21,12 +31,22 @@ declare global {
     }
 }
 
+/** Real WGS84 pin. 0,0 and near-null floats are missing, not the Gulf of Guinea. */
 function saneLatLng(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
     const la = typeof lat === 'number' ? lat : Number(lat);
     const ln = typeof lng === 'number' ? lng : Number(lng);
     if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
     if (la < -90 || la > 90 || ln < -180 || ln > 180) return null;
+    if (Math.abs(la) < 0.001 && Math.abs(ln) < 0.02) return null;
     return { lat: Number(la.toFixed(8)), lng: Number(ln.toFixed(8)) };
+}
+
+function addressQuery(address?: Props['address']): string {
+    if (!address) return '';
+    return [address.line1, address.line2, address.city, address.pincode, address.state, address.country]
+        .map((p) => (p || '').trim())
+        .filter(Boolean)
+        .join(', ');
 }
 
 function loadLeaflet(): Promise<any> {
@@ -57,14 +77,31 @@ function loadLeaflet(): Promise<any> {
     });
 }
 
-export default function StoreLocationMap({ lat, lng, editable, onChange }: Props) {
+async function geocodeAddress(q: string): Promise<{ lat: number; lng: number } | null> {
+    if (!q) return null;
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return null;
+        const rows = await res.json();
+        const first = Array.isArray(rows) ? rows[0] : null;
+        return saneLatLng(first?.lat, first?.lon);
+    } catch {
+        return null;
+    }
+}
+
+export default function StoreLocationMap({ lat, lng, editable, onChange, address }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
+    const tilesRef = useRef<any>(null);
     const editableRef = useRef(editable);
     const onChangeRef = useRef(onChange);
+    const addressRef = useRef(address);
     editableRef.current = editable;
     onChangeRef.current = onChange;
+    addressRef.current = address;
 
     const pin = saneLatLng(lat, lng);
     const hasPin = !!pin;
@@ -88,7 +125,27 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
             onChangeRef.current(next.lat, next.lng);
         };
 
-        const startMap = (L: any) => {
+        const addTiles = (L: any, map: any) => {
+            const layer = L.tileLayer(OSM_TILES, {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 19,
+            });
+            layer.on('tileerror', () => {
+                if (tilesRef.current === layer) {
+                    map.removeLayer(layer);
+                    const fallback = L.tileLayer(CARTO_TILES, {
+                        attribution: '&copy; OpenStreetMap, &copy; CARTO',
+                        maxZoom: 19,
+                    });
+                    fallback.addTo(map);
+                    tilesRef.current = fallback;
+                }
+            });
+            layer.addTo(map);
+            tilesRef.current = layer;
+        };
+
+        const startMap = async (L: any) => {
             const el = containerRef.current;
             if (cancelled || !L || !el || mapRef.current) return;
             if (el.clientWidth < 8 || el.clientHeight < 8) return;
@@ -102,13 +159,15 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
                 });
             }
 
-            const center = pin ? [pin.lat, pin.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng];
-            const map = L.map(el, { maxZoom: 18 }).setView(center, pin ? 15 : 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap',
-                maxZoom: 19,
-            }).addTo(map);
+            let center = pin ? { lat: pin.lat, lng: pin.lng } : null;
+            if (!center) {
+                const geo = await geocodeAddress(addressQuery(addressRef.current));
+                if (cancelled || mapRef.current) return;
+                center = geo || FALLBACK_CENTER;
+            }
 
+            const map = L.map(el, { maxZoom: 18 }).setView([center.lat, center.lng], pin ? 15 : 13);
+            addTiles(L, map);
             map.on('click', (e: any) => emitFromClick(map, e));
             mapRef.current = map;
             if (pin) {
@@ -134,9 +193,9 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
                 mapRef.current.remove();
                 mapRef.current = null;
                 markerRef.current = null;
+                tilesRef.current = null;
             }
         };
-        // init once
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -157,7 +216,6 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
         } else {
             markerRef.current = L.marker(pos).addTo(map);
         }
-        // Keep a working tile zoom. Do not force max-zoom (blank tiles).
         const current = map.getZoom();
         const zoom = Number.isFinite(current) ? Math.min(Math.max(current, 12), 16) : 13;
         map.setView(pos, zoom);
@@ -200,7 +258,7 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
                 {editable
                     ? (hasPin
                         ? `Pin set at ${pin!.lat.toFixed(5)}, ${pin!.lng.toFixed(5)}. Tap the map to move it.`
-                        : 'Tap the map to drop your store pin.')
+                        : 'No store pin yet. Map is centered from the address — tap to drop a pin.')
                     : (hasPin
                         ? `Pin at ${pin!.lat.toFixed(5)}, ${pin!.lng.toFixed(5)}.`
                         : 'No store pin yet. Edit profile to set it on the map.')}

@@ -90,6 +90,15 @@ export default function ProfilePage() {
     // Phone Verification
     const [showVerification, setShowVerification] = useState(false);
 
+    const asCoord = (value: unknown): number | null => {
+        if (value == null || value === '') return null;
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        if (Math.abs(n) < 0.001) return null;
+        return n;
+    };
+
+
     const fetchProfile = async () => {
         setLoading(true);
         try {
@@ -111,8 +120,8 @@ export default function ProfilePage() {
                     state: data.state,
                     pincode: data.pincode,
                     country: data.country,
-                    latitude: data.latitude != null ? Number(data.latitude) : null,
-                    longitude: data.longitude != null ? Number(data.longitude) : null,
+                    latitude: asCoord(data.latitude),
+                    longitude: asCoord(data.longitude),
                     businessType: data.business_type,
                     gstNumber: data.gst_number,
                     panNumber: data.pan_number,
@@ -179,6 +188,8 @@ export default function ProfilePage() {
 
                 if (key === 'serviceablePincodes' && Array.isArray(value)) {
                     value.forEach(p => formDataToSend.append('serviceable_pincodes', p));
+                } else if ((key === 'latitude' || key === 'longitude') && asCoord(value) == null) {
+                    // Do not persist 0,0 / near-null as a Gulf of Guinea pin.
                 } else if (!skipKeys.includes(key) && value !== undefined && value !== null) {
                     formDataToSend.append(snakeKey, value.toString());
                 }
@@ -455,6 +466,14 @@ export default function ProfilePage() {
                                 lat={formData.latitude}
                                 lng={formData.longitude}
                                 editable={isEditing}
+                                address={{
+                                    line1: formData.addressLine1,
+                                    line2: formData.addressLine2,
+                                    city: formData.city,
+                                    state: formData.state,
+                                    pincode: formData.pincode,
+                                    country: formData.country,
+                                }}
                                 onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
                             />
                         </CardContent>
