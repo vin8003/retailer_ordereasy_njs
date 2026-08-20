@@ -16,3 +16,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         }
         setIsAuthorized(true);
     }, [router]);
+
+    if (!isAuthorized) {
+        return null; // Or a loading spinner
+    }
+
+    return <DashboardLayout>{children}</DashboardLayout>;
+}

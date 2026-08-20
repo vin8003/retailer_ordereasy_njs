@@ -104,6 +104,12 @@ function CustomerDetailContent() {
     const searchParams = useSearchParams();
     const [id, setId] = useState<number | null>(null);
     const capturedIdRef = useRef<number | null>(null);
+    // Capture once on first client render — never re-resolve after Next wipes search.
+    if (typeof window !== 'undefined' && capturedIdRef.current == null) {
+        const raw = resolveCustomerQuery(searchParams);
+        const parsed = raw ? parseInt(raw, 10) : NaN;
+        if (parsed) capturedIdRef.current = parsed;
+    }
 
     const [customer, setCustomer] = useState<CustomerDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -191,26 +197,13 @@ function CustomerDetailContent() {
     };
 
     useEffect(() => {
-        let cancelled = false;
-        const apply = (raw: string | null) => {
-            if (cancelled) return;
-            const parsed = raw ? parseInt(raw, 10) : NaN;
-            if (!parsed) {
-                setLoading(false);
-                setError('Invalid customer ID');
-                return;
-            }
-            capturedIdRef.current = parsed;
-            // Loading the customer is the gate. Do not router.replace /
-            // history.replaceState just to put the query back.
-            setId(parsed);
-        };
-
-        apply(resolveCustomerQuery(searchParams));
-
-        return () => {
-            cancelled = true;
-        };
+        const parsed = capturedIdRef.current;
+        if (!parsed) {
+            setLoading(false);
+            setError('Invalid customer ID');
+            return;
+        }
+        setId(parsed);
         // Mount only — do not re-run when Next wipes/restores searchParams.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

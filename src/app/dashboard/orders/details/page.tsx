@@ -80,6 +80,10 @@ function OrderDetailContent() {
     });
 
     const capturedQueryRef = useRef<{ id: string | null; number: string | null }>({ id: null, number: null });
+    // Capture once on first client render — never re-resolve after Next wipes search.
+    if (typeof window !== "undefined" && !(capturedQueryRef.current.id || capturedQueryRef.current.number)) {
+        capturedQueryRef.current = resolveOrderQuery(searchParams);
+    }
 
     const fetchOrderDetails = async () => {
         const q = capturedQueryRef.current;
@@ -159,8 +163,6 @@ function OrderDetailContent() {
     };
 
     useEffect(() => {
-        let cancelled = false;
-
         const handleFcmUpdate = (event: any) => {
             const payload = event.detail;
             const updatedOrderId = payload.data?.order_id || payload.data?.id;
@@ -173,24 +175,16 @@ function OrderDetailContent() {
 
         window.addEventListener('fcm_order_update', handleFcmUpdate);
 
-        const apply = (q: { id: string | null; number: string | null }) => {
-            if (cancelled) return;
-            if (!(q.id || q.number)) {
-                setIsLoading(false);
-                setError("Invalid Order ID");
-                return;
-            }
-            capturedQueryRef.current = q;
-            // Loading the order is the gate. Do not router.replace /
-            // history.replaceState just to put the query back.
+        const q = capturedQueryRef.current;
+        if (!(q.id || q.number)) {
+            setIsLoading(false);
+            setError("Invalid Order ID");
+        } else {
             fetchOrderDetails();
             fetchRetailerProfile();
-        };
-
-        apply(resolveOrderQuery(searchParams));
+        }
 
         return () => {
-            cancelled = true;
             window.removeEventListener('fcm_order_update', handleFcmUpdate);
         };
         // Mount only — do not re-run when Next wipes/restores searchParams.
