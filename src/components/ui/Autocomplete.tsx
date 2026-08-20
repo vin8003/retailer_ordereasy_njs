@@ -31,7 +31,15 @@ export function Autocomplete({
     useEffect(() => {
         if (!isOpen) return;
         const q = (value || "").trim().toLowerCase();
-        const filtered = !q
+        // Edit/prefill stores the selected suggestion name (product group, category).
+        // Filtering by that exact name hides every other option, so typing a new
+        // query after the prefill looks like "No results found."
+        const valueIsExactName = suggestions.some((s) => {
+            if (s == null) return false;
+            const name = typeof s === "string" ? s : (s?.name ?? "");
+            return String(name).trim().toLowerCase() === q;
+        });
+        const filtered = !q || valueIsExactName
             ? suggestions
             : suggestions.filter((s) => {
                 const name = typeof s === "string" ? s : (s?.name ?? "");
@@ -94,7 +102,12 @@ export function Autocomplete({
                     onChange(e.target.value);
                     setIsOpen(true);
                 }}
-                onFocus={() => setIsOpen(true)}
+                onFocus={(e) => {
+                    setIsOpen(true);
+                    // Prefill on edit: select so the next keystroke replaces the stored
+                    // group/category name instead of appending to it.
+                    e.target.select();
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className="w-full"
