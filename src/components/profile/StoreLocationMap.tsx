@@ -4,21 +4,49 @@ import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { LocateFixed } from 'lucide-react';
 
-const DEFAULT_CENTER = { lat: 27.2173, lng: 77.4892 }; // Bharatpur
+const FALLBACK_CENTER = { lat: 27.2173, lng: 77.4892 }; // map view only — never written
 const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+const OSM_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const CARTO_TILES = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
 
 type Props = {
     lat?: number | null;
     lng?: number | null;
     editable: boolean;
     onChange: (lat: number, lng: number) => void;
+    address?: {
+        line1?: string | null;
+        line2?: string | null;
+        city?: string | null;
+        state?: string | null;
+        pincode?: string | null;
+        country?: string | null;
+    };
 };
 
 declare global {
     interface Window {
         L?: any;
     }
+}
+
+/** Real WGS84 pin. 0,0 and near-null floats are missing, not the Gulf of Guinea. */
+function saneLatLng(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
+    const la = typeof lat === 'number' ? lat : Number(lat);
+    const ln = typeof lng === 'number' ? lng : Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+    if (la < -90 || la > 90 || ln < -180 || ln > 180) return null;
+    if (Math.abs(la) < 0.001 && Math.abs(ln) < 0.02) return null;
+    return { lat: Number(la.toFixed(8)), lng: Number(ln.toFixed(8)) };
+}
+
+function addressQuery(address?: Props['address']): string {
+    if (!address) return '';
+    return [address.line1, address.line2, address.city, address.pincode, address.state, address.country]
+        .map((p) => (p || '').trim())
+        .filter(Boolean)
+        .join(', ');
 }
 
 function loadLeaflet(): Promise<any> {
@@ -49,21 +77,78 @@ function loadLeaflet(): Promise<any> {
     });
 }
 
-export default function StoreLocationMap({ lat, lng, editable, onChange }: Props) {
+async function geocodeAddress(q: string): Promise<{ lat: number; lng: number } | null> {
+    if (!q) return null;
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q)}`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return null;
+        const rows = await res.json();
+        const first = Array.isArray(rows) ? rows[0] : null;
+        return saneLatLng(first?.lat, first?.lon);
+    } catch {
+        return null;
+    }
+}
+
+export default function StoreLocationMap({ lat, lng, editable, onChange, address }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const markerRef = useRef<any>(null);
+    const tilesRef = useRef<any>(null);
     const editableRef = useRef(editable);
     const onChangeRef = useRef(onChange);
+    const addressRef = useRef(address);
     editableRef.current = editable;
     onChangeRef.current = onChange;
+    addressRef.current = address;
 
-    const hasPin = typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng);
+    const pin = saneLatLng(lat, lng);
+    const hasPin = !!pin;
 
     useEffect(() => {
         let cancelled = false;
-        loadLeaflet().then((L) => {
-            if (cancelled || !L || !containerRef.current || mapRef.current) return;
+        let ro: ResizeObserver | null = null;
+
+        const emitFromClick = (map: any, e: any) => {
+            if (!editableRef.current) return;
+            let src = e?.latlng;
+            if (!src && e?.originalEvent) {
+                try {
+                    src = map.mouseEventToLatLng(e.originalEvent);
+                } catch {
+                    src = null;
+                }
+            }
+            const next = saneLatLng(src?.lat, src?.lng);
+            if (!next) return;
+            onChangeRef.current(next.lat, next.lng);
+        };
+
+        const addTiles = (L: any, map: any) => {
+            const layer = L.tileLayer(OSM_TILES, {
+                attribution: '&copy; OpenStreetMap',
+                maxZoom: 19,
+            });
+            layer.on('tileerror', () => {
+                if (tilesRef.current === layer) {
+                    map.removeLayer(layer);
+                    const fallback = L.tileLayer(CARTO_TILES, {
+                        attribution: '&copy; OpenStreetMap, &copy; CARTO',
+                        maxZoom: 19,
+                    });
+                    fallback.addTo(map);
+                    tilesRef.current = fallback;
+                }
+            });
+            layer.addTo(map);
+            tilesRef.current = layer;
+        };
+
+        const startMap = async (L: any) => {
+            const el = containerRef.current;
+            if (cancelled || !L || !el || mapRef.current) return;
+            if (el.clientWidth < 8 || el.clientHeight < 8) return;
 
             if (L.Icon && L.Icon.Default) {
                 delete L.Icon.Default.prototype._getIconUrl;
@@ -73,36 +158,44 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
                     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
                 });
             }
-            const center = hasPin ? [lat as number, lng as number] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng];
-            const map = L.map(containerRef.current).setView(center, hasPin ? 16 : 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap',
-                maxZoom: 19,
-            }).addTo(map);
 
-            map.on('click', (e: any) => {
-                if (!editableRef.current) return;
-                const nextLat = Number(e.latlng.lat.toFixed(8));
-                const nextLng = Number(e.latlng.lng.toFixed(8));
-                onChangeRef.current(nextLat, nextLng);
-            });
-
-            mapRef.current = map;
-            if (hasPin) {
-                markerRef.current = L.marker([lat, lng]).addTo(map);
+            let center = pin ? { lat: pin.lat, lng: pin.lng } : null;
+            if (!center) {
+                const geo = await geocodeAddress(addressQuery(addressRef.current));
+                if (cancelled || mapRef.current) return;
+                center = geo || FALLBACK_CENTER;
             }
-            setTimeout(() => map.invalidateSize(), 200);
+
+            const map = L.map(el, { maxZoom: 18 }).setView([center.lat, center.lng], pin ? 15 : 13);
+            addTiles(L, map);
+            map.on('click', (e: any) => emitFromClick(map, e));
+            mapRef.current = map;
+            if (pin) {
+                markerRef.current = L.marker([pin.lat, pin.lng]).addTo(map);
+            }
+            map.whenReady(() => map.invalidateSize());
+        };
+
+        loadLeaflet().then((L) => {
+            if (cancelled || !L || !containerRef.current) return;
+            startMap(L);
+            ro = new ResizeObserver(() => {
+                if (!mapRef.current) startMap(L);
+                else mapRef.current.invalidateSize();
+            });
+            ro.observe(containerRef.current);
         }).catch((err) => console.error(err));
 
         return () => {
             cancelled = true;
+            ro?.disconnect();
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
                 markerRef.current = null;
+                tilesRef.current = null;
             }
         };
-        // init once
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -110,30 +203,34 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
         const L = window.L;
         const map = mapRef.current;
         if (!L || !map) return;
-        if (!hasPin) {
+        if (!pin) {
             if (markerRef.current) {
                 map.removeLayer(markerRef.current);
                 markerRef.current = null;
             }
             return;
         }
-        const pos: [number, number] = [lat as number, lng as number];
+        const pos: [number, number] = [pin.lat, pin.lng];
         if (markerRef.current) {
             markerRef.current.setLatLng(pos);
         } else {
             markerRef.current = L.marker(pos).addTo(map);
         }
-        map.setView(pos, Math.max(map.getZoom(), 16));
-    }, [lat, lng, hasPin]);
+        const current = map.getZoom();
+        const zoom = Number.isFinite(current) ? Math.min(Math.max(current, 12), 16) : 13;
+        map.setView(pos, zoom);
+        map.invalidateSize();
+    }, [lat, lng, pin]);
 
-    const useCurrentLocation = () => {
+    const useCurrentLocation = (ev?: { preventDefault(): void; stopPropagation(): void }) => {
+        ev?.preventDefault();
+        ev?.stopPropagation();
         if (!navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                onChange(
-                    Number(pos.coords.latitude.toFixed(8)),
-                    Number(pos.coords.longitude.toFixed(8)),
-                );
+                const next = saneLatLng(pos.coords.latitude, pos.coords.longitude);
+                if (!next) return;
+                onChange(next.lat, next.lng);
             },
             () => {
                 console.warn('Geolocation denied');
@@ -155,15 +252,15 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
             </div>
             <div
                 ref={containerRef}
-                className="w-full h-[280px] rounded-md border overflow-hidden z-0"
+                className="w-full h-[280px] rounded-md border overflow-hidden z-0 relative"
             />
             <p className="text-xs text-muted-foreground">
                 {editable
                     ? (hasPin
-                        ? `Pin set at ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}. Tap the map to move it.`
-                        : 'Tap the map to drop your store pin.')
+                        ? `Pin set at ${pin!.lat.toFixed(5)}, ${pin!.lng.toFixed(5)}. Tap the map to move it.`
+                        : 'No store pin yet. Map is centered from the address — tap to drop a pin.')
                     : (hasPin
-                        ? `Pin at ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}.`
+                        ? `Pin at ${pin!.lat.toFixed(5)}, ${pin!.lng.toFixed(5)}.`
                         : 'No store pin yet. Edit profile to set it on the map.')}
             </p>
         </div>
