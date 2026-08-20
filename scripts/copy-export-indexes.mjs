@@ -21,8 +21,23 @@
  * directoryListing:false so a slashed dir is the page, not a listing.
  * Do NOT use `serve -s`.
  */
-import { copyFileSync, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+
+/** Next 16 prepends async chunk <script> tags in <head>. The KAN-55 IIFE
+ *  must be the first <script> so it captures location.search onto
+ *  window.__OE_SEARCH before any Next JS can run or wipe the query. */
+const OE_IIFE_RE = /<script>\(function\(\)\{\s*var p=location\.pathname[\s\S]*?\}\)\(\);<\/script>/;
+
+function hoistOeIife(html) {
+  const m = html.match(OE_IIFE_RE);
+  if (!m) return html;
+  const iife = m[0];
+  const without = html.replace(OE_IIFE_RE, "");
+  if (without.includes("<head>" + iife) || without.startsWith(iife)) return without;
+  if (without.includes("<head>")) return without.replace("<head>", "<head>" + iife);
+  return iife + without;
+}
 
 const out = join(process.cwd(), "out");
 
@@ -83,4 +98,15 @@ const serveConfig = {
 };
 writeFileSync(join(out, "serve.json"), JSON.stringify(serveConfig, null, 2) + "\n");
 
-console.log(`copy-export-indexes: wrote ${copied} directory indexes and ${rewrites.length} serve rewrites`);
+let hoisted = 0;
+for (const file of walkFiles(out)) {
+  if (!file.endsWith(".html")) continue;
+  const html = readFileSync(file, "utf8");
+  const next = hoistOeIife(html);
+  if (next !== html) {
+    writeFileSync(file, next);
+    hoisted += 1;
+  }
+}
+
+console.log(`copy-export-indexes: wrote ${copied} directory indexes and ${rewrites.length} serve rewrites; hoisted IIFE in ${hoisted} html`);
