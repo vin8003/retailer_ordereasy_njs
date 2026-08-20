@@ -12,9 +12,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         const token = localStorage.getItem('access_token');
         if (!token) {
             router.push('/login');
-        } else {
-            setIsAuthorized(true);
+            return;
         }
+        setIsAuthorized(true);
     }, [router]);
 
     if (!isAuthorized) {

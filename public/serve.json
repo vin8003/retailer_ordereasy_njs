@@ -1,0 +1,134 @@
+{
+  "cleanUrls": true,
+  "directoryListing": false,
+  "rewrites": [
+    {
+      "source": "/dashboard/purchases/return-detail",
+      "destination": "/dashboard/purchases/return-detail/index.html"
+    },
+    {
+      "source": "/dashboard/products/bulk/details",
+      "destination": "/dashboard/products/bulk/details/index.html"
+    },
+    {
+      "source": "/dashboard/customers/details",
+      "destination": "/dashboard/customers/details/index.html"
+    },
+    {
+      "source": "/dashboard/suppliers/ledger",
+      "destination": "/dashboard/suppliers/ledger/index.html"
+    },
+    {
+      "source": "/dashboard/operating-hours",
+      "destination": "/dashboard/operating-hours/index.html"
+    },
+    {
+      "source": "/dashboard/products/ledger",
+      "destination": "/dashboard/products/ledger/index.html"
+    },
+    {
+      "source": "/dashboard/orders/details",
+      "destination": "/dashboard/orders/details/index.html"
+    },
+    {
+      "source": "/dashboard/purchases/edit",
+      "destination": "/dashboard/purchases/edit/index.html"
+    },
+    {
+      "source": "/dashboard/products/bulk",
+      "destination": "/dashboard/products/bulk/index.html"
+    },
+    {
+      "source": "/dashboard/products/edit",
+      "destination": "/dashboard/products/edit/index.html"
+    },
+    {
+      "source": "/dashboard/purchases/new",
+      "destination": "/dashboard/purchases/new/index.html"
+    },
+    {
+      "source": "/dashboard/products/add",
+      "destination": "/dashboard/products/add/index.html"
+    },
+    {
+      "source": "/dashboard/offers/edit",
+      "destination": "/dashboard/offers/edit/index.html"
+    },
+    {
+      "source": "/dashboard/orders/chat",
+      "destination": "/dashboard/orders/chat/index.html"
+    },
+    {
+      "source": "/dashboard/orders/edit",
+      "destination": "/dashboard/orders/edit/index.html"
+    },
+    {
+      "source": "/dashboard/categories",
+      "destination": "/dashboard/categories/index.html"
+    },
+    {
+      "source": "/dashboard/offers/new",
+      "destination": "/dashboard/offers/new/index.html"
+    },
+    {
+      "source": "/dashboard/customers",
+      "destination": "/dashboard/customers/index.html"
+    },
+    {
+      "source": "/dashboard/purchases",
+      "destination": "/dashboard/purchases/index.html"
+    },
+    {
+      "source": "/dashboard/suppliers",
+      "destination": "/dashboard/suppliers/index.html"
+    },
+    {
+      "source": "/dashboard/products",
+      "destination": "/dashboard/products/index.html"
+    },
+    {
+      "source": "/dashboard/profile",
+      "destination": "/dashboard/profile/index.html"
+    },
+    {
+      "source": "/dashboard/reports",
+      "destination": "/dashboard/reports/index.html"
+    },
+    {
+      "source": "/dashboard/reviews",
+      "destination": "/dashboard/reviews/index.html"
+    },
+    {
+      "source": "/dashboard/offers",
+      "destination": "/dashboard/offers/index.html"
+    },
+    {
+      "source": "/dashboard/orders",
+      "destination": "/dashboard/orders/index.html"
+    },
+    {
+      "source": "/dashboard/pos",
+      "destination": "/dashboard/pos/index.html"
+    },
+    {
+      "source": "/_not-found",
+      "destination": "/_not-found/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/dashboard/index.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/signup/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login/index.html"
+    },
+    {
+      "source": "/404",
+      "destination": "/404/index.html"
+    }
+  ]
+}

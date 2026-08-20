@@ -26,6 +26,33 @@ import { useRef } from "react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { authService } from "@/services/api";
 
+
+/** Typed /details?id= survives Next hydrate wipe via window.__OE_SEARCH
+ *  (set by the raw <head> IIFE before any App Router JS). Resolve once:
+ *  __OE_SEARCH, then location.search, then sessionStorage oe:qs, then
+ *  useSearchParams. Do not clear oe:qs until the order loads. */
+function parseOrderQuery(raw: string | null | undefined) {
+    if (!raw) return { id: null as string | null, number: null as string | null };
+    const q = raw.split("#")[0];
+    const params = new URLSearchParams(q.startsWith("?") ? q.slice(1) : q);
+    return { id: params.get("id"), number: params.get("number") };
+}
+
+function resolveOrderQuery(searchParams: ReturnType<typeof useSearchParams>) {
+    if (typeof window !== "undefined") {
+        const fromOe = parseOrderQuery((window as any).__OE_SEARCH);
+        if (fromOe.id || fromOe.number) return fromOe;
+        const fromWin = parseOrderQuery(window.location.search);
+        if (fromWin.id || fromWin.number) return fromWin;
+        try {
+            const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
+            const fromSaved = parseOrderQuery(sessionStorage.getItem(key));
+            if (fromSaved.id || fromSaved.number) return fromSaved;
+        } catch (e) {}
+    }
+    return { id: searchParams.get("id"), number: searchParams.get("number") };
+}
+
 function OrderDetailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -52,11 +79,18 @@ function OrderDetailContent() {
         contentRef: receiptRef,
     });
 
+    const capturedQueryRef = useRef<{ id: string | null; number: string | null }>({ id: null, number: null });
+    // Capture once on first client render — never re-resolve after Next wipes search.
+    if (typeof window !== "undefined" && !(capturedQueryRef.current.id || capturedQueryRef.current.number)) {
+        capturedQueryRef.current = resolveOrderQuery(searchParams);
+    }
+
     const fetchOrderDetails = async () => {
+        const q = capturedQueryRef.current;
         setIsLoading(true);
         try {
-            let id = Number(searchParams.get('id'));
-            const orderNumber = searchParams.get('number');
+            let id = Number(q.id);
+            const orderNumber = q.number;
             if (!id && orderNumber) {
                 const listRes = await orderService.fetchOrders({ search: orderNumber });
                 const list = listRes.data.results || listRes.data || [];
@@ -66,9 +100,10 @@ function OrderDetailContent() {
             if (!id) throw new Error("Invalid Order ID");
             const response = await orderService.fetchOrderDetails(id);
             setOrder(response.data);
+            try { sessionStorage.removeItem("oe:qs:" + window.location.pathname.replace(/\/$/, "")); } catch (e) {}
         } catch (err: any) {
             console.error("Failed to load order", err);
-            setError("Failed to load order details");
+            setError(err?.message === "Invalid Order ID" ? "Invalid Order ID" : "Failed to load order details");
         } finally {
             setIsLoading(false);
         }
@@ -128,27 +163,33 @@ function OrderDetailContent() {
     };
 
     useEffect(() => {
-        const id = searchParams.get('id');
-        const number = searchParams.get('number');
-        if (id || number) {
-            fetchOrderDetails();
-            fetchRetailerProfile();
-        }
-
         const handleFcmUpdate = (event: any) => {
             const payload = event.detail;
             const updatedOrderId = payload.data?.order_id || payload.data?.id;
+            const resolvedId = capturedQueryRef.current.id;
 
-            if (Number(updatedOrderId) === Number(id)) {
+            if (resolvedId && Number(updatedOrderId) === Number(resolvedId)) {
                 fetchOrderDetails();
             }
         };
 
         window.addEventListener('fcm_order_update', handleFcmUpdate);
+
+        const q = capturedQueryRef.current;
+        if (!(q.id || q.number)) {
+            setIsLoading(false);
+            setError("Invalid Order ID");
+        } else {
+            fetchOrderDetails();
+            fetchRetailerProfile();
+        }
+
         return () => {
             window.removeEventListener('fcm_order_update', handleFcmUpdate);
         };
-    }, [searchParams]);
+        // Mount only — do not re-run when Next wipes/restores searchParams.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
     if (error || !order) return <div className="p-8 text-center text-red-500">{error || "Order not found"}</div>;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { orderDetailsHref } from '@/lib/orderLinks';
@@ -73,11 +73,43 @@ interface CustomerDetail {
     rewardHistory: any[];
 }
 
+/** Typed /details?id= survives Next hydrate wipe via window.__OE_SEARCH
+ *  (set by the raw <head> IIFE before any App Router JS). Resolve once:
+ *  __OE_SEARCH, then location.search, then sessionStorage oe:qs, then
+ *  useSearchParams. Do not clear oe:qs until the customer loads. */
+function parseCustomerQuery(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    const q = raw.split('#')[0];
+    const params = new URLSearchParams(q.startsWith('?') ? q.slice(1) : q);
+    return params.get('id');
+}
+
+function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>): string | null {
+    if (typeof window !== 'undefined') {
+        const fromOe = parseCustomerQuery((window as any).__OE_SEARCH);
+        if (fromOe) return fromOe;
+        const fromWin = parseCustomerQuery(window.location.search);
+        if (fromWin) return fromWin;
+        try {
+            const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
+            const fromSaved = parseCustomerQuery(sessionStorage.getItem(key));
+            if (fromSaved) return fromSaved;
+        } catch (e) {}
+    }
+    return searchParams.get('id');
+}
+
 function CustomerDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const idParam = searchParams.get('id');
-    const id = idParam ? parseInt(idParam) : null;
+    const [id, setId] = useState<number | null>(null);
+    const capturedIdRef = useRef<number | null>(null);
+    // Capture once on first client render — never re-resolve after Next wipes search.
+    if (typeof window !== 'undefined' && capturedIdRef.current == null) {
+        const raw = resolveCustomerQuery(searchParams);
+        const parsed = raw ? parseInt(raw, 10) : NaN;
+        if (parsed) capturedIdRef.current = parsed;
+    }
 
     const [customer, setCustomer] = useState<CustomerDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -108,13 +140,14 @@ function CustomerDetailContent() {
 
 
     const fetchDetails = async () => {
-        if (!id) {
+        const resolvedId = capturedIdRef.current ?? id;
+        if (!resolvedId) {
             setLoading(false);
             return;
         }
         setLoading(true);
         try {
-            const response = await customerService.getRetailerCustomerDetail(id);
+            const response = await customerService.getRetailerCustomerDetail(resolvedId);
             if (response.status === 200) {
                 const data = response.data;
                 setCustomer({
@@ -135,6 +168,7 @@ function CustomerDetailContent() {
                     rewardHistory: data.reward_history || [],
                 });
                 setNewCreditLimit(data.credit_limit?.toString() || '0');
+                try { sessionStorage.removeItem('oe:qs:' + window.location.pathname.replace(/\/$/, '')); } catch (e) {}
             } else {
                 throw new Error('Failed to load details');
             }
@@ -161,6 +195,18 @@ function CustomerDetailContent() {
             setLedgerLoading(false);
         }
     };
+
+    useEffect(() => {
+        const parsed = capturedIdRef.current;
+        if (!parsed) {
+            setLoading(false);
+            setError('Invalid customer ID');
+            return;
+        }
+        setId(parsed);
+        // Mount only — do not re-run when Next wipes/restores searchParams.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (id) {
