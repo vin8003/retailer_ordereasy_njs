@@ -40,7 +40,7 @@ const BottomNav = () => {
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
         { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
         { label: 'Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
-        { label: 'Profile', icon: User, href: '/dashboard/profile' },
+        { label: 'Profile', icon: User, href: '/dashboard/profile/' },
         { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },
         { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },

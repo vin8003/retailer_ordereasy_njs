@@ -75,7 +75,7 @@ const Sidebar = () => {
         { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
         { label: 'Customers', icon: Users, href: '/dashboard/customers' },
         { label: 'Offers', icon: Award, href: '/dashboard/offers' },
-        { label: 'Profile', icon: User, href: '/dashboard/profile' },
+        { label: 'Profile', icon: User, href: '/dashboard/profile/' },
         { label: 'Operating Hours', icon: Clock, href: '/dashboard/operating-hours' },
     ];
 
