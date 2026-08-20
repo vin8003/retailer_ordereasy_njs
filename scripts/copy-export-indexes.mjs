@@ -4,22 +4,44 @@
  * directory (no index.html). `npx serve -s` then treats the directory as
  * the route, misses an index, and falls back to root index.html (Overview).
  *
- * Copy each colliding `foo.html` to `foo/index.html` so a direct GET of
- * /dashboard/orders/details (and the same for other app routes) serves
- * that page. RSC .txt files are left untouched. After this copy, `serve -s`
- * is fine — it finds the directory index instead of falling back.
+ * Copy each colliding `foo.html` to `foo/index.html` so a directory GET
+ * can serve that page. RSC .txt files are left untouched.
+ *
+ * Then emit out/serve.json so `npx serve out` (no -s) returns that
+ * index.html for both slashed and unslashed directory URLs.
+ *
+ * Do NOT set serve trailingSlash:
+ *   - true  → 301 /details?id=2650 → /details/ and drops search (serve-handler
+ *             shouldRedirect uses pathname only; Location has no query. PR
+ *             vercel/serve-handler#232 is still unmerged.)
+ *   - false → 301 /dashboard/profile/ → /dashboard/profile and breaks the
+ *             slashed Profile hard-refresh PASS.
+ * Omit the key so there is no slash 301. Rewrites + cleanUrls serve
+ * index.html in place; the browser keeps search and hash.
+ * directoryListing:false so a slashed dir is the page, not a listing.
+ * Do NOT use `serve -s`.
  */
-import { copyFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, existsSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const out = join(process.cwd(), "out");
 
-function walk(dir, acc = []) {
+function walkFiles(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     if (name === "_next" || name === "node_modules") continue;
     const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, acc);
+    if (statSync(p).isDirectory()) walkFiles(p, acc);
     else acc.push(p);
+  }
+  return acc;
+}
+
+function collectIndexDirs(dir, acc = []) {
+  if (existsSync(join(dir, "index.html"))) acc.push(dir);
+  for (const name of readdirSync(dir)) {
+    if (name === "_next" || name === "node_modules") continue;
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) collectIndexDirs(p, acc);
   }
   return acc;
 }
@@ -30,7 +52,7 @@ if (!existsSync(out)) {
 }
 
 let copied = 0;
-for (const file of walk(out)) {
+for (const file of walkFiles(out)) {
   if (!file.endsWith(".html")) continue;
   const base = file.slice(0, -".html".length);
   if (base.endsWith("/index") || file.endsWith("/404.html")) continue;
@@ -40,4 +62,25 @@ for (const file of walk(out)) {
   copyFileSync(file, dest);
   copied += 1;
 }
-console.log(`copy-export-indexes: wrote ${copied} directory indexes under out/`);
+
+// One rewrite per exported folder. Unslashed source matches both
+// /details and /details/ because serve-handler resolves the request
+// pathname before matching. Destination is the real index.html so the
+// response is in-place (no 301) and the browser keeps ?search and #hash.
+const rewrites = [];
+for (const dir of collectIndexDirs(out)) {
+  const rel = relative(out, dir).replaceAll("\\", "/");
+  if (rel === "" || rel === ".") continue;
+  const url = `/${rel}`;
+  rewrites.push({ source: url, destination: `${url}/index.html` });
+}
+rewrites.sort((a, b) => b.source.length - a.source.length || a.source.localeCompare(b.source));
+
+const serveConfig = {
+  cleanUrls: true,
+  directoryListing: false,
+  rewrites,
+};
+writeFileSync(join(out, "serve.json"), JSON.stringify(serveConfig, null, 2) + "\n");
+
+console.log(`copy-export-indexes: wrote ${copied} directory indexes and ${rewrites.length} serve rewrites`);
