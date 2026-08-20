@@ -26,6 +26,38 @@ import { useRef } from "react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { authService } from "@/services/api";
 
+
+/** Static export hydrates with RSC "q":"", so useSearchParams is empty
+ *  even when the address bar (or the blocking-script snapshot) still has
+ *  ?id= / ?number=. Prefer Next searchParams, then window.location.search,
+ *  then sessionStorage['oe:qs:'+pathname]. */
+function resolveOrderQuery(searchParams: ReturnType<typeof useSearchParams>) {
+    const fromNextId = searchParams.get("id");
+    const fromNextNumber = searchParams.get("number");
+    if (fromNextId || fromNextNumber) {
+        return { id: fromNextId, number: fromNextNumber };
+    }
+    if (typeof window === "undefined") {
+        return { id: fromNextId, number: fromNextNumber };
+    }
+    const fromWin = new URLSearchParams(window.location.search);
+    const winId = fromWin.get("id");
+    const winNumber = fromWin.get("number");
+    if (winId || winNumber) {
+        return { id: winId, number: winNumber };
+    }
+    try {
+        const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
+        const saved = sessionStorage.getItem(key);
+        if (saved) {
+            const q = saved.split("#")[0];
+            const fromSaved = new URLSearchParams(q.startsWith("?") ? q.slice(1) : q);
+            return { id: fromSaved.get("id"), number: fromSaved.get("number") };
+        }
+    } catch (e) {}
+    return { id: fromNextId, number: fromNextNumber };
+}
+
 function OrderDetailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -55,8 +87,9 @@ function OrderDetailContent() {
     const fetchOrderDetails = async () => {
         setIsLoading(true);
         try {
-            let id = Number(searchParams.get('id'));
-            const orderNumber = searchParams.get('number');
+            const q = resolveOrderQuery(searchParams);
+            let id = Number(q.id);
+            const orderNumber = q.number;
             if (!id && orderNumber) {
                 const listRes = await orderService.fetchOrders({ search: orderNumber });
                 const list = listRes.data.results || listRes.data || [];
@@ -128,8 +161,7 @@ function OrderDetailContent() {
     };
 
     useEffect(() => {
-        const id = searchParams.get('id');
-        const number = searchParams.get('number');
+        const { id, number } = resolveOrderQuery(searchParams);
         if (id || number) {
             fetchOrderDetails();
             fetchRetailerProfile();
