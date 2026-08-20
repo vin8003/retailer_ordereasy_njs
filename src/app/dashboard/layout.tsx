@@ -4,51 +4,29 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
-function restoreQueryFromSession(pathname: string) {
-    if (typeof window === 'undefined') return;
-    if (window.location.search) return;
-    const key = 'oe:qs:' + pathname.replace(/\/$/, '');
-    try {
-        const saved = sessionStorage.getItem(key);
-        if (saved) {
-            // replaceState only — never location.replace here (loop).
-            history.replaceState(null, '', pathname + saved);
-        }
-    } catch (e) {}
-}
-
 export default function Layout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [isAuthorized, setIsAuthorized] = useState(false);
 
-    // Restore before children render so details can read window.location.search
-    // after Next hydrates with RSC "q":"" and wipes the address bar.
-    if (typeof window !== 'undefined') {
-        const { pathname } = window.location;
-        if (pathname.endsWith('/')) {
-            restoreQueryFromSession(pathname);
-        }
-    }
-
     useEffect(() => {
-        const { pathname, search, hash } = window.location;
-        // Next trailingSlash client/MPA redirect drops ?id= / ?number=.
-        // Canonicalize with a full replace so the query and hash stay.
-        // Do not use usePathname() — it strips the trailing slash.
-        if (!pathname.endsWith('/')) {
-            window.location.replace(pathname + '/' + search + hash);
-            return;
-        }
-
-        // After slash check: if Next wiped search, restore from the
-        // blocking-script snapshot. replaceState — not location.replace.
-        restoreQueryFromSession(pathname);
-
         const token = localStorage.getItem('access_token');
         if (!token) {
             router.push('/login');
-        } else {
-            setIsAuthorized(true);
+            return;
+        }
+        setIsAuthorized(true);
+
+        // Head IIFE already slash-canonicalizes. Do not location.replace here:
+        // if Next wiped search first, a slash-replace hard-navs to the empty URL.
+        // history.replaceState restore is ACTION_RESTORE → MPA location.replace(empty).
+        // Re-sync via Next router so canonicalUrl keeps the query. Profile (no oe:qs) no-op.
+        const { pathname, search } = window.location;
+        if (search) return;
+        const key = 'oe:qs:' + pathname.replace(/\/$/, '');
+        let saved = '';
+        try { saved = sessionStorage.getItem(key) || ''; } catch (e) {}
+        if (saved) {
+            router.replace(pathname + saved);
         }
     }, [router]);
 

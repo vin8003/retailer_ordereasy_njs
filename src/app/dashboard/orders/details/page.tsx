@@ -29,55 +29,31 @@ import { authService } from "@/services/api";
 
 /** Static export hydrates with RSC "q":"", so useSearchParams is empty
  *  even when the address bar (or the blocking-script snapshot) still has
- *  ?id= / ?number=. Prefer Next searchParams, then window.location.search,
- *  then sessionStorage['oe:qs:'+pathname]. */
+ *  ?id= / ?number=. Storage-first: sessionStorage, then window.location.search,
+ *  then useSearchParams. Do not clear oe:qs until the order loads. */
 function resolveOrderQuery(searchParams: ReturnType<typeof useSearchParams>) {
-    const fromNextId = searchParams.get("id");
-    const fromNextNumber = searchParams.get("number");
-    if (fromNextId || fromNextNumber) {
-        return { id: fromNextId, number: fromNextNumber };
-    }
-    if (typeof window === "undefined") {
-        return { id: fromNextId, number: fromNextNumber };
-    }
-    const fromWin = new URLSearchParams(window.location.search);
-    const winId = fromWin.get("id");
-    const winNumber = fromWin.get("number");
-    if (winId || winNumber) {
-        return { id: winId, number: winNumber };
-    }
-    try {
-        const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
-        const saved = sessionStorage.getItem(key);
-        if (saved) {
-            const q = saved.split("#")[0];
-            const fromSaved = new URLSearchParams(q.startsWith("?") ? q.slice(1) : q);
-            return { id: fromSaved.get("id"), number: fromSaved.get("number") };
-        }
-    } catch (e) {}
-    return { id: fromNextId, number: fromNextNumber };
-}
-
-function consumeSavedOrderQuery(q: { id: string | null; number: string | null }) {
-    if (typeof window === "undefined") return;
-    const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
-    if (!window.location.search) {
+    if (typeof window !== "undefined") {
         try {
+            const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
             const saved = sessionStorage.getItem(key);
             if (saved) {
-                history.replaceState(null, "", window.location.pathname + saved);
-            } else {
-                const params = new URLSearchParams();
-                if (q.id) params.set("id", q.id);
-                if (q.number) params.set("number", q.number);
-                const qs = params.toString();
-                if (qs) {
-                    history.replaceState(null, "", window.location.pathname + "?" + qs + window.location.hash);
+                const q = saved.split("#")[0];
+                const fromSaved = new URLSearchParams(q.startsWith("?") ? q.slice(1) : q);
+                const id = fromSaved.get("id");
+                const number = fromSaved.get("number");
+                if (id || number) {
+                    return { id, number };
                 }
             }
         } catch (e) {}
+        const fromWin = new URLSearchParams(window.location.search);
+        const winId = fromWin.get("id");
+        const winNumber = fromWin.get("number");
+        if (winId || winNumber) {
+            return { id: winId, number: winNumber };
+        }
     }
-    try { sessionStorage.removeItem(key); } catch (e) {}
+    return { id: searchParams.get("id"), number: searchParams.get("number") };
 }
 
 function OrderDetailContent() {
@@ -106,10 +82,12 @@ function OrderDetailContent() {
         contentRef: receiptRef,
     });
 
+    const capturedQueryRef = useRef<{ id: string | null; number: string | null }>({ id: null, number: null });
+
     const fetchOrderDetails = async () => {
+        const q = capturedQueryRef.current;
         setIsLoading(true);
         try {
-            const q = resolveOrderQuery(searchParams);
             let id = Number(q.id);
             const orderNumber = q.number;
             if (!id && orderNumber) {
@@ -124,7 +102,7 @@ function OrderDetailContent() {
             try { sessionStorage.removeItem("oe:qs:" + window.location.pathname.replace(/\/$/, "")); } catch (e) {}
         } catch (err: any) {
             console.error("Failed to load order", err);
-            setError("Failed to load order details");
+            setError(err?.message === "Invalid Order ID" ? "Invalid Order ID" : "Failed to load order details");
         } finally {
             setIsLoading(false);
         }
@@ -185,11 +163,11 @@ function OrderDetailContent() {
 
     useEffect(() => {
         let cancelled = false;
-        let resolvedId: string | null = null;
 
         const handleFcmUpdate = (event: any) => {
             const payload = event.detail;
             const updatedOrderId = payload.data?.order_id || payload.data?.id;
+            const resolvedId = capturedQueryRef.current.id;
 
             if (resolvedId && Number(updatedOrderId) === Number(resolvedId)) {
                 fetchOrderDetails();
@@ -198,34 +176,46 @@ function OrderDetailContent() {
 
         window.addEventListener('fcm_order_update', handleFcmUpdate);
 
-        (async () => {
-            const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-            let q = resolveOrderQuery(searchParams);
-            if (!(q.id || q.number)) {
-                for (let i = 0; i < 3; i++) {
-                    await sleep(100);
-                    if (cancelled) return;
-                    q = resolveOrderQuery(searchParams);
-                    if (q.id || q.number) break;
-                }
-            }
+        const apply = (q: { id: string | null; number: string | null }) => {
             if (cancelled) return;
             if (!(q.id || q.number)) {
                 setIsLoading(false);
                 setError("Invalid Order ID");
                 return;
             }
-            resolvedId = q.id;
-            consumeSavedOrderQuery(q);
+            capturedQueryRef.current = q;
+            const params = new URLSearchParams();
+            if (q.id) params.set("id", q.id);
+            if (q.number) params.set("number", q.number);
+            const qs = params.toString();
+            if (qs) {
+                router.replace(window.location.pathname + "?" + qs);
+            }
             fetchOrderDetails();
             fetchRetailerProfile();
-        })();
+        };
+
+        let retryTimer: number | undefined;
+        const first = resolveOrderQuery(searchParams);
+        if (first.id || first.number) {
+            apply(first);
+        } else {
+            // Storage-first on mount; one 0ms + rAF retry is enough.
+            retryTimer = window.setTimeout(() => {
+                requestAnimationFrame(() => {
+                    apply(resolveOrderQuery(searchParams));
+                });
+            }, 0);
+        }
 
         return () => {
             cancelled = true;
+            if (retryTimer !== undefined) clearTimeout(retryTimer);
             window.removeEventListener('fcm_order_update', handleFcmUpdate);
         };
-    }, [searchParams]);
+        // Mount only — do not re-run when Next wipes/restores searchParams.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
     if (error || !order) return <div className="p-8 text-center text-red-500">{error || "Order not found"}</div>;

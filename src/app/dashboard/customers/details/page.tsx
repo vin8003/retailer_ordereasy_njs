@@ -75,40 +75,24 @@ interface CustomerDetail {
 
 /** Static export hydrates with RSC "q":"", so useSearchParams is empty
  *  even when the address bar (or the blocking-script snapshot) still has
- *  ?id=. Prefer Next searchParams, then window.location.search,
- *  then sessionStorage['oe:qs:'+pathname]. */
+ *  ?id=. Storage-first: sessionStorage, then window.location.search,
+ *  then useSearchParams. Do not clear oe:qs until the customer loads. */
 function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>): string | null {
-    const fromNext = searchParams.get('id');
-    if (fromNext) return fromNext;
-    if (typeof window === 'undefined') return fromNext;
-    const fromWin = new URLSearchParams(window.location.search).get('id');
-    if (fromWin) return fromWin;
-    try {
-        const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
-        const saved = sessionStorage.getItem(key);
-        if (saved) {
-            const q = saved.split('#')[0];
-            const fromSaved = new URLSearchParams(q.startsWith('?') ? q.slice(1) : q);
-            return fromSaved.get('id');
-        }
-    } catch (e) {}
-    return null;
-}
-
-function consumeSavedCustomerQuery(id: string) {
-    if (typeof window === 'undefined') return;
-    const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
-    if (!window.location.search) {
+    if (typeof window !== 'undefined') {
         try {
+            const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
             const saved = sessionStorage.getItem(key);
             if (saved) {
-                history.replaceState(null, '', window.location.pathname + saved);
-            } else {
-                history.replaceState(null, '', window.location.pathname + '?id=' + encodeURIComponent(id) + window.location.hash);
+                const q = saved.split('#')[0];
+                const fromSaved = new URLSearchParams(q.startsWith('?') ? q.slice(1) : q);
+                const id = fromSaved.get('id');
+                if (id) return id;
             }
         } catch (e) {}
+        const fromWin = new URLSearchParams(window.location.search).get('id');
+        if (fromWin) return fromWin;
     }
-    try { sessionStorage.removeItem(key); } catch (e) {}
+    return searchParams.get('id');
 }
 
 function CustomerDetailContent() {
@@ -202,17 +186,9 @@ function CustomerDetailContent() {
 
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-            let raw = resolveCustomerQuery(searchParams);
-            if (!raw) {
-                for (let i = 0; i < 3; i++) {
-                    await sleep(100);
-                    if (cancelled) return;
-                    raw = resolveCustomerQuery(searchParams);
-                    if (raw) break;
-                }
-            }
+        let retryTimer: number | undefined;
+
+        const apply = (raw: string | null) => {
             if (cancelled) return;
             const parsed = raw ? parseInt(raw, 10) : NaN;
             if (!parsed) {
@@ -220,11 +196,28 @@ function CustomerDetailContent() {
                 setError('Invalid customer ID');
                 return;
             }
-            consumeSavedCustomerQuery(String(parsed));
+            router.replace(window.location.pathname + '?id=' + encodeURIComponent(String(parsed)));
             setId(parsed);
-        })();
-        return () => { cancelled = true; };
-    }, [searchParams]);
+        };
+
+        const first = resolveCustomerQuery(searchParams);
+        if (first) {
+            apply(first);
+        } else {
+            retryTimer = window.setTimeout(() => {
+                requestAnimationFrame(() => {
+                    apply(resolveCustomerQuery(searchParams));
+                });
+            }, 0);
+        }
+
+        return () => {
+            cancelled = true;
+            if (retryTimer !== undefined) clearTimeout(retryTimer);
+        };
+        // Mount only — do not re-run when Next wipes/restores searchParams.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (id) {

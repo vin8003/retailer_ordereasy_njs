@@ -51,6 +51,7 @@ const persistQueryAndCanonicalizeSlash = `(function(){
       var same=next.pathname.replace(/\\/$/,'')===base;
       if(same && !next.search){
         var attach=keep;
+        if(!attach) attach=location.search||'';
         if(!attach){
           try{ attach=sessionStorage.getItem(key)||''; }catch(e){ attach=''; }
         }
@@ -65,8 +66,10 @@ const persistQueryAndCanonicalizeSlash = `(function(){
       return orig.call(this,state,title,url);
     };
   }
-  history.replaceState=wrap(history.replaceState.bind(history));
-  history.pushState=wrap(history.pushState.bind(history));
+  History.prototype.replaceState=wrap(History.prototype.replaceState);
+  History.prototype.pushState=wrap(History.prototype.pushState);
+  history.replaceState=History.prototype.replaceState.bind(history);
+  history.pushState=History.prototype.pushState.bind(history);
   if(p.length>1 && p.charAt(p.length-1)!=='/'){
     location.replace(p+'/'+(s||keepSearch)+h);
     return;
