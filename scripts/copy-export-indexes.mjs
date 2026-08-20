@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 /**
  * Next 16 `output: 'export'` writes both `path.html` and a `path/` RSC
- * directory (no index.html). Static hosts and `serve -s` then treat the
- * directory as the route, miss an index, and fall back to `/` (Overview).
+ * directory (no index.html). `npx serve -s` then treats the directory as
+ * the route, misses an index, and falls back to root index.html (Overview).
  *
  * Copy each colliding `foo.html` to `foo/index.html` so a direct GET of
  * /dashboard/orders/details (and the same for other app routes) serves
- * that page. Do not use `serve -s` for this export — it always returns
- * the root index and paints Overview on every deep link.
+ * that page. RSC .txt files are left untouched. After this copy, `serve -s`
+ * is fine — it finds the directory index instead of falling back.
  */
 import { copyFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join } from "node:path";
 
 const out = join(process.cwd(), "out");
 
 function walk(dir, acc = []) {
   for (const name of readdirSync(dir)) {
+    if (name === "_next" || name === "node_modules") continue;
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p, acc);
     else acc.push(p);
@@ -31,7 +32,9 @@ if (!existsSync(out)) {
 let copied = 0;
 for (const file of walk(out)) {
   if (!file.endsWith(".html")) continue;
-  const siblingDir = file.slice(0, -".html".length);
+  const base = file.slice(0, -".html".length);
+  if (base.endsWith("/index") || file.endsWith("/404.html")) continue;
+  const siblingDir = base;
   if (!existsSync(siblingDir) || !statSync(siblingDir).isDirectory()) continue;
   const dest = join(siblingDir, "index.html");
   copyFileSync(file, dest);
