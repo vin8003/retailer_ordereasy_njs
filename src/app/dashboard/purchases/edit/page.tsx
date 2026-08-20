@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
-import { findProductByBarcode, productListIsIncomplete, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { findProductByBarcode, loadRetailerProducts, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { productService } from '@/services/api';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
@@ -101,16 +102,22 @@ function EditPurchaseContent() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [allSuppliers, prodRes] = await Promise.all([
+                const [suppliersResult, productsResult] = await Promise.allSettled([
                     fetchAllPages('/products/erp/suppliers/'),
-                    api.get('/products/?no_page=true&is_active=true')
+                    loadRetailerProducts(fetchAllPages),
                 ]);
-                setSuppliers(allSuppliers);
-                let fetchedProducts = unwrapProductList(prodRes.data);
-                if (productListIsIncomplete(prodRes.data, fetchedProducts)) {
-                    fetchedProducts = await fetchAllPages('/products/', { is_active: true });
+                if (suppliersResult.status === 'fulfilled') {
+                    setSuppliers(suppliersResult.value);
+                } else {
+                    toast.error("Failed to load suppliers");
                 }
-                setProducts(fetchedProducts);
+                let fetchedProducts: Product[] = [];
+                if (productsResult.status === 'fulfilled') {
+                    fetchedProducts = productsResult.value;
+                    setProducts(fetchedProducts);
+                } else {
+                    toast.error("Failed to load products");
+                }
 
                 if (invoiceId) {
                     const invRes = await api.get(`/products/erp/purchase-invoices/${invoiceId}/`);
@@ -156,6 +163,23 @@ function EditPurchaseContent() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [invoiceId]);
+
+    useEffect(() => {
+        const q = searchTerm.trim();
+        if (q.length < 2) return;
+        const t = setTimeout(async () => {
+            try {
+                const res = await productService.searchProducts(q);
+                const remote = unwrapProductList(res.data);
+                if (remote.length) {
+                    setProducts((prev) => mergeProductsById(prev, remote));
+                }
+            } catch {
+                // local catalog still filters
+            }
+        }, 250);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
 
     const addProductToRows = (product: Product) => {
         const existingIdx = rows.findIndex(r => r.product.id === product.id);

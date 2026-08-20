@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
-import { findProductByBarcode, looksLikeBarcode, productListIsIncomplete, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { findProductByBarcode, loadRetailerProducts, looksLikeBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { productService } from '@/services/api';
 import { 
     Package, Plus, Trash2, Search, ScanLine, 
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
@@ -99,22 +100,21 @@ export default function NewPurchasePage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            try {
-                const [allSuppliers, prodRes] = await Promise.all([
-                    fetchAllPages('/products/erp/suppliers/'),
-                    api.get('/products/?no_page=true&is_active=true')
-                ]);
-                setSuppliers(allSuppliers);
-                let fetched = unwrapProductList(prodRes.data);
-                if (productListIsIncomplete(prodRes.data, fetched)) {
-                    fetched = await fetchAllPages('/products/', { is_active: true });
-                }
-                setProducts(fetched);
-            } catch (error) {
-                toast.error("Failed to load setup data");
-            } finally {
-                setIsLoading(false);
+            const [suppliersResult, productsResult] = await Promise.allSettled([
+                fetchAllPages('/products/erp/suppliers/'),
+                loadRetailerProducts(fetchAllPages),
+            ]);
+            if (suppliersResult.status === 'fulfilled') {
+                setSuppliers(suppliersResult.value);
+            } else {
+                toast.error("Failed to load suppliers");
             }
+            if (productsResult.status === 'fulfilled') {
+                setProducts(productsResult.value);
+            } else {
+                toast.error("Failed to load products");
+            }
+            setIsLoading(false);
         };
         fetchData();
         
@@ -128,6 +128,23 @@ export default function NewPurchasePage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    useEffect(() => {
+        const q = searchTerm.trim();
+        if (q.length < 2) return;
+        const t = setTimeout(async () => {
+            try {
+                const res = await productService.searchProducts(q);
+                const remote = unwrapProductList(res.data);
+                if (remote.length) {
+                    setProducts((prev) => mergeProductsById(prev, remote));
+                }
+            } catch {
+                // local catalog (if any) still filters
+            }
+        }, 250);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
 
     const addProductToRows = (product: Product) => {
         const existingIdx = rows.findIndex(r => r.product.id === product.id);
@@ -150,30 +167,51 @@ export default function NewPurchasePage() {
         toast.success(`Added ${product.name}`, { icon: '📦', duration: 1500 });
     };
 
-    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && searchTerm) {
-            const cleanedTerm = searchTerm.trim();
-            // 1. Exact barcode on parent, extra codes, or a batch (same as POS)
-            const matched = findProductByBarcode(products, cleanedTerm);
-            if (matched) {
-                e.preventDefault();
-                addProductToRows(matched);
-                return;
+    const handleSearchKeyDown = async (e: React.KeyboardEvent) => {
+        if (e.key !== 'Enter' || !searchTerm) return;
+        const cleanedTerm = searchTerm.trim();
+        const pick = (list: Product[]) => findProductByBarcode(list, cleanedTerm);
+
+        let matched = pick(products);
+        if (!matched) {
+            try {
+                const res = await productService.searchProducts(cleanedTerm);
+                const remote = unwrapProductList(res.data) as Product[];
+                if (remote.length) {
+                    setProducts((prev) => mergeProductsById(prev, remote));
+                    matched = pick(remote);
+                    if (!matched) {
+                        const hits = remote.filter((p) => productMatchesQuery(p, cleanedTerm));
+                        if (hits.length === 1) matched = hits[0];
+                    }
+                }
+            } catch {
+                // fall through
             }
-            
-            // 2. Exactly one filtered suggestion
-            if (filteredSuggestions.length === 1) {
-                e.preventDefault();
-                addProductToRows(filteredSuggestions[0]);
-                return;
+        }
+        if (!matched && products.length === 0) {
+            try {
+                const again = await loadRetailerProducts(fetchAllPages);
+                setProducts(again);
+                matched = pick(again);
+            } catch {
+                // fall through
             }
-            
-            // 3. Unknown Barcode only for a numeric code that is not in this catalog
-            if (filteredSuggestions.length === 0 && looksLikeBarcode(cleanedTerm)) {
-                e.preventDefault();
-                setScanBarcode(cleanedTerm);
-                setIsQuickAddOpen(true);
-            }
+        }
+        if (matched) {
+            e.preventDefault();
+            addProductToRows(matched);
+            return;
+        }
+        if (filteredSuggestions.length === 1) {
+            e.preventDefault();
+            addProductToRows(filteredSuggestions[0]);
+            return;
+        }
+        if (looksLikeBarcode(cleanedTerm)) {
+            e.preventDefault();
+            setScanBarcode(cleanedTerm);
+            setIsQuickAddOpen(true);
         }
     };
 

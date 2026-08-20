@@ -58,3 +58,35 @@ export function productListIsIncomplete(data: any, list: any[]): boolean {
     const count = typeof data?.count === 'number' ? data.count : null;
     return count != null && list.length < count;
 }
+
+
+export async function loadRetailerProducts<T = any>(
+    fetchPages: (endpoint: string, params?: Record<string, any>) => Promise<T[]>,
+    attempts = 3
+): Promise<T[]> {
+    let lastErr: any;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            // Page through the catalog. no_page=true times out on a large shop and
+            // aborts the whole purchase setup (empty search list).
+            return await fetchPages('/products/', { is_active: true });
+        } catch (err) {
+            lastErr = err;
+            if (i < attempts - 1) {
+                await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+            }
+        }
+    }
+    throw lastErr;
+}
+
+export function mergeProductsById<T extends { id: number }>(current: T[], incoming: T[]): T[] {
+    if (!incoming?.length) return current;
+    const byId = new Map(current.map((p) => [p.id, p]));
+    for (const p of incoming) {
+        if (!p?.id) continue;
+        const prev = byId.get(p.id);
+        byId.set(p.id, prev ? { ...prev, ...p } : p);
+    }
+    return Array.from(byId.values());
+}
