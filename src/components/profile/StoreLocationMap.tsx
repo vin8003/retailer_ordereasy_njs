@@ -21,6 +21,14 @@ declare global {
     }
 }
 
+function saneLatLng(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
+    const la = typeof lat === 'number' ? lat : Number(lat);
+    const ln = typeof lng === 'number' ? lng : Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+    if (la < -90 || la > 90 || ln < -180 || ln > 180) return null;
+    return { lat: Number(la.toFixed(8)), lng: Number(ln.toFixed(8)) };
+}
+
 function loadLeaflet(): Promise<any> {
     if (typeof window === 'undefined') return Promise.resolve(null);
     if (window.L) return Promise.resolve(window.L);
@@ -58,12 +66,32 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
     editableRef.current = editable;
     onChangeRef.current = onChange;
 
-    const hasPin = typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng);
+    const pin = saneLatLng(lat, lng);
+    const hasPin = !!pin;
 
     useEffect(() => {
         let cancelled = false;
-        loadLeaflet().then((L) => {
-            if (cancelled || !L || !containerRef.current || mapRef.current) return;
+        let ro: ResizeObserver | null = null;
+
+        const emitFromClick = (map: any, e: any) => {
+            if (!editableRef.current) return;
+            let src = e?.latlng;
+            if (!src && e?.originalEvent) {
+                try {
+                    src = map.mouseEventToLatLng(e.originalEvent);
+                } catch {
+                    src = null;
+                }
+            }
+            const next = saneLatLng(src?.lat, src?.lng);
+            if (!next) return;
+            onChangeRef.current(next.lat, next.lng);
+        };
+
+        const startMap = (L: any) => {
+            const el = containerRef.current;
+            if (cancelled || !L || !el || mapRef.current) return;
+            if (el.clientWidth < 8 || el.clientHeight < 8) return;
 
             if (L.Icon && L.Icon.Default) {
                 delete L.Icon.Default.prototype._getIconUrl;
@@ -73,29 +101,35 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
                     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
                 });
             }
-            const center = hasPin ? [lat as number, lng as number] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng];
-            const map = L.map(containerRef.current).setView(center, hasPin ? 16 : 13);
+
+            const center = pin ? [pin.lat, pin.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng];
+            const map = L.map(el, { maxZoom: 18 }).setView(center, pin ? 15 : 12);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap',
                 maxZoom: 19,
             }).addTo(map);
 
-            map.on('click', (e: any) => {
-                if (!editableRef.current) return;
-                const nextLat = Number(e.latlng.lat.toFixed(8));
-                const nextLng = Number(e.latlng.lng.toFixed(8));
-                onChangeRef.current(nextLat, nextLng);
-            });
-
+            map.on('click', (e: any) => emitFromClick(map, e));
             mapRef.current = map;
-            if (hasPin) {
-                markerRef.current = L.marker([lat, lng]).addTo(map);
+            if (pin) {
+                markerRef.current = L.marker([pin.lat, pin.lng]).addTo(map);
             }
-            setTimeout(() => map.invalidateSize(), 200);
+            map.whenReady(() => map.invalidateSize());
+        };
+
+        loadLeaflet().then((L) => {
+            if (cancelled || !L || !containerRef.current) return;
+            startMap(L);
+            ro = new ResizeObserver(() => {
+                if (!mapRef.current) startMap(L);
+                else mapRef.current.invalidateSize();
+            });
+            ro.observe(containerRef.current);
         }).catch((err) => console.error(err));
 
         return () => {
             cancelled = true;
+            ro?.disconnect();
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -110,30 +144,35 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
         const L = window.L;
         const map = mapRef.current;
         if (!L || !map) return;
-        if (!hasPin) {
+        if (!pin) {
             if (markerRef.current) {
                 map.removeLayer(markerRef.current);
                 markerRef.current = null;
             }
             return;
         }
-        const pos: [number, number] = [lat as number, lng as number];
+        const pos: [number, number] = [pin.lat, pin.lng];
         if (markerRef.current) {
             markerRef.current.setLatLng(pos);
         } else {
             markerRef.current = L.marker(pos).addTo(map);
         }
-        map.setView(pos, Math.max(map.getZoom(), 16));
-    }, [lat, lng, hasPin]);
+        // Keep a working tile zoom. Do not force max-zoom (blank tiles).
+        const current = map.getZoom();
+        const zoom = Number.isFinite(current) ? Math.min(Math.max(current, 12), 16) : 13;
+        map.setView(pos, zoom);
+        map.invalidateSize();
+    }, [lat, lng, pin]);
 
-    const useCurrentLocation = () => {
+    const useCurrentLocation = (ev?: { preventDefault(): void; stopPropagation(): void }) => {
+        ev?.preventDefault();
+        ev?.stopPropagation();
         if (!navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                onChange(
-                    Number(pos.coords.latitude.toFixed(8)),
-                    Number(pos.coords.longitude.toFixed(8)),
-                );
+                const next = saneLatLng(pos.coords.latitude, pos.coords.longitude);
+                if (!next) return;
+                onChange(next.lat, next.lng);
             },
             () => {
                 console.warn('Geolocation denied');
@@ -155,15 +194,15 @@ export default function StoreLocationMap({ lat, lng, editable, onChange }: Props
             </div>
             <div
                 ref={containerRef}
-                className="w-full h-[280px] rounded-md border overflow-hidden z-0"
+                className="w-full h-[280px] rounded-md border overflow-hidden z-0 relative"
             />
             <p className="text-xs text-muted-foreground">
                 {editable
                     ? (hasPin
-                        ? `Pin set at ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}. Tap the map to move it.`
+                        ? `Pin set at ${pin!.lat.toFixed(5)}, ${pin!.lng.toFixed(5)}. Tap the map to move it.`
                         : 'Tap the map to drop your store pin.')
                     : (hasPin
-                        ? `Pin at ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}.`
+                        ? `Pin at ${pin!.lat.toFixed(5)}, ${pin!.lng.toFixed(5)}.`
                         : 'No store pin yet. Edit profile to set it on the map.')}
             </p>
         </div>

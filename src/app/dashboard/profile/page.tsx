@@ -455,7 +455,7 @@ export default function ProfilePage() {
                                 lat={formData.latitude}
                                 lng={formData.longitude}
                                 editable={isEditing}
-                                onChange={(lat, lng) => setFormData({ ...formData, latitude: lat, longitude: lng })}
+                                onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
                             />
                         </CardContent>
                     </Card>
