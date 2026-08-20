@@ -27,31 +27,28 @@ import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { authService } from "@/services/api";
 
 
-/** Static export hydrates with RSC "q":"", so useSearchParams is empty
- *  even when the address bar (or the blocking-script snapshot) still has
- *  ?id= / ?number=. Storage-first: sessionStorage, then window.location.search,
- *  then useSearchParams. Do not clear oe:qs until the order loads. */
+/** Typed /details?id= survives Next hydrate wipe via window.__OE_SEARCH
+ *  (set by the raw <head> IIFE before any App Router JS). Resolve once:
+ *  __OE_SEARCH, then location.search, then sessionStorage oe:qs, then
+ *  useSearchParams. Do not clear oe:qs until the order loads. */
+function parseOrderQuery(raw: string | null | undefined) {
+    if (!raw) return { id: null as string | null, number: null as string | null };
+    const q = raw.split("#")[0];
+    const params = new URLSearchParams(q.startsWith("?") ? q.slice(1) : q);
+    return { id: params.get("id"), number: params.get("number") };
+}
+
 function resolveOrderQuery(searchParams: ReturnType<typeof useSearchParams>) {
     if (typeof window !== "undefined") {
+        const fromOe = parseOrderQuery((window as any).__OE_SEARCH);
+        if (fromOe.id || fromOe.number) return fromOe;
+        const fromWin = parseOrderQuery(window.location.search);
+        if (fromWin.id || fromWin.number) return fromWin;
         try {
             const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
-            const saved = sessionStorage.getItem(key);
-            if (saved) {
-                const q = saved.split("#")[0];
-                const fromSaved = new URLSearchParams(q.startsWith("?") ? q.slice(1) : q);
-                const id = fromSaved.get("id");
-                const number = fromSaved.get("number");
-                if (id || number) {
-                    return { id, number };
-                }
-            }
+            const fromSaved = parseOrderQuery(sessionStorage.getItem(key));
+            if (fromSaved.id || fromSaved.number) return fromSaved;
         } catch (e) {}
-        const fromWin = new URLSearchParams(window.location.search);
-        const winId = fromWin.get("id");
-        const winNumber = fromWin.get("number");
-        if (winId || winNumber) {
-            return { id: winId, number: winNumber };
-        }
     }
     return { id: searchParams.get("id"), number: searchParams.get("number") };
 }
@@ -184,33 +181,16 @@ function OrderDetailContent() {
                 return;
             }
             capturedQueryRef.current = q;
-            const params = new URLSearchParams();
-            if (q.id) params.set("id", q.id);
-            if (q.number) params.set("number", q.number);
-            const qs = params.toString();
-            if (qs) {
-                router.replace(window.location.pathname + "?" + qs);
-            }
+            // Loading the order is the gate. Do not router.replace /
+            // history.replaceState just to put the query back.
             fetchOrderDetails();
             fetchRetailerProfile();
         };
 
-        let retryTimer: number | undefined;
-        const first = resolveOrderQuery(searchParams);
-        if (first.id || first.number) {
-            apply(first);
-        } else {
-            // Storage-first on mount; one 0ms + rAF retry is enough.
-            retryTimer = window.setTimeout(() => {
-                requestAnimationFrame(() => {
-                    apply(resolveOrderQuery(searchParams));
-                });
-            }, 0);
-        }
+        apply(resolveOrderQuery(searchParams));
 
         return () => {
             cancelled = true;
-            if (retryTimer !== undefined) clearTimeout(retryTimer);
             window.removeEventListener('fcm_order_update', handleFcmUpdate);
         };
         // Mount only — do not re-run when Next wipes/restores searchParams.

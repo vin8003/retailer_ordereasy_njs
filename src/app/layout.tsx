@@ -29,50 +29,19 @@ import NotificationWrapper from "@/app/components/NotificationWrapper";
 // Raw blocking IIFE — NOT next/script. next/script beforeInteractive compiles
 // to (self.__next_s=...).push(...) in the body and runs after Next hydrates,
 // which is too late: App Router then wipes search because the RSC payload has
-// "q":"". This must appear as a real <script> in <head> so it stores ?search,
-// patches history.replaceState/pushState, and canonicalizes the trailing slash
-// before hydration.
+// "q":"". This must appear as a real <script> in <head> so it captures ?search
+// into window.__OE_SEARCH (and sessionStorage) before anything else runs.
+// Slash-canonicalize ONLY when there is no query (Profile). Never location.replace
+// when search is present — that hop to /details/ is QA's FAIL.
 const persistQueryAndCanonicalizeSlash = `(function(){
   var p=location.pathname,s=location.search,h=location.hash;
-  var base=p.replace(/\\/$/,'');
-  var key='oe:qs:'+base;
-  var keep='';
-  try{
-    if(s){ sessionStorage.setItem(key,s+h); keep=s+h; }
-    else { keep=sessionStorage.getItem(key)||''; }
-  }catch(e){ keep=s||''; }
-  var keepSearch=keep.split('#')[0];
-  function wrap(orig){
-    return function(state,title,url){
-      if(url==null) return orig.call(this,state,title,url);
-      var next;
-      try{ next=new URL(String(url),location.href); }
-      catch(e){ return orig.call(this,state,title,url); }
-      var same=next.pathname.replace(/\\/$/,'')===base;
-      if(same && !next.search){
-        var attach=keep;
-        if(!attach) attach=location.search||'';
-        if(!attach){
-          try{ attach=sessionStorage.getItem(key)||''; }catch(e){ attach=''; }
-        }
-        if(attach){
-          var q=attach,ah='';
-          var i=attach.indexOf('#');
-          if(i>=0){ ah=attach.slice(i); q=attach.slice(0,i); }
-          if(q && q.charAt(0)!=='?') q='?'+q;
-          url=next.pathname+q+(ah||next.hash||'');
-        }
-      }
-      return orig.call(this,state,title,url);
-    };
+  if(s){
+    try{ if(!window.__OE_SEARCH) window.__OE_SEARCH=s+h; }catch(e){ window.__OE_SEARCH=s+h; }
+    try{ sessionStorage.setItem('oe:qs:'+p.replace(/\\/$/, ''),s+h); }catch(e){}
   }
-  History.prototype.replaceState=wrap(History.prototype.replaceState);
-  History.prototype.pushState=wrap(History.prototype.pushState);
-  history.replaceState=History.prototype.replaceState.bind(history);
-  history.pushState=History.prototype.pushState.bind(history);
-  if(p.length>1 && p.charAt(p.length-1)!=='/'){
-    location.replace(p+'/'+(s||keepSearch)+h);
-    return;
+  // Slash-canonicalize ONLY when there is no query (Profile).
+  if(!s && p.length>1 && p.charAt(p.length-1)!=='/'){
+    location.replace(p+'/'+h);
   }
 })();`;
 

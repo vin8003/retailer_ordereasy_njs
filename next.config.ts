@@ -8,9 +8,10 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   // Next's built-in trailing-slash 301 drops the query string (typed
   // /dashboard/orders/details?id=2650 would lose ?id=). Serve already
-  // returns 200 for the unsashed URL; skip the Next redirect and let
-  // the dashboard layout canonicalize via window.location.replace so
-  // search/hash stay on the URL.
+  // returns 200 for the unsashed URL; skip the Next redirect. The head
+  // IIFE slash-canonicalizes only when there is no query (profile).
+  // Typed ?id= stays on the unsashed path; details pages read
+  // window.__OE_SEARCH captured before Next hydrates.
   skipTrailingSlashRedirect: true,
   images: {
     unoptimized: true,

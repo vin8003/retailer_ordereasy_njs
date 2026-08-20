@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { orderDetailsHref } from '@/lib/orderLinks';
@@ -73,24 +73,28 @@ interface CustomerDetail {
     rewardHistory: any[];
 }
 
-/** Static export hydrates with RSC "q":"", so useSearchParams is empty
- *  even when the address bar (or the blocking-script snapshot) still has
- *  ?id=. Storage-first: sessionStorage, then window.location.search,
- *  then useSearchParams. Do not clear oe:qs until the customer loads. */
+/** Typed /details?id= survives Next hydrate wipe via window.__OE_SEARCH
+ *  (set by the raw <head> IIFE before any App Router JS). Resolve once:
+ *  __OE_SEARCH, then location.search, then sessionStorage oe:qs, then
+ *  useSearchParams. Do not clear oe:qs until the customer loads. */
+function parseCustomerQuery(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+    const q = raw.split('#')[0];
+    const params = new URLSearchParams(q.startsWith('?') ? q.slice(1) : q);
+    return params.get('id');
+}
+
 function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>): string | null {
     if (typeof window !== 'undefined') {
+        const fromOe = parseCustomerQuery((window as any).__OE_SEARCH);
+        if (fromOe) return fromOe;
+        const fromWin = parseCustomerQuery(window.location.search);
+        if (fromWin) return fromWin;
         try {
             const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
-            const saved = sessionStorage.getItem(key);
-            if (saved) {
-                const q = saved.split('#')[0];
-                const fromSaved = new URLSearchParams(q.startsWith('?') ? q.slice(1) : q);
-                const id = fromSaved.get('id');
-                if (id) return id;
-            }
+            const fromSaved = parseCustomerQuery(sessionStorage.getItem(key));
+            if (fromSaved) return fromSaved;
         } catch (e) {}
-        const fromWin = new URLSearchParams(window.location.search).get('id');
-        if (fromWin) return fromWin;
     }
     return searchParams.get('id');
 }
@@ -99,6 +103,7 @@ function CustomerDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [id, setId] = useState<number | null>(null);
+    const capturedIdRef = useRef<number | null>(null);
 
     const [customer, setCustomer] = useState<CustomerDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -129,13 +134,14 @@ function CustomerDetailContent() {
 
 
     const fetchDetails = async () => {
-        if (!id) {
+        const resolvedId = capturedIdRef.current ?? id;
+        if (!resolvedId) {
             setLoading(false);
             return;
         }
         setLoading(true);
         try {
-            const response = await customerService.getRetailerCustomerDetail(id);
+            const response = await customerService.getRetailerCustomerDetail(resolvedId);
             if (response.status === 200) {
                 const data = response.data;
                 setCustomer({
@@ -186,8 +192,6 @@ function CustomerDetailContent() {
 
     useEffect(() => {
         let cancelled = false;
-        let retryTimer: number | undefined;
-
         const apply = (raw: string | null) => {
             if (cancelled) return;
             const parsed = raw ? parseInt(raw, 10) : NaN;
@@ -196,24 +200,16 @@ function CustomerDetailContent() {
                 setError('Invalid customer ID');
                 return;
             }
-            router.replace(window.location.pathname + '?id=' + encodeURIComponent(String(parsed)));
+            capturedIdRef.current = parsed;
+            // Loading the customer is the gate. Do not router.replace /
+            // history.replaceState just to put the query back.
             setId(parsed);
         };
 
-        const first = resolveCustomerQuery(searchParams);
-        if (first) {
-            apply(first);
-        } else {
-            retryTimer = window.setTimeout(() => {
-                requestAnimationFrame(() => {
-                    apply(resolveCustomerQuery(searchParams));
-                });
-            }, 0);
-        }
+        apply(resolveCustomerQuery(searchParams));
 
         return () => {
             cancelled = true;
-            if (retryTimer !== undefined) clearTimeout(retryTimer);
         };
         // Mount only — do not re-run when Next wipes/restores searchParams.
         // eslint-disable-next-line react-hooks/exhaustive-deps
