@@ -73,11 +73,48 @@ interface CustomerDetail {
     rewardHistory: any[];
 }
 
+/** Static export hydrates with RSC "q":"", so useSearchParams is empty
+ *  even when the address bar (or the blocking-script snapshot) still has
+ *  ?id=. Prefer Next searchParams, then window.location.search,
+ *  then sessionStorage['oe:qs:'+pathname]. */
+function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>): string | null {
+    const fromNext = searchParams.get('id');
+    if (fromNext) return fromNext;
+    if (typeof window === 'undefined') return fromNext;
+    const fromWin = new URLSearchParams(window.location.search).get('id');
+    if (fromWin) return fromWin;
+    try {
+        const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
+        const saved = sessionStorage.getItem(key);
+        if (saved) {
+            const q = saved.split('#')[0];
+            const fromSaved = new URLSearchParams(q.startsWith('?') ? q.slice(1) : q);
+            return fromSaved.get('id');
+        }
+    } catch (e) {}
+    return null;
+}
+
+function consumeSavedCustomerQuery(id: string) {
+    if (typeof window === 'undefined') return;
+    const key = 'oe:qs:' + window.location.pathname.replace(/\/$/, '');
+    if (!window.location.search) {
+        try {
+            const saved = sessionStorage.getItem(key);
+            if (saved) {
+                history.replaceState(null, '', window.location.pathname + saved);
+            } else {
+                history.replaceState(null, '', window.location.pathname + '?id=' + encodeURIComponent(id) + window.location.hash);
+            }
+        } catch (e) {}
+    }
+    try { sessionStorage.removeItem(key); } catch (e) {}
+}
+
 function CustomerDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const idParam = searchParams.get('id');
-    const id = idParam ? parseInt(idParam) : null;
+    const [id, setId] = useState<number | null>(null);
 
     const [customer, setCustomer] = useState<CustomerDetail | null>(null);
     const [loading, setLoading] = useState(true);
@@ -135,6 +172,7 @@ function CustomerDetailContent() {
                     rewardHistory: data.reward_history || [],
                 });
                 setNewCreditLimit(data.credit_limit?.toString() || '0');
+                try { sessionStorage.removeItem('oe:qs:' + window.location.pathname.replace(/\/$/, '')); } catch (e) {}
             } else {
                 throw new Error('Failed to load details');
             }
@@ -161,6 +199,32 @@ function CustomerDetailContent() {
             setLedgerLoading(false);
         }
     };
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+            let raw = resolveCustomerQuery(searchParams);
+            if (!raw) {
+                for (let i = 0; i < 3; i++) {
+                    await sleep(100);
+                    if (cancelled) return;
+                    raw = resolveCustomerQuery(searchParams);
+                    if (raw) break;
+                }
+            }
+            if (cancelled) return;
+            const parsed = raw ? parseInt(raw, 10) : NaN;
+            if (!parsed) {
+                setLoading(false);
+                setError('Invalid customer ID');
+                return;
+            }
+            consumeSavedCustomerQuery(String(parsed));
+            setId(parsed);
+        })();
+        return () => { cancelled = true; };
+    }, [searchParams]);
 
     useEffect(() => {
         if (id) {

@@ -58,6 +58,28 @@ function resolveOrderQuery(searchParams: ReturnType<typeof useSearchParams>) {
     return { id: fromNextId, number: fromNextNumber };
 }
 
+function consumeSavedOrderQuery(q: { id: string | null; number: string | null }) {
+    if (typeof window === "undefined") return;
+    const key = "oe:qs:" + window.location.pathname.replace(/\/$/, "");
+    if (!window.location.search) {
+        try {
+            const saved = sessionStorage.getItem(key);
+            if (saved) {
+                history.replaceState(null, "", window.location.pathname + saved);
+            } else {
+                const params = new URLSearchParams();
+                if (q.id) params.set("id", q.id);
+                if (q.number) params.set("number", q.number);
+                const qs = params.toString();
+                if (qs) {
+                    history.replaceState(null, "", window.location.pathname + "?" + qs + window.location.hash);
+                }
+            }
+        } catch (e) {}
+    }
+    try { sessionStorage.removeItem(key); } catch (e) {}
+}
+
 function OrderDetailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -99,6 +121,7 @@ function OrderDetailContent() {
             if (!id) throw new Error("Invalid Order ID");
             const response = await orderService.fetchOrderDetails(id);
             setOrder(response.data);
+            try { sessionStorage.removeItem("oe:qs:" + window.location.pathname.replace(/\/$/, "")); } catch (e) {}
         } catch (err: any) {
             console.error("Failed to load order", err);
             setError("Failed to load order details");
@@ -161,23 +184,45 @@ function OrderDetailContent() {
     };
 
     useEffect(() => {
-        const { id, number } = resolveOrderQuery(searchParams);
-        if (id || number) {
-            fetchOrderDetails();
-            fetchRetailerProfile();
-        }
+        let cancelled = false;
+        let resolvedId: string | null = null;
 
         const handleFcmUpdate = (event: any) => {
             const payload = event.detail;
             const updatedOrderId = payload.data?.order_id || payload.data?.id;
 
-            if (Number(updatedOrderId) === Number(id)) {
+            if (resolvedId && Number(updatedOrderId) === Number(resolvedId)) {
                 fetchOrderDetails();
             }
         };
 
         window.addEventListener('fcm_order_update', handleFcmUpdate);
+
+        (async () => {
+            const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+            let q = resolveOrderQuery(searchParams);
+            if (!(q.id || q.number)) {
+                for (let i = 0; i < 3; i++) {
+                    await sleep(100);
+                    if (cancelled) return;
+                    q = resolveOrderQuery(searchParams);
+                    if (q.id || q.number) break;
+                }
+            }
+            if (cancelled) return;
+            if (!(q.id || q.number)) {
+                setIsLoading(false);
+                setError("Invalid Order ID");
+                return;
+            }
+            resolvedId = q.id;
+            consumeSavedOrderQuery(q);
+            fetchOrderDetails();
+            fetchRetailerProfile();
+        })();
+
         return () => {
+            cancelled = true;
             window.removeEventListener('fcm_order_update', handleFcmUpdate);
         };
     }, [searchParams]);
