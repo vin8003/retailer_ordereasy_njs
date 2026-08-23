@@ -43,8 +43,11 @@ export default function OrdersPage() {
                 response = await orderService.fetchOrders(params);
             }
 
-            const data = response.data.results || response.data;
-            const next = response.data.next || null;
+            const payload = response.data;
+            const data = Array.isArray(payload?.results)
+                ? payload.results
+                : (Array.isArray(payload) ? payload : []);
+            const next = payload?.next || null;
 
             if (isAppend) {
                 setOrders(prev => [...prev, ...data]);
@@ -54,6 +57,25 @@ export default function OrdersPage() {
             setNextPage(next);
         } catch (error: any) {
             console.error("Failed to fetch orders:", error);
+            // KAN-77: Returned tab used to 500 when status=returned missed
+            // sales-return rows. Fall back to client-side is_returned so the
+            // tab still loads instead of "Failed to load orders".
+            if (statusFilter === "returned" && !isAppend) {
+                try {
+                    const fallback = await orderService.fetchOrders(
+                        searchQuery ? { search: searchQuery } : {}
+                    );
+                    const payload = fallback.data;
+                    const all = Array.isArray(payload?.results)
+                        ? payload.results
+                        : (Array.isArray(payload) ? payload : []);
+                    setOrders(all.filter((o: any) => o.is_returned || o.status === "returned"));
+                    setNextPage(null);
+                    return;
+                } catch (fallbackError) {
+                    console.error("Returned-orders fallback failed:", fallbackError);
+                }
+            }
             toast.error("Failed to load orders");
         } finally {
             setIsLoading(false);
