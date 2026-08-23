@@ -65,7 +65,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [conversionFactor, setConversionFactor] = useState(initialData?.conversion_factor ?? "");
     const [parentProductSuggestions, setParentProductSuggestions] = useState<any[]>([]);
     const [isSearchingParents, setIsSearchingParents] = useState(false);
-    const [childIsAvailable, setChildIsAvailable] = useState(initialData?.is_available ?? true);
+    const [parentIsAvailable, setParentIsAvailable] = useState(initialData?.is_available ?? true);
 
     // Handle category: could be ID (create) or Object (edit)
     const getInitialCategoryId = () => {
@@ -293,9 +293,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                 formData.set("quantity", "0");
             }
 
-            // is_available: for child products use the toggle, otherwise default true
-            if (isLinkedToParent && parentBulkProductId) {
-                formData.append("is_available", String(childIsAvailable));
+            // KAN-49: visibility toggle lives on the parent bulk SKU.
+            // Children stay available for sale; parent can be hidden from the customer app.
+            if (isParentBulk) {
+                formData.append("is_available", String(parentIsAvailable));
             } else {
                 formData.append("is_available", "true");
             }
@@ -754,6 +755,22 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         </Label>
                     </div>
 
+                    {isParentBulk && (
+                        <div className="flex items-center space-x-2 rounded-md border p-4 bg-blue-50/50 border-blue-200 mt-3">
+                            <Switch
+                                id="parentIsAvailable"
+                                checked={parentIsAvailable}
+                                onCheckedChange={setParentIsAvailable}
+                            />
+                            <Label htmlFor="parentIsAvailable" className="flex-1 cursor-pointer">
+                                Show parent on Customer App (Online)
+                                <span className="block text-xs font-normal text-muted-foreground">
+                                    If OFF, this bulk SKU stays for purchase and stock only. Child packs remain sellable and visible.
+                                </span>
+                            </Label>
+                        </div>
+                    )}
+
                     {/* Toggle 2: Link to a Parent Bulk Product */}
                     {!isParentBulk && (
                         <div className="flex items-center space-x-2 mt-2">
@@ -766,7 +783,6 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                         setParentBulkProductId("");
                                         setParentBulkProductSearch("");
                                         setConversionFactor("");
-                                        setChildIsAvailable(true);
                                     }
                                 }}
                             />
@@ -779,7 +795,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         </div>
                     )}
 
-                    {/* Child fields: Parent selection, Conversion Factor, Availability */}
+                    {/* Child fields: Parent selection, Conversion Factor */}
                     {isLinkedToParent && !isParentBulk && (
                         <div className="space-y-4 mt-4 animate-in slide-in-from-top-2 duration-300">
                             <div className="grid gap-6 md:grid-cols-2">
@@ -814,23 +830,6 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                     </p>
                                 </div>
                             </div>
-
-                            {/* Availability Toggle for Child */}
-                            {parentBulkProductId && (
-                                <div className="flex items-center space-x-2 rounded-md border p-4 bg-blue-50/50 border-blue-200 animate-in slide-in-from-top-2 duration-300">
-                                    <Switch
-                                        id="childIsAvailable"
-                                        checked={childIsAvailable}
-                                        onCheckedChange={setChildIsAvailable}
-                                    />
-                                    <Label htmlFor="childIsAvailable" className="flex-1 cursor-pointer">
-                                        Show on Customer App (Online)
-                                        <span className="block text-xs font-normal text-muted-foreground">
-                                            If OFF, this pack size will only be available for POS (in-store) sales, not on the customer app.
-                                        </span>
-                                    </Label>
-                                </div>
-                            )}
 
                             <div className="rounded-md border border-amber-200 bg-amber-50/50 p-3">
                                 <p className="text-xs text-amber-800">
