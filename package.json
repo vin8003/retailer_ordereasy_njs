@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build && node scripts/copy-export-indexes.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-strip-types --test src/hooks/orderStatsRefresh.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
