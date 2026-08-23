@@ -27,7 +27,7 @@ import {
     DrawerTrigger,
 } from "@/components/ui/drawer";
 
-const BottomNav = () => {
+const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
     const pathname = usePathname();
 
     const mainNavItems = [
@@ -74,7 +74,14 @@ const BottomNav = () => {
                         {isItemActive && (
                             <div className="absolute top-0 w-8 h-1 bg-primary rounded-b-full shadow-lg shadow-primary/40 transition-all animate-in slide-in-from-top-1" />
                         )}
-                        <item.icon className={`h-5 w-5 transition-transform duration-300 ${isItemActive ? 'scale-110' : ''}`} />
+                        <span className="relative">
+                            <item.icon className={`h-5 w-5 transition-transform duration-300 ${isItemActive ? 'scale-110' : ''}`} />
+                            {item.label === 'Orders' && pendingCount > 0 && (
+                                <span className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center ring-2 ring-white">
+                                    {pendingCount}
+                                </span>
+                            )}
+                        </span>
                         <span className={`text-[10px] font-semibold tracking-wide ${isItemActive ? 'opacity-100' : 'opacity-70'}`}>{item.label}</span>
                     </Link>
                 );
