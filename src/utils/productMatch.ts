@@ -30,6 +30,10 @@ export function findProductByBarcode<T extends BarcodeProduct>(
 ): T | undefined {
     const code = raw.trim();
     if (!code) return undefined;
+    // After remap, the new SKU owns `barcode`. The old SKU may still list the
+    // code on additional_barcodes / batches. Prefer the current primary owner.
+    const primary = products.find((p) => String(p.barcode || "") === code);
+    if (primary) return primary;
     return products.find((p) => productBarcodes(p).some((c) => c === code));
 }
 
