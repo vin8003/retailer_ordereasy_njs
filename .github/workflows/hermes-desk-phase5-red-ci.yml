@@ -1,0 +1,14 @@
+name: hermes-desk-phase5-red-ci-drill
+on:
+  pull_request:
+  push:
+    branches:
+      - hermes-desk/phase5-red-ci-drill
+jobs:
+  red-ci-drill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Intentional Phase 5 red CI
+        run: |
+          echo "Hermes desk Phase 5 dummy red-CI drill. Close this PR after notify is proven."
+          exit 1
