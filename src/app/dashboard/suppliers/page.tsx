@@ -5,7 +5,7 @@ import api from '@/services/api';
 import { 
     BookOpen, Plus, Search, User, Phone, 
     ArrowRight, CreditCard, Loader2, AlertCircle,
-    UserPlus, MapPin, Mail
+    UserPlus, MapPin, Mail, X
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
@@ -37,6 +37,7 @@ export default function SuppliersPage() {
     });
 
     useEffect(() => {
+        setIsLoading(true);
         const timer = setTimeout(() => {
             fetchSuppliers(false);
         }, 300);
@@ -49,7 +50,8 @@ export default function SuppliersPage() {
         
         try {
             const params: any = {};
-            if (searchTerm) params.search = searchTerm;
+            const query = searchTerm.trim();
+            if (query) params.search = query;
             
             if (isAppend && nextPage) {
                 const url = new URL(nextPage);
@@ -95,6 +97,11 @@ export default function SuppliersPage() {
     };
 
     const filteredSuppliers = suppliers;
+    const hasSearchQuery = searchTerm.trim().length > 0;
+    const emptyTitle = hasSearchQuery ? 'No matching suppliers' : 'No suppliers found';
+    const emptySubtitle = hasSearchQuery
+        ? 'Try a different company name or phone number.'
+        : 'Add a new distributor to start managing their khata.';
 
     const totalDebt = suppliers.filter(s => Number(s.balance_due) > 0).reduce((sum, s) => sum + Number(s.balance_due), 0);
     const totalAdvance = suppliers.filter(s => Number(s.balance_due) < 0).reduce((sum, s) => sum + Math.abs(Number(s.balance_due)), 0);
@@ -180,8 +187,18 @@ export default function SuppliersPage() {
                             placeholder="Search by company or phone..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-gray-50 border-none rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 text-gray-900 placeholder:text-gray-400"
+                            className="w-full bg-gray-50 border-none rounded-xl py-3 pl-12 pr-10 focus:ring-2 focus:ring-primary/20 text-gray-900 placeholder:text-gray-400"
                         />
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                aria-label="Clear search"
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -207,8 +224,17 @@ export default function SuppliersPage() {
                             ) : filteredSuppliers.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="p-20 text-center text-gray-400">
-                                        <p className="text-lg font-bold text-gray-600 mb-1">No suppliers found</p>
-                                        <p className="text-sm">Add a new distributor to start managing their khata.</p>
+                                        <p className="text-lg font-bold text-gray-600 mb-1">{emptyTitle}</p>
+                                        <p className="text-sm">{emptySubtitle}</p>
+                                        {hasSearchQuery && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setSearchTerm('')}
+                                                className="mt-4 text-sm font-bold text-primary hover:underline"
+                                            >
+                                                Clear search
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ) : (
@@ -270,8 +296,17 @@ export default function SuppliersPage() {
                         </div>
                     ) : filteredSuppliers.length === 0 ? (
                         <div className="p-12 text-center text-gray-400">
-                            <p className="text-base font-bold text-gray-600 mb-1">No suppliers found</p>
-                            <p className="text-xs">Add a new distributor to start managing their khata.</p>
+                            <p className="text-base font-bold text-gray-600 mb-1">{emptyTitle}</p>
+                            <p className="text-xs">{emptySubtitle}</p>
+                            {hasSearchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchTerm('')}
+                                    className="mt-3 text-xs font-bold text-primary hover:underline"
+                                >
+                                    Clear search
+                                </button>
+                            )}
                         </div>
                     ) : (
                         filteredSuppliers.map(supplier => (
