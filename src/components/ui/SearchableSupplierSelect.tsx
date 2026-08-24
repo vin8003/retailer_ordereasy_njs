@@ -6,6 +6,7 @@ import { ChevronDown, Search, Check, X } from 'lucide-react';
 interface Supplier {
     id: number;
     company_name: string;
+    is_active?: boolean;
 }
 
 interface SearchableSupplierSelectProps {
@@ -47,11 +48,15 @@ export default function SearchableSupplierSelect({
 
     const selectedSupplier = suppliers.find(s => s.id.toString() === value);
 
+    const visibleSuppliers = suppliers.filter(
+        s => s.is_active !== false || s.id.toString() === value
+    );
+
     const filteredSuppliers = search.trim()
-        ? suppliers.filter(s =>
+        ? visibleSuppliers.filter(s =>
             s.company_name.toLowerCase().includes(search.trim().toLowerCase())
         )
-        : suppliers;
+        : visibleSuppliers;
 
     const handleSelect = (supplierId: string) => {
         onChange(supplierId);
@@ -141,7 +146,7 @@ export default function SearchableSupplierSelect({
                     {/* Footer count */}
                     <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/50">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            {filteredSuppliers.length} of {suppliers.length} suppliers
+                            {filteredSuppliers.length} of {visibleSuppliers.length} suppliers
                         </span>
                     </div>
                 </div>

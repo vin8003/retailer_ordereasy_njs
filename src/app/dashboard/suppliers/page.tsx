@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { 
-    BookOpen, Plus, Search, User, Phone, 
-    ArrowRight, CreditCard, Loader2, AlertCircle,
-    UserPlus, MapPin, Mail
+    BookOpen, Search, User, Phone, 
+    ArrowRight, CreditCard, Loader2,
+    UserPlus, Mail, Pencil, Ban, RotateCcw
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
 
 interface Supplier {
     id: number;
@@ -19,7 +20,11 @@ interface Supplier {
     email: string;
     address: string;
     balance_due: string | number;
+    is_active?: boolean;
 }
+
+const DEACTIVATE_CONFIRM = (name: string) =>
+    `Deactivate ${name}? They will no longer appear when recording a new purchase. Khata and old bills stay available.`;
 
 export default function SuppliersPage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -27,14 +32,11 @@ export default function SuppliersPage() {
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [newSupplier, setNewSupplier] = useState({
-        company_name: '',
-        contact_person: '',
-        phone_number: '',
-        email: '',
-        address: ''
-    });
+    const [showFormModal, setShowFormModal] = useState(false);
+    const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+    const [formValues, setFormValues] = useState<SupplierFormValues>(EMPTY_SUPPLIER_FORM);
+    const [isSaving, setIsSaving] = useState(false);
+    const [togglingId, setTogglingId] = useState<number | null>(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -75,22 +77,70 @@ export default function SuppliersPage() {
         }
     };
 
-    const handleAddSupplier = async (e: React.FormEvent) => {
+    const openAddModal = () => {
+        setEditingSupplier(null);
+        setFormValues(EMPTY_SUPPLIER_FORM);
+        setShowFormModal(true);
+    };
+
+    const openEditModal = (supplier: Supplier) => {
+        setEditingSupplier(supplier);
+        setFormValues({
+            company_name: supplier.company_name || '',
+            contact_person: supplier.contact_person || '',
+            phone_number: supplier.phone_number || '',
+            email: supplier.email || '',
+            address: supplier.address || '',
+        });
+        setShowFormModal(true);
+    };
+
+    const closeFormModal = () => {
+        setShowFormModal(false);
+        setEditingSupplier(null);
+        setFormValues(EMPTY_SUPPLIER_FORM);
+    };
+
+    const handleSaveSupplier = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSaving(true);
+        const details = {
+            company_name: formValues.company_name,
+            contact_person: formValues.contact_person,
+            phone_number: formValues.phone_number,
+            address: formValues.address,
+        };
         try {
-            await api.post('/products/erp/suppliers/', newSupplier);
-            toast.success("Supplier added successfully");
-            setShowAddModal(false);
+            if (editingSupplier) {
+                await api.patch(`/products/erp/suppliers/${editingSupplier.id}/`, details);
+                toast.success("Supplier updated");
+            } else {
+                await api.post('/products/erp/suppliers/', { ...details, email: formValues.email });
+                toast.success("Supplier added successfully");
+            }
+            closeFormModal();
             fetchSuppliers();
-            setNewSupplier({
-                company_name: '',
-                contact_person: '',
-                phone_number: '',
-                email: '',
-                address: ''
-            });
         } catch (error) {
-            toast.error("Failed to add supplier");
+            toast.error(editingSupplier ? "Failed to update supplier" : "Failed to add supplier");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleToggleActive = async (supplier: Supplier) => {
+        const currentlyActive = supplier.is_active !== false;
+        if (currentlyActive && !window.confirm(DEACTIVATE_CONFIRM(supplier.company_name))) {
+            return;
+        }
+        setTogglingId(supplier.id);
+        try {
+            await api.patch(`/products/erp/suppliers/${supplier.id}/`, { is_active: !currentlyActive });
+            toast.success(currentlyActive ? "Supplier deactivated" : "Supplier reactivated");
+            fetchSuppliers();
+        } catch (error) {
+            toast.error("Failed to update supplier status");
+        } finally {
+            setTogglingId(null);
         }
     };
 
@@ -98,6 +148,37 @@ export default function SuppliersPage() {
 
     const totalDebt = suppliers.filter(s => Number(s.balance_due) > 0).reduce((sum, s) => sum + Number(s.balance_due), 0);
     const totalAdvance = suppliers.filter(s => Number(s.balance_due) < 0).reduce((sum, s) => sum + Math.abs(Number(s.balance_due)), 0);
+
+    const renderActions = (supplier: Supplier, compact = false) => {
+        const active = supplier.is_active !== false;
+        const busy = togglingId === supplier.id;
+        return (
+            <div className={`flex items-center ${compact ? 'gap-1.5' : 'justify-end gap-2'}`}>
+                <button
+                    type="button"
+                    onClick={() => openEditModal(supplier)}
+                    className="bg-gray-50 hover:bg-primary hover:text-white p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-gray-400 transition-all"
+                    title="Edit"
+                >
+                    <Pencil size={compact ? 14 : 18} />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleToggleActive(supplier)}
+                    disabled={busy}
+                    className="bg-gray-50 hover:bg-primary hover:text-white p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-gray-400 transition-all disabled:opacity-50"
+                    title={active ? 'Deactivate' : 'Reactivate'}
+                >
+                    {busy ? <Loader2 size={compact ? 14 : 18} className="animate-spin" /> : active ? <Ban size={compact ? 14 : 18} /> : <RotateCcw size={compact ? 14 : 18} />}
+                </button>
+                <Link href={`/dashboard/suppliers/ledger?id=${supplier.id}`}>
+                    <button className="bg-gray-50 hover:bg-primary hover:text-white p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-gray-400 transition-all group-hover:shadow-lg group-hover:shadow-primary/20">
+                        <ArrowRight size={compact ? 14 : 20} />
+                    </button>
+                </Link>
+            </div>
+        );
+    };
 
     return (
         <div className="p-4 sm:p-8 max-w-7xl mx-auto font-sans">
@@ -116,7 +197,7 @@ export default function SuppliersPage() {
                     <p className="text-gray-500 mt-2 ml-12 sm:ml-14 text-sm sm:text-base">Manage distributor relations and outstanding credit balances.</p>
                 </div>
                 <button 
-                    onClick={() => setShowAddModal(true)}
+                    onClick={openAddModal}
                     className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/20 px-4 py-3 sm:px-6 sm:py-4 rounded-xl sm:rounded-2xl font-bold flex items-center gap-2 transition-all hover:-translate-y-1 active:scale-95"
                 >
                     <UserPlus size={20} /> Add New Distributor
@@ -219,7 +300,12 @@ export default function SuppliersPage() {
                                                 <div className="size-12 rounded-2xl bg-gray-50 text-gray-400 flex items-center justify-center font-black text-xl border border-gray-100 uppercase group-hover:bg-primary group-hover:text-white transition-all">
                                                     {supplier.company_name.charAt(0)}
                                                 </div>
-                                                <div className="font-black text-gray-900 text-lg uppercase tracking-tight">{supplier.company_name}</div>
+                                                <div>
+                                                    <div className="font-black text-gray-900 text-lg uppercase tracking-tight">{supplier.company_name}</div>
+                                                    {supplier.is_active === false && (
+                                                        <span className="inline-block mt-1 text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-2 py-0.5 rounded-md">Inactive</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="p-6 font-medium text-gray-600">
@@ -249,11 +335,7 @@ export default function SuppliersPage() {
                                             </div>
                                         </td>
                                         <td className="p-6 text-right">
-                                            <Link href={`/dashboard/suppliers/ledger?id=${supplier.id}`}>
-                                                <button className="bg-gray-50 hover:bg-primary hover:text-white p-3 rounded-2xl text-gray-400 transition-all group-hover:shadow-lg group-hover:shadow-primary/20">
-                                                    <ArrowRight size={20} />
-                                                </button>
-                                            </Link>
+                                            {renderActions(supplier)}
                                         </td>
                                     </tr>
                                 ))
@@ -283,6 +365,9 @@ export default function SuppliersPage() {
                                         </div>
                                         <div className="min-w-0">
                                             <div className="font-black text-gray-900 text-sm uppercase tracking-tight truncate max-w-[150px]">{supplier.company_name}</div>
+                                            {supplier.is_active === false && (
+                                                <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-1.5 py-0.5 rounded">Inactive</span>
+                                            )}
                                             <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
                                                 <User size={10} className="text-gray-400 flex-shrink-0" />
                                                 <span className="truncate max-w-[100px]">{supplier.contact_person || 'N/A'}</span>
@@ -311,11 +396,7 @@ export default function SuppliersPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <Link href={`/dashboard/suppliers/ledger?id=${supplier.id}`} className="flex-shrink-0">
-                                        <button className="bg-white hover:bg-primary text-gray-500 hover:text-white px-3 py-2 rounded-lg border border-gray-200 transition-all flex items-center gap-1 text-[11px] font-bold shadow-sm">
-                                            Ledger <ArrowRight size={12} />
-                                        </button>
-                                    </Link>
+                                    {renderActions(supplier, true)}
                                 </div>
                             </div>
                         ))
@@ -323,91 +404,15 @@ export default function SuppliersPage() {
                 </div>
             </div>
 
-            {/* Add Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl p-10 animate-in zoom-in-95 duration-200">
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">New Distributor</h2>
-                        <p className="text-gray-500 mb-8 font-medium">Create a record for your stock provider.</p>
-                        
-                        <form onSubmit={handleAddSupplier} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Company Name *</label>
-                                    <input 
-                                        required
-                                        type="text"
-                                        placeholder="e.g. ABC Foods Ltd"
-                                        value={newSupplier.company_name}
-                                        onChange={e => setNewSupplier({...newSupplier, company_name: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Contact Person</label>
-                                    <input 
-                                        type="text"
-                                        placeholder="John Doe"
-                                        value={newSupplier.contact_person}
-                                        onChange={e => setNewSupplier({...newSupplier, contact_person: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Phone Number (recommended)</label>
-                                    <input 
-                                        type="tel"
-                                        placeholder="10-digit mobile (optional)"
-                                        value={newSupplier.phone_number}
-                                        onChange={e => setNewSupplier({...newSupplier, phone_number: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Email Address</label>
-                                    <input 
-                                        type="email"
-                                        placeholder="distributor@mail.com"
-                                        value={newSupplier.email}
-                                        onChange={e => setNewSupplier({...newSupplier, email: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Office Address</label>
-                                <textarea 
-                                    rows={3}
-                                    placeholder="Full office or warehouse address..."
-                                    value={newSupplier.address}
-                                    onChange={e => setNewSupplier({...newSupplier, address: e.target.value})}
-                                    className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 focus:ring-2 focus:ring-primary/20 resize-none"
-                                />
-                            </div>
-
-                            <div className="flex gap-4 pt-6">
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowAddModal(false)}
-                                    className="flex-1 px-6 py-4 rounded-2xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    className="flex-[2] bg-primary text-white px-6 py-4 rounded-2xl font-bold hover:bg-primary/90 shadow-xl shadow-primary/20 transition-all"
-                                >
-                                    Register Distributor
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <SupplierFormModal
+                open={showFormModal}
+                mode={editingSupplier ? 'edit' : 'add'}
+                values={formValues}
+                onChange={setFormValues}
+                onClose={closeFormModal}
+                onSubmit={handleSaveSupplier}
+                isSubmitting={isSaving}
+            />
 
             <InfiniteScrollTrigger 
                 onLoadMore={() => fetchSuppliers(true)}
