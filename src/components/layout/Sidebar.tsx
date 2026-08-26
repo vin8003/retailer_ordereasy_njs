@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { authService } from '@/services/api';
 import {
     LayoutDashboard,
     ShoppingBag,
@@ -20,39 +18,8 @@ import {
     BarChart3
 } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
     const pathname = usePathname();
-    const [pendingCount, setPendingCount] = useState<number>(0);
-
-    const fetchPendingCount = async () => {
-        try {
-            const response = await authService.fetchStats();
-            // Assuming stats returns pending_orders as seen in backend code
-            setPendingCount(response.data.pending_orders || 0);
-        } catch (error) {
-            console.error('Failed to fetch pending orders count:', error);
-        }
-    };
-
-    useEffect(() => {
-        fetchPendingCount();
-
-        // Listen for real-time FCM updates
-        const handleOrderUpdate = () => {
-            console.log('Sidebar refreshing pending count due to FCM update');
-            fetchPendingCount();
-        };
-
-        window.addEventListener('fcm_order_update', handleOrderUpdate);
-
-        // Fallback polling every 60 seconds
-        const interval = setInterval(fetchPendingCount, 60000);
-
-        return () => {
-            window.removeEventListener('fcm_order_update', handleOrderUpdate);
-            clearInterval(interval);
-        };
-    }, []);
 
     const handleLogout = () => {
         // Clear tokens and redirect
@@ -101,9 +68,10 @@ const Sidebar = () => {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${isActive
-                                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 font-semibold'
-                                : 'text-muted-foreground hover:bg-white/80 hover:text-primary hover:translate-x-1'
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                                isActive
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 font-semibold'
+                                    : 'text-muted-foreground hover:bg-white/80 hover:text-primary hover:translate-x-1'
                                 }`}
                         >
                             <item.icon size={20} className={isActive ? 'text-primary-foreground' : 'group-hover:text-primary transition-colors'} />
