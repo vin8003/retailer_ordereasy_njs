@@ -19,10 +19,12 @@ import {
   DEFAULT_LABEL_FIELDS,
   addProductToPrintList,
   buildLabelPrintDocument,
+  applyDefaultFieldsToList,
   consumePrintProductIds,
   loadLabelPrefs,
   parsePrintProductIds,
   printLabelDocument,
+  readPrintProductIds,
   removePrintListItem,
   saveLabelPrefs,
   totalLabelCount,
@@ -98,15 +100,18 @@ function PrintLabelsContent() {
 
   const seedFromIds = useCallback(async (ids: number[]) => {
     if (ids.length === 0) return;
-    const loaded: CatalogProduct[] = [];
-    for (const id of ids) {
-      try {
-        const response = await productService.fetchProductDetails(id);
-        if (response.data) loaded.push(response.data);
-      } catch {
-        /* skip missing products */
-      }
-    }
+    const loaded = (
+      await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const response = await productService.fetchProductDetails(id);
+            return (response.data as CatalogProduct | undefined) ?? null;
+          } catch {
+            return null;
+          }
+        }),
+      )
+    ).filter((product): product is CatalogProduct => Boolean(product?.id));
     setList((current) => {
       let next = current;
       for (const product of loaded) {
@@ -120,9 +125,12 @@ function PrintLabelsContent() {
 
   useEffect(() => {
     const query = resolvePrintQuery(searchParams);
-    const queued = consumePrintProductIds();
+    const queued = readPrintProductIds();
     const ids = [...parsePrintProductIds(query.productId, query.ids), ...queued];
-    seedFromIds(ids).finally(() => setIsSeeding(false));
+    seedFromIds(ids).finally(() => {
+      consumePrintProductIds();
+      setIsSeeding(false);
+    });
     // Mount only — do not re-run when Next wipes/restores searchParams.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -172,12 +180,9 @@ function PrintLabelsContent() {
   };
 
   const handlePrefsChange = (nextPrefs: LabelTemplatePrefs) => {
-    const fieldsChanged = JSON.stringify(prefs.fields) !== JSON.stringify(nextPrefs.fields);
+    const previousFields = prefs.fields;
     setPrefs(nextPrefs);
-    // Size / columns / barcode format must not wipe per-row field overrides.
-    if (fieldsChanged) {
-      setList((current) => current.map((item) => ({ ...item, fields: { ...nextPrefs.fields } })));
-    }
+    setList((current) => applyDefaultFieldsToList(current, previousFields, nextPrefs.fields));
   };
 
   return (
