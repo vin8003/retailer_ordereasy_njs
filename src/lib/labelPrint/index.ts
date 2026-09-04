@@ -28,10 +28,13 @@ export {
 export { LABEL_PREFS_KEY, loadLabelPrefs, saveLabelPrefs } from "./preferences";
 export {
   addProductToPrintList,
+  applyDefaultFieldsToList,
   consumePrintProductIds,
   enqueuePrintProductIds,
+  fieldsEqual,
   parsePrintProductIds,
   productToPrintItem,
+  readPrintProductIds,
   removePrintListItem,
   totalLabelCount,
   updatePrintListItem,

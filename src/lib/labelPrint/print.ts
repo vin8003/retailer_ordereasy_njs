@@ -30,7 +30,8 @@ export function printLabelDocument(html: string): void {
 
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
-  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  // Off-screen but sized: Chrome often skips print/JsBarcode on a 0×0 iframe.
+  iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;height:600px;border:0;";
   document.body.appendChild(iframe);
 
   const win = iframe.contentWindow;

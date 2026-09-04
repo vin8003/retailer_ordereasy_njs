@@ -68,23 +68,43 @@ export function totalLabelCount(list: PrintLabelItem[]): number {
   return list.reduce((sum, item) => sum + Math.max(0, Math.floor(Number(item.quantity) || 0)), 0);
 }
 
+export function fieldsEqual(a: LabelFieldFlags, b: LabelFieldFlags): boolean {
+  return (
+    a.shopName === b.shopName &&
+    a.productName === b.productName &&
+    a.mrp === b.mrp &&
+    a.sellingPrice === b.sellingPrice &&
+    a.weight === b.weight &&
+    a.packingDate === b.packingDate &&
+    a.expiryDate === b.expiryDate &&
+    a.barcode === b.barcode
+  );
+}
+
+/** Apply new template defaults only to rows that still use the previous defaults. */
+export function applyDefaultFieldsToList(
+  list: PrintLabelItem[],
+  previousDefaults: LabelFieldFlags,
+  nextDefaults: LabelFieldFlags,
+): PrintLabelItem[] {
+  return list.map((item) =>
+    fieldsEqual(item.fields, previousDefaults) ? { ...item, fields: { ...nextDefaults } } : item,
+  );
+}
+
 export const PRINT_QUEUE_KEY = "oe_label_print_queue";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export function enqueuePrintProductIds(ids: number[], storage?: StorageLike | null): void {
-  const store = storage ?? (typeof window !== "undefined" ? window.sessionStorage : null);
-  if (!store) return;
-  const unique = Array.from(new Set(ids.filter((id) => Number.isFinite(id))));
-  store.setItem(PRINT_QUEUE_KEY, JSON.stringify(unique));
+function sessionStore(storage?: StorageLike | null): StorageLike | null {
+  return storage ?? (typeof window !== "undefined" ? window.sessionStorage : null);
 }
 
-export function consumePrintProductIds(storage?: StorageLike | null): number[] {
-  const store = storage ?? (typeof window !== "undefined" ? window.sessionStorage : null);
+export function readPrintProductIds(storage?: StorageLike | null): number[] {
+  const store = sessionStore(storage);
   if (!store) return [];
   try {
     const raw = store.getItem(PRINT_QUEUE_KEY);
-    store.removeItem(PRINT_QUEUE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -92,6 +112,20 @@ export function consumePrintProductIds(storage?: StorageLike | null): number[] {
   } catch {
     return [];
   }
+}
+
+export function enqueuePrintProductIds(ids: number[], storage?: StorageLike | null): void {
+  const store = sessionStore(storage);
+  if (!store) return;
+  const unique = Array.from(new Set(ids.filter((id) => Number.isFinite(id) && id > 0)));
+  store.setItem(PRINT_QUEUE_KEY, JSON.stringify(unique));
+}
+
+export function consumePrintProductIds(storage?: StorageLike | null): number[] {
+  const store = sessionStore(storage);
+  const ids = readPrintProductIds(store);
+  store?.removeItem(PRINT_QUEUE_KEY);
+  return ids;
 }
 
 export function parsePrintProductIds(productId?: string | null, ids?: string | null): number[] {

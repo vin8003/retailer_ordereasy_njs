@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_LABEL_FIELDS } from "./templates";
 import {
   addProductToPrintList,
+  applyDefaultFieldsToList,
   consumePrintProductIds,
   enqueuePrintProductIds,
   parsePrintProductIds,
   productToPrintItem,
+  readPrintProductIds,
   removePrintListItem,
   totalLabelCount,
   updatePrintListItem,
@@ -69,7 +71,8 @@ describe("print list", () => {
       setItem(key: string, value: string) { this.data.set(key, value); },
       removeItem(key: string) { this.data.delete(key); },
     };
-    enqueuePrintProductIds([7, 7, 8, Number.NaN], storage);
+    enqueuePrintProductIds([7, 7, 8, Number.NaN, 0, -3], storage);
+    expect(readPrintProductIds(storage)).toEqual([7, 8]);
     expect(consumePrintProductIds(storage)).toEqual([7, 8]);
     expect(consumePrintProductIds(storage)).toEqual([]);
   });
@@ -77,5 +80,19 @@ describe("print list", () => {
   it("parses productId and csv ids while dropping junk", () => {
     expect(parsePrintProductIds("12", "12,13,nope,-1")).toEqual([12, 13]);
     expect(parsePrintProductIds(null, "")).toEqual([]);
+  });
+
+  it("applies new default fields only to rows that still match the previous defaults", () => {
+    const defaults = { ...DEFAULT_LABEL_FIELDS };
+    const customized = { ...DEFAULT_LABEL_FIELDS, shopName: false };
+    const list = [
+      { ...productToPrintItem(product, defaults), id: 7 },
+      { ...productToPrintItem({ ...product, id: 8, name: "Oil" }, customized) },
+    ];
+    const next = { ...defaults, mrp: false };
+    const updated = applyDefaultFieldsToList(list, defaults, next);
+    expect(updated[0].fields.mrp).toBe(false);
+    expect(updated[1].fields.shopName).toBe(false);
+    expect(updated[1].fields.mrp).toBe(true);
   });
 });
