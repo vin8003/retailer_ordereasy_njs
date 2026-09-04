@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Search, MoreHorizontal, FileEdit, Trash2, Box, ChevronLeft, ChevronRight, Filter, X, Star, Sun } from "lucide-react";
+import { Plus, Search, MoreHorizontal, FileEdit, Trash2, Box, ChevronLeft, ChevronRight, Filter, X, Star, Sun, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -21,6 +21,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { productService } from "@/services/api";
+import { PriceUpdatePrintPrompt } from "@/components/labels/PriceUpdatePrintPrompt";
+import { enqueuePrintProductIds } from "@/lib/labelPrint";
 
 export default function ProductsPage() {
     const router = useRouter();
@@ -54,6 +56,7 @@ export default function ProductsPage() {
     const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
     const [isBulkMatrixOpen, setIsBulkMatrixOpen] = useState(false);
     const [isSelectingAll, setIsSelectingAll] = useState(false);
+    const [printPromptProduct, setPrintPromptProduct] = useState<any | null>(null);
 
     useEffect(() => {
         fetchCategories();
@@ -320,6 +323,12 @@ export default function ProductsPage() {
                             Add Product
                         </Button>
                     </Link>
+                    <Link href="/dashboard/print-labels">
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print Labels
+                        </Button>
+                    </Link>
                     <Link href="/dashboard/products/bulk">
                         <Button variant="outline" className="w-full sm:w-auto">
                             <Box className="mr-2 h-4 w-4" />
@@ -569,6 +578,7 @@ export default function ProductsPage() {
                             formData.append('price', String(newPrice));
                             await productService.updateProduct(product.id, formData);
                             toast.success(`Price updated to ${newPrice} for ${product.name}`);
+                            setPrintPromptProduct({ ...product, price: newPrice });
                         } catch (e) {
                             toast.error("Failed to update price");
                             setProducts([...products]);
@@ -593,6 +603,12 @@ export default function ProductsPage() {
                         // But to be safe, just clear the selection. 
                     }}
                     onEditSelected={() => setIsBulkMatrixOpen(true)}
+                    onPrintSelected={() => {
+                        const ids = Array.from(selectedProductIds);
+                        if (ids.length === 0) return;
+                        enqueuePrintProductIds(ids);
+                        router.push("/dashboard/print-labels");
+                    }}
                 />
 
                 <BulkEditMatrix
@@ -642,7 +658,17 @@ export default function ProductsPage() {
                 <Plus className="h-6 w-6" />
                 <span className="sr-only">Add Product</span>
             </Link>
+
+            <PriceUpdatePrintPrompt
+                open={!!printPromptProduct}
+                productName={printPromptProduct?.name}
+                onClose={() => setPrintPromptProduct(null)}
+                onPrint={() => {
+                    const id = printPromptProduct?.id;
+                    setPrintPromptProduct(null);
+                    if (id) router.push(`/dashboard/print-labels?productId=${id}`);
+                }}
+            />
         </div>
     );
 }
-
