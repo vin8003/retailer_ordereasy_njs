@@ -4,11 +4,15 @@ import { useEffect, useRef } from "react";
 import { getLabelSize, getVisibleLabelContent, renderBarcodeSvg } from "@/lib/labelPrint";
 import type { BarcodeFormat, LabelSizeId, PrintLabelItem } from "@/lib/labelPrint";
 
+/** CSS pixels in 1mm at 96dpi. Preview `scale` is px-per-mm; this converts it for transform. */
+const CSS_PX_PER_MM = 96 / 25.4;
+
 interface LabelPreviewProps {
   item: PrintLabelItem;
   shopName: string;
   sizeId: LabelSizeId;
   barcodeFormat: BarcodeFormat;
+  /** Preview pixels per millimetre of sticker. */
   scale?: number;
 }
 
@@ -16,6 +20,7 @@ export function LabelPreview({ item, shopName, sizeId, barcodeFormat, scale = 4.
   const svgRef = useRef<SVGSVGElement>(null);
   const size = getLabelSize(sizeId);
   const visible = getVisibleLabelContent(item, shopName);
+  const visualScale = scale / CSS_PX_PER_MM;
 
   useEffect(() => {
     if (!svgRef.current || !visible.barcode) return;
@@ -33,7 +38,7 @@ export function LabelPreview({ item, shopName, sizeId, barcodeFormat, scale = 4.
           width: `${size.widthMm}mm`,
           height: `${size.heightMm}mm`,
           padding: "0.8mm 1.1mm",
-          transform: `scale(${scale})`,
+          transform: `scale(${visualScale})`,
           transformOrigin: "top left",
           fontFamily: "Arial, Helvetica, sans-serif",
         }}
