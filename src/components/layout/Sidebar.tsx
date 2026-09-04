@@ -17,7 +17,7 @@ import {
     Calculator,
     Package,
     BookOpen,
-    BarChart3
+    Barcode
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -70,6 +70,7 @@ const Sidebar = () => {
         { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
         { label: 'Khata/Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
+        { label: 'Print Labels', icon: Barcode, href: '/dashboard/print-labels' },
         { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
         { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
@@ -96,7 +97,7 @@ const Sidebar = () => {
 
             <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto pt-2">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href;
+                    const isActive = pathname === item.href || pathname === `${item.href}/`;
                     return (
                         <Link
                             key={item.href}

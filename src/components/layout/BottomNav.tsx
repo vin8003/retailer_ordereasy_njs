@@ -16,7 +16,8 @@ import {
     LogOut,
     Calculator,
     Package,
-    BookOpen
+    BookOpen,
+    Barcode
 } from 'lucide-react';
 import {
     Drawer,
@@ -38,6 +39,7 @@ const BottomNav = () => {
 
     const moreNavItems = [
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
+        { label: 'Print Labels', icon: Barcode, href: '/dashboard/print-labels' },
         { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
         { label: 'Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
         { label: 'Profile', icon: User, href: '/dashboard/profile' },
