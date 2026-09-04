@@ -15,3 +15,17 @@ import POSReturnModal from '@/components/pos/POSReturnModal';
 import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
+
+interface Product {
+    id: number;
+    name: string;
+    price: number | string;
+    discounted_price: number | string;
+    image: string;
+    quantity: number;
+    category_name: string;
+    barcode?: string;
+    track_inventory?: boolean;
+    has_batches?: boolean;
+    batches?: any[];
+}
