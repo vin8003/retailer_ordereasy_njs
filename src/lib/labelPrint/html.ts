@@ -150,9 +150,9 @@ export function stickerLabelCss(widthMm: number, heightMm: number): string {
     }
     .barcode-slot {
       margin-top: auto;
-      height: 8.6mm;
-      min-height: 8.6mm;
-      max-height: 8.6mm;
+      height: 9mm;
+      min-height: 9mm;
+      max-height: 9mm;
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -161,9 +161,22 @@ export function stickerLabelCss(widthMm: number, heightMm: number): string {
     }
     svg.barcode {
       display: block;
-      width: 100%;
-      height: 8.4mm;
-      max-height: 8.4mm;
+      /* Let the SVG render at its native pixel size, then scale down to fit.
+       * Using max-width instead of width:100% avoids upscaling a small barcode
+       * which causes blur on 203 DPI thermal printers. */
+      max-width: 100%;
+      max-height: 9mm;
+      height: auto;
+      width: auto;
+    }
+    @media print {
+      svg.barcode {
+        /* In print, let the SVG use its intrinsic size (vector = sharp at any DPI).
+         * The browser rasterizer maps vector paths to printer dots cleanly. */
+        width: auto !important;
+        height: 9mm !important;
+        max-width: 100% !important;
+      }
     }
   `;
 }
@@ -186,21 +199,39 @@ export function buildLabelPrintDocument(context: LabelPrintContext): string {
     rows.push(`<div class="sheet-row">${slice.join("")}</div>`);
   }
 
+  // @page uses plain dimensions only — no landscape/portrait keyword.
+  // The TVS LP46NEO driver treats width as roll width and height as feed length.
+  // Forcing landscape swaps the two and rotates the print 90°.
+  const pageSizeRule = `${page.widthMm}mm ${page.heightMm}mm`;
+
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>Print Labels</title>
   <style>
-    @page { size: ${page.widthMm}mm ${page.heightMm}mm; margin: 0; }
+    @page { size: ${pageSizeRule}; margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     .sheet-row {
       display: grid;
       grid-template-columns: repeat(${prefs.columns}, ${size.widthMm}mm);
       width: ${page.widthMm}mm;
-      height: ${size.heightMm}mm;
+      height: ${page.heightMm}mm;
+      box-sizing: border-box;
+      align-content: start;
+      align-items: start;
       page-break-after: always;
       break-after: page;
+    }
+    .sheet-row:last-child { page-break-after: auto; break-after: auto; }
+    @media print {
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
     }
     ${stickerLabelCss(size.widthMm, size.heightMm)}
   </style>

@@ -79,9 +79,10 @@ describe("buildLabelPrintDocument", () => {
   it("emits @page size matching the 1-column 50x25 sticker", () => {
     const html = buildLabelPrintDocument(sampleContext());
     expect(html).toContain("@page { size: 50mm 25mm; margin: 0; }");
+    expect(html).not.toContain("landscape");
   });
 
-  it("widens @page for 2-column 38x25 rolls", () => {
+  it("widens @page for 2-column 38x25 rolls without forcing landscape", () => {
     const html = buildLabelPrintDocument(
       sampleContext({
         prefs: {
@@ -93,6 +94,7 @@ describe("buildLabelPrintDocument", () => {
       }),
     );
     expect(html).toContain("@page { size: 76mm 25mm; margin: 0; }");
+    expect(html).not.toContain("landscape");
     expect(html).toContain("grid-template-columns: repeat(2, 38mm)");
   });
 
@@ -196,7 +198,7 @@ describe("buildLabelPrintDocument", () => {
     const html = buildLabelPrintDocument(sampleContext());
     expect(html).toContain('class="barcode-slot"');
     expect(html).toContain("white-space: nowrap");
-    expect(html).toContain("height: 8.6mm");
+    expect(html).toContain("height: 9mm");
     expect(html).toContain("text-overflow: ellipsis");
     expect(html).toContain("justify-content: flex-start");
     expect(html).not.toContain("height: 11mm");
