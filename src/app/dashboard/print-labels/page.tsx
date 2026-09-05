@@ -26,6 +26,7 @@ import {
   printLabelDocument,
   readPrintProductIds,
   removePrintListItem,
+  resolveProductBarcode,
   saveLabelPrefs,
   totalLabelCount,
   updatePrintListItem,
@@ -163,9 +164,20 @@ function PrintLabelsContent() {
     return { ...SAMPLE_ITEM, fields: { ...SAMPLE_ITEM.fields, ...prefs.fields } };
   }, [selectedItem, prefs.fields]);
 
-  const handleAdd = (product: CatalogProduct) => {
-    setList((current) => addProductToPrintList(current, product, prefs.fields));
-    setSelectedId(product.id);
+  const handleAdd = async (product: CatalogProduct) => {
+    let catalogProduct = product;
+    // Search hits historically omitted barcode/MRP; hydrate from detail when missing.
+    if (!resolveProductBarcode(product) || product.original_price == null) {
+      try {
+        const response = await productService.fetchProductDetails(product.id);
+        const detail = response.data as CatalogProduct | undefined;
+        if (detail?.id) catalogProduct = { ...product, ...detail };
+      } catch {
+        /* keep the search row */
+      }
+    }
+    setList((current) => addProductToPrintList(current, catalogProduct, prefs.fields));
+    setSelectedId(catalogProduct.id);
     setSearch("");
     setResults([]);
   };
@@ -228,7 +240,9 @@ function PrintLabelsContent() {
                   {!isSearching && results.length === 0 && search.trim() && (
                     <div className="p-3 text-sm text-muted-foreground">No products found.</div>
                   )}
-                  {results.map((product) => (
+                  {results.map((product) => {
+                    const code = resolveProductBarcode(product);
+                    return (
                     <button
                       key={product.id}
                       type="button"
@@ -238,12 +252,13 @@ function PrintLabelsContent() {
                       <div>
                         <div className="text-sm font-medium">{product.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          ₹{product.price} {product.barcode ? `· ${product.barcode}` : ""}
+                          ₹{product.price} {code ? `· ${code}` : ""}
                         </div>
                       </div>
                       <Plus className="h-4 w-4 text-primary" />
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

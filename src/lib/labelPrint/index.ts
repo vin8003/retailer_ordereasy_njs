@@ -38,6 +38,7 @@ export {
   productToPrintItem,
   readPrintProductIds,
   removePrintListItem,
+  resolveProductBarcode,
   totalLabelCount,
   updatePrintListItem,
 } from "./printList";

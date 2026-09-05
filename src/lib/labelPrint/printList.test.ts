@@ -9,6 +9,7 @@ import {
   productToPrintItem,
   readPrintProductIds,
   removePrintListItem,
+  resolveProductBarcode,
   totalLabelCount,
   updatePrintListItem,
 } from "./printList";
@@ -34,6 +35,41 @@ describe("print list", () => {
       unit: "kg",
       quantity: 1,
     });
+  });
+
+  it("falls back to batch / additional barcodes when primary barcode is empty", () => {
+    expect(
+      resolveProductBarcode({
+        id: 9,
+        name: "Oil",
+        barcode: null,
+        batches: [{ barcode: "8909999999999" }],
+      }),
+    ).toBe("8909999999999");
+
+    const fromBatch = productToPrintItem(
+      {
+        id: 9,
+        name: "Oil",
+        barcode: null,
+        price: 100,
+        batches: [{ barcode: "8909999999999" }],
+      },
+      DEFAULT_LABEL_FIELDS,
+    );
+    expect(fromBatch.barcode).toBe("8909999999999");
+
+    const fromAdditional = productToPrintItem(
+      {
+        id: 10,
+        name: "Soap",
+        barcode: "",
+        price: 20,
+        additional_barcodes: ["SOAP-ALT-1"],
+      },
+      DEFAULT_LABEL_FIELDS,
+    );
+    expect(fromAdditional.barcode).toBe("SOAP-ALT-1");
   });
 
   it("adds a new product or bumps quantity when the same product is added again", () => {
