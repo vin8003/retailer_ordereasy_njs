@@ -24,6 +24,8 @@ export {
   formatInr,
   formatLabelDate,
   getVisibleLabelContent,
+  renderLabelInner,
+  stickerLabelCss,
 } from "./html";
 export { LABEL_PREFS_KEY, loadLabelPrefs, saveLabelPrefs } from "./preferences";
 export {

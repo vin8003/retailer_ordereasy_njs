@@ -1,6 +1,6 @@
 import { resolveBarcodeFormat } from "./barcode";
 import { getLabelSize, pageSizeMm } from "./templates";
-import type { LabelPrintContext, PrintLabelItem, VisibleLabelContent } from "./types";
+import type { BarcodeFormat, LabelPrintContext, PrintLabelItem, VisibleLabelContent } from "./types";
 
 export function escapeHtml(value: string): string {
   return String(value)
@@ -50,7 +50,12 @@ function expandItems(items: PrintLabelItem[]): PrintLabelItem[] {
   return expanded;
 }
 
-function renderLabelInner(item: PrintLabelItem, shopName: string, barcodeFormat: LabelPrintContext["prefs"]["barcodeFormat"]): string {
+/** Inner sticker markup shared by live preview and print. */
+export function renderLabelInner(
+  item: PrintLabelItem,
+  shopName: string,
+  barcodeFormat: BarcodeFormat,
+): string {
   const visible = getVisibleLabelContent(item, shopName);
   const parts: string[] = [];
 
@@ -75,11 +80,92 @@ function renderLabelInner(item: PrintLabelItem, shopName: string, barcodeFormat:
   if (visible.barcode) {
     const format = resolveBarcodeFormat(visible.barcode, barcodeFormat);
     parts.push(
-      `<svg class="barcode" data-value="${escapeHtml(visible.barcode)}" data-format="${format}"></svg>`,
+      `<div class="barcode-slot"><svg class="barcode" data-value="${escapeHtml(visible.barcode)}" data-format="${format}"></svg></div>`,
     );
   }
 
   return parts.join("");
+}
+
+/**
+ * Compact sticker CSS used by both the live preview and print output.
+ * Tuned so shop + name + prices + barcode fit inside 25mm height without clipping.
+ */
+export function stickerLabelCss(widthMm: number, heightMm: number): string {
+  return `
+    .label {
+      width: ${widthMm}mm;
+      height: ${heightMm}mm;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding: 0.5mm 1.1mm 0.3mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 0.2mm;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #000;
+      background: #fff;
+    }
+    .label.empty { visibility: hidden; }
+    .shop {
+      font-size: 2mm;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      text-align: center;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+    .name {
+      font-size: 2.3mm;
+      font-weight: 700;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+    .prices {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1mm;
+      font-size: 2.1mm;
+      line-height: 1.1;
+      flex-shrink: 0;
+    }
+    .mrp { text-decoration: line-through; opacity: 0.75; white-space: nowrap; }
+    .price { font-weight: 800; font-size: 2.4mm; white-space: nowrap; }
+    .meta {
+      font-size: 1.8mm;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+    .barcode-slot {
+      margin-top: auto;
+      height: 8.6mm;
+      min-height: 8.6mm;
+      max-height: 8.6mm;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    svg.barcode {
+      display: block;
+      width: 100%;
+      height: 8.4mm;
+      max-height: 8.4mm;
+    }
+  `;
 }
 
 export function buildLabelPrintDocument(context: LabelPrintContext): string {
@@ -116,27 +202,7 @@ export function buildLabelPrintDocument(context: LabelPrintContext): string {
       page-break-after: always;
       break-after: page;
     }
-    .label {
-      width: ${size.widthMm}mm;
-      height: ${size.heightMm}mm;
-      box-sizing: border-box;
-      overflow: hidden;
-      padding: 0.8mm 1.1mm;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      font-family: Arial, Helvetica, sans-serif;
-      color: #000;
-      background: #fff;
-    }
-    .label.empty { visibility: hidden; }
-    .shop { font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; text-align: center; }
-    .name { font-size: 9px; font-weight: 700; line-height: 1.15; max-height: 22px; overflow: hidden; }
-    .prices { display: flex; justify-content: space-between; align-items: baseline; font-size: 8px; }
-    .mrp { text-decoration: line-through; opacity: 0.75; }
-    .price { font-weight: 800; font-size: 10px; }
-    .meta { font-size: 6.5px; }
-    svg.barcode { width: 100%; height: 11mm; }
+    ${stickerLabelCss(size.widthMm, size.heightMm)}
   </style>
 </head>
 <body>

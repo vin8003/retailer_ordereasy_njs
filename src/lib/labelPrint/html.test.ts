@@ -191,4 +191,14 @@ describe("buildLabelPrintDocument", () => {
     expect(html.match(/class="label empty"/g)?.length).toBe(2);
     expect(html.match(/Toor Dal/g)?.length).toBe(4);
   });
+
+  it("reserves a barcode slot and uses compact nowrap CSS so 25mm stickers do not clip", () => {
+    const html = buildLabelPrintDocument(sampleContext());
+    expect(html).toContain('class="barcode-slot"');
+    expect(html).toContain("white-space: nowrap");
+    expect(html).toContain("height: 8.6mm");
+    expect(html).toContain("text-overflow: ellipsis");
+    expect(html).toContain("justify-content: flex-start");
+    expect(html).not.toContain("height: 11mm");
+  });
 });

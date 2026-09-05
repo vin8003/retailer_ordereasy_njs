@@ -6,9 +6,9 @@ function barcodeOptions(format: BarcodeFormat) {
   return {
     format,
     displayValue: true,
-    fontSize: 10,
+    fontSize: 9,
     margin: 0,
-    height: 32,
+    height: 22,
     width: 1.15,
     background: "#ffffff",
     lineColor: "#000000",
