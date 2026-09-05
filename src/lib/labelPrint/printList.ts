@@ -1,13 +1,22 @@
+import { productBarcodes, type BarcodeProduct } from "@/utils/productMatch";
 import { DEFAULT_LABEL_FIELDS } from "./templates";
 import type { LabelFieldFlags, PrintLabelItem } from "./types";
 
-export interface CatalogProduct {
-  id: number;
+export interface CatalogProduct extends BarcodeProduct {
   name: string;
-  barcode?: string | null;
   original_price?: number | string | null;
   price?: number | string | null;
   unit?: string | null;
+}
+
+/** Prefer primary barcode, then additional / batch codes from the catalog payload. */
+export function resolveProductBarcode(product: CatalogProduct): string {
+  const primary = product.barcode != null && String(product.barcode).trim() !== ""
+    ? String(product.barcode).trim()
+    : "";
+  if (primary) return primary;
+  const fromRelated = productBarcodes(product).map((code) => code.trim()).find(Boolean);
+  return fromRelated || "";
 }
 
 export function productToPrintItem(
@@ -17,7 +26,7 @@ export function productToPrintItem(
   return {
     id: product.id,
     name: product.name || "",
-    barcode: product.barcode ? String(product.barcode) : "",
+    barcode: resolveProductBarcode(product),
     mrp: product.original_price ?? null,
     price: product.price ?? "",
     unit: product.unit || "",
