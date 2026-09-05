@@ -3,7 +3,7 @@
 import { useRef, useCallback, useEffect, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRouter } from "next/navigation";
-import { Edit, Trash2, MoreHorizontal, ImageIcon, Star, Search, History } from "lucide-react";
+import { Edit, Trash2, MoreHorizontal, ImageIcon, Star, Search, History, Printer } from "lucide-react";
 import { useSwipeable } from "react-swipeable";
 
 import { Badge } from "@/components/ui/badge";
@@ -473,6 +473,15 @@ function SwipeableRow({
                                     <History className="mr-2 h-4 w-4" />
                                     View History
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/dashboard/print-labels?productId=${product.id}`);
+                                    }}
+                                >
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print Labels
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={(e) => {
@@ -598,6 +607,14 @@ function SwipeableRow({
                                     }}
                                 >
                                     <History className="mr-2 h-4 w-4" /> View History
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(`/dashboard/print-labels?productId=${product.id}`);
+                                    }}
+                                >
+                                    <Printer className="mr-2 h-4 w-4" /> Print Labels
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

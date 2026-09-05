@@ -5,7 +5,7 @@ import api, { offerService } from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
-    MessageSquare, Check, Keyboard, Users, Tag
+    MessageSquare, Check, Keyboard, Users, Tag, Barcode
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
@@ -946,6 +946,19 @@ export default function POSPage() {
                             <p className="text-sm text-gray-500 mt-1">Walk-in Customer Billing</p>
                         </div>
                         <div className="flex gap-3 items-center">
+                            <button
+                                onClick={() => {
+                                    const ids = Array.from(new Set(activeSession.cart.map((item) => item.id)));
+                                    const href = ids.length
+                                      ? `/dashboard/print-labels/?ids=${ids.join(",")}`
+                                      : "/dashboard/print-labels/";
+                                    window.location.href = href;
+                                }}
+                                className="flex gap-2 items-center px-4 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/15 transition-all font-bold text-sm border border-primary/20"
+                                title="Print barcode labels for cart items"
+                            >
+                                <Barcode size={18} /> Labels
+                            </button>
                             <button
                                 onClick={() => setIsReturnModalOpen(true)}
                                 className="flex gap-2 items-center px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all font-bold text-sm border border-red-100"

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Edit3, CheckSquare, X, ArrowUpCircle } from "lucide-react";
+import React from "react";
+import { Edit3, CheckSquare, X, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BulkActionBarProps {
@@ -11,6 +11,7 @@ interface BulkActionBarProps {
     onCancel: () => void;
     onEditSelected: () => void;
     onSelectAll?: () => void;
+    onPrintSelected?: () => void;
     isSelectingAll?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function BulkActionBar({
     onCancel,
     onEditSelected,
     onSelectAll,
+    onPrintSelected,
     isSelectingAll = false
 }: BulkActionBarProps) {
     if (!selectionMode && selectedCount === 0) return null;
@@ -59,6 +61,12 @@ export function BulkActionBar({
                         <Edit3 className="w-4 h-4 mr-2" />
                         Edit Selected
                     </Button>
+                    {onPrintSelected && (
+                        <Button variant="outline" size="sm" onClick={onPrintSelected} disabled={selectedCount === 0} className="flex-1 sm:flex-none h-11 px-6">
+                            <Printer className="w-4 h-4 mr-2" />
+                            Print Labels
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>
