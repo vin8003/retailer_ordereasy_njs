@@ -212,7 +212,7 @@ function PrintLabelsContent() {
         </Button>
       </div>
 
-      <PrintSetupHint />
+      <PrintSetupHint prefs={prefs} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Tabs defaultValue="list" className="min-w-0">

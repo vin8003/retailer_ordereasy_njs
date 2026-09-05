@@ -2,14 +2,32 @@ import JsBarcode from "jsbarcode";
 import { resolveBarcodeFormat } from "./barcode";
 import type { BarcodeFormat } from "./types";
 
+/**
+ * JsBarcode options tuned for 203 DPI thermal printers (TVS LP46NEO etc.).
+ *
+ * At 203 DPI, 1 dot = 0.125mm. A bar must be ≥2 dots (0.25mm) to print sharp.
+ * - width: 2.5 → each module ≈ 0.31mm (2.5 dots) — scannable and crisp.
+ * - height: 50 → tall enough for reliable scanning after CSS scaling to ~8mm.
+ * - fontSize: 11 → readable on small labels at 203 DPI.
+ * - margin: 0 → no whitespace around the barcode (we control padding in CSS).
+ */
 function barcodeOptions(format: BarcodeFormat) {
   return {
     format,
     displayValue: true,
-    fontSize: 9,
+    fontSize: 11,
+    font: "Arial",
+    fontOptions: "bold",
+    textAlign: "center",
+    textPosition: "bottom",
+    textMargin: 1,
     margin: 0,
-    height: 22,
-    width: 1.15,
+    marginTop: 0,
+    marginBottom: 0,
+    marginLeft: 0,
+    marginRight: 0,
+    height: 50,
+    width: 2.5,
     background: "#ffffff",
     lineColor: "#000000",
   };
@@ -25,12 +43,16 @@ export function renderBarcodeSvg(svg: Element, value: string, preferred: Barcode
   }
 }
 
-export function printLabelDocument(html: string): void {
+export function printLabelDocument(
+  html: string,
+  _page?: { widthMm: number; heightMm: number },
+): void {
   if (typeof document === "undefined") return;
 
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   // Off-screen but sized: Chrome often skips print/JsBarcode on a 0×0 iframe.
+  // Keep a generic size — do NOT match @page here; the print dialog handles that.
   iframe.style.cssText = "position:fixed;left:-10000px;top:0;width:800px;height:600px;border:0;";
   document.body.appendChild(iframe);
 

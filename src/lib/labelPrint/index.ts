@@ -13,7 +13,9 @@ export type {
 export {
   DEFAULT_LABEL_FIELDS,
   DEFAULT_LABEL_PREFS,
+  LABEL_ROW_GAP_MM,
   LABEL_SIZES,
+  formatPrintPaperSize,
   getLabelSize,
   pageSizeMm,
 } from "./templates";
