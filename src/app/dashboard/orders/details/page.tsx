@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote } from "lucide-react";
+import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote, Truck } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { FulfillmentSlotReschedule } from "@/components/orders/FulfillmentSlotReschedule";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
@@ -407,6 +408,70 @@ function OrderDetailContent() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Fulfillment slot */}
+                    {(order.fulfillment_slot_start || ['pickup', 'delivery'].includes(order.delivery_mode)) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Calendar className="h-5 w-5" /> Fulfillment slot
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <FulfillmentSlotReschedule
+                                    orderId={order.id}
+                                    retailerId={order.retailer}
+                                    deliveryMode={order.delivery_mode || 'delivery'}
+                                    currentSlotStart={order.fulfillment_slot_start}
+                                    currentSlotEnd={order.fulfillment_slot_end}
+                                    orderStatus={order.status}
+                                    onRescheduled={fetchOrderDetails}
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Delivery person info */}
+                    {order.delivery_info && (
+                        <Card className="border-purple-200 bg-purple-50/30">
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2 text-purple-800">
+                                    <Truck className="h-5 w-5" /> Delivery info
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3 text-sm">
+                                <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Courier</span>
+                                    <span className="font-medium text-right">{order.delivery_info.delivery_person_name}</span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Phone</span>
+                                    <a
+                                        href={`tel:${order.delivery_info.delivery_person_phone}`}
+                                        className="font-medium text-primary"
+                                    >
+                                        {order.delivery_info.delivery_person_phone}
+                                    </a>
+                                </div>
+                                {order.delivery_info.estimated_delivery_time && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-muted-foreground">ETA</span>
+                                        <span className="font-medium text-right">
+                                            {format(new Date(order.delivery_info.estimated_delivery_time), "MMM d, h:mm a")}
+                                        </span>
+                                    </div>
+                                )}
+                                {order.delivery_info.delivery_status && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-muted-foreground">Status</span>
+                                        <Badge variant="outline" className="font-bold">
+                                            {order.delivery_info.delivery_status.replace(/_/g, ' ').toUpperCase()}
+                                        </Badge>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Payment Details */}
                     {order.payment_mode === 'upi' && (

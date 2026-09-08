@@ -1,10 +1,8 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://api.ordereasy.win/api/'
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/');
-// const BASE_URL = 'http://127.0.0.1:8000/api/';
+// Dummy/local API only for working-model testing — never *.ordereasy.win
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -146,11 +144,50 @@ export const operatingHoursService = {
   updateOperatingHours: (data: { operating_hours: any[] }) => api.post('retailer/operating-hours/', data),
 };
 
+export const fulfillmentService = {
+  fetchSlots: (
+    retailerId: number,
+    params?: { delivery_mode?: string; days?: number }
+  ) => api.get(`retailer/${retailerId}/fulfillment-slots/`, { params }),
+  getSlotConfig: (orgId: number, locationId?: number) =>
+    api.get(`retailer/org/${orgId}/fulfillment-slots/config/`, {
+      params: locationId != null ? { location_id: locationId } : undefined,
+    }),
+  updateSlotConfig: (
+    orgId: number,
+    fulfillment_slot_capacity: number,
+    locationId?: number
+  ) =>
+    api.patch(`retailer/org/${orgId}/fulfillment-slots/config/`, {
+      fulfillment_slot_capacity,
+      ...(locationId != null ? { location_id: locationId } : {}),
+    }),
+};
+
+export interface OrderStatusPatchPayload {
+  status: string;
+  preparation_time_minutes?: number;
+  delivery_person_name?: string;
+  delivery_person_phone?: string;
+  estimated_delivery_time?: string;
+  notes?: string;
+}
+
 export const orderService = {
   fetchOrders: (params?: any) => api.get('orders/history/', { params }),
+  fetchInbox: (params?: Record<string, string | number | boolean | undefined>) =>
+    api.get('orders/inbox/', { params }),
   fetchOrderDetails: (id: number) => api.get(`orders/${id}/`),
-  updateStatus: (id: number, status: string, preparation_time_minutes?: number) =>
-    api.patch(`orders/${id}/status/`, { status, preparation_time_minutes }),
+  updateStatus: (id: number, payload: OrderStatusPatchPayload | string, preparation_time_minutes?: number) => {
+    const body = typeof payload === 'string'
+      ? { status: payload, preparation_time_minutes }
+      : payload;
+    return api.patch(`orders/${id}/status/`, body);
+  },
+  inboxAction: (id: number, data: Record<string, unknown>) =>
+    api.post(`orders/inbox/${id}/actions/`, data),
+  rescheduleFulfillmentSlot: (id: number, fulfillment_slot_start: string) =>
+    api.patch(`orders/inbox/${id}/fulfillment-slot/`, { fulfillment_slot_start }),
   updateEstimatedTime: (id: number, preparation_time_minutes: number) =>
     api.patch(`orders/${id}/estimated-time/`, { preparation_time_minutes }),
   modifyOrder: (id: number, data: any) => api.post(`orders/${id}/modify/`, data),

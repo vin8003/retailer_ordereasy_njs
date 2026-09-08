@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { orderService } from "@/services/api";
 import { dispatchOrderStatsRefresh } from "@/hooks/orderStatsRefresh";
+import { buildDispatchPayload } from "@/lib/fulfillment";
 import {
     Dialog,
     DialogContent,
@@ -31,9 +32,13 @@ export function OrderStatusUpdate({
 }: OrderStatusUpdateProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState(false);
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
     const [prepTime, setPrepTime] = useState("30");
     const [selectedStatus, setSelectedStatus] = useState("");
+    const [courierName, setCourierName] = useState("");
+    const [courierPhone, setCourierPhone] = useState("");
+    const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState("");
 
     const getNextStatuses = (status: string, mode: string = 'delivery') => {
         const s = status.toLowerCase();
@@ -51,18 +56,38 @@ export function OrderStatusUpdate({
         if (status === 'confirmed') {
             setSelectedStatus(status);
             setIsDialogOpen(true);
+        } else if (status === 'out_for_delivery') {
+            setSelectedStatus(status);
+            setCourierName("");
+            setCourierPhone("");
+            setEstimatedDeliveryTime("");
+            setIsDispatchDialogOpen(true);
         } else {
             handleUpdate(status);
         }
     };
 
-    const handleUpdate = async (status: string, prepTimeMinutes?: number) => {
+    const handleUpdate = async (
+        status: string,
+        prepTimeMinutes?: number,
+        dispatch?: { name: string; phone: string; estimatedDeliveryTime?: string }
+    ) => {
         setIsUpdating(true);
         try {
-            await orderService.updateStatus(orderId, status, prepTimeMinutes);
-            toast.success(`Order status updated to ${status}`);
+            if (status === 'out_for_delivery' && dispatch) {
+                await orderService.updateStatus(
+                    orderId,
+                    buildDispatchPayload(status, dispatch)
+                );
+            } else if (status === 'delivered' && deliveryMode === 'pickup') {
+                await orderService.inboxAction(orderId, { action: 'mark_delivered' });
+            } else {
+                await orderService.updateStatus(orderId, status, prepTimeMinutes);
+            }
+            toast.success(`Order status updated to ${status.replace(/_/g, ' ')}`);
             dispatchOrderStatsRefresh();
             setIsDialogOpen(false);
+            setIsDispatchDialogOpen(false);
             onStatusUpdate();
         } catch (error) {
             console.error("Failed to update status", error);
@@ -89,6 +114,7 @@ export function OrderStatusUpdate({
     };
 
     const canCancel = ['pending', 'confirmed', 'processing', 'waiting_for_customer_approval'].includes(currentStatus.toLowerCase());
+    const isDispatchValid = courierName.trim().length > 0 && courierPhone.trim().length >= 10;
 
     if (nextStatuses.length === 0 && !canCancel) {
         if (['cancelled', 'delivered'].includes(currentStatus.toLowerCase())) {
@@ -109,6 +135,7 @@ export function OrderStatusUpdate({
                     if (status === 'packed') label = 'READY FOR PICKUP';
                     if (status === 'delivered') label = 'MARK AS PICKED UP';
                 }
+                if (status === 'out_for_delivery') label = 'DISPATCH';
 
                 return (
                     <Button
@@ -161,6 +188,64 @@ export function OrderStatusUpdate({
                             onClick={() => handleUpdate(selectedStatus, parseInt(prepTime))}
                         >
                             Confirm Order
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDispatchDialogOpen} onOpenChange={setIsDispatchDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Dispatch Order</DialogTitle>
+                        <DialogDescription>
+                            Assign a delivery person before marking this order out for delivery.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="courierName">Delivery person name</Label>
+                            <Input
+                                id="courierName"
+                                value={courierName}
+                                onChange={(e) => setCourierName(e.target.value)}
+                                placeholder="e.g. Rajesh Kumar"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="courierPhone">Delivery person phone</Label>
+                            <Input
+                                id="courierPhone"
+                                type="tel"
+                                value={courierPhone}
+                                onChange={(e) => setCourierPhone(e.target.value)}
+                                placeholder="10-digit mobile number"
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="estimatedDelivery">Estimated delivery time (optional)</Label>
+                            <Input
+                                id="estimatedDelivery"
+                                type="datetime-local"
+                                value={estimatedDeliveryTime}
+                                onChange={(e) => setEstimatedDeliveryTime(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDispatchDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            disabled={isUpdating || !isDispatchValid}
+                            onClick={() =>
+                                handleUpdate('out_for_delivery', undefined, {
+                                    name: courierName,
+                                    phone: courierPhone,
+                                    estimatedDeliveryTime: estimatedDeliveryTime
+                                        ? new Date(estimatedDeliveryTime).toISOString()
+                                        : undefined,
+                                })
+                            }
+                        >
+                            Dispatch
                         </Button>
                     </DialogFooter>
                 </DialogContent>

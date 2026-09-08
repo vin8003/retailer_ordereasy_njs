@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { operatingHoursService } from '@/services/api';
+import { authService, operatingHoursService, fulfillmentService } from '@/services/api';
 import { toast } from 'sonner';
 import { Loader2, Copy } from 'lucide-react';
 
@@ -33,10 +33,59 @@ export default function OperatingHoursPage() {
     const [hours, setHours] = useState<OperatingHour[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [slotCapacity, setSlotCapacity] = useState<number>(5);
+    const [orgId, setOrgId] = useState<number | null>(null);
+    const [locationId, setLocationId] = useState<number | null>(null);
+    const [isSavingCapacity, setIsSavingCapacity] = useState(false);
 
     useEffect(() => {
         fetchHours();
+        fetchSlotConfig();
     }, []);
+
+    const fetchSlotConfig = async () => {
+        try {
+            const profileRes = await authService.fetchProfile();
+            const profile = profileRes.data;
+            const resolvedOrgId = profile.organization_id;
+            const resolvedLocationId = profile.id;
+            if (!resolvedOrgId) return;
+
+            setOrgId(resolvedOrgId);
+            setLocationId(resolvedLocationId);
+
+            const configRes = await fulfillmentService.getSlotConfig(
+                resolvedOrgId,
+                resolvedLocationId
+            );
+            const locations = configRes.data.locations || [];
+            const match = locations.find(
+                (loc: { location_id: number }) => loc.location_id === resolvedLocationId
+            ) || locations[0];
+            if (match?.fulfillment_slot_capacity) {
+                setSlotCapacity(match.fulfillment_slot_capacity);
+            }
+        } catch (error) {
+            console.error('Failed to fetch fulfillment slot config:', error);
+        }
+    };
+
+    const handleSaveCapacity = async () => {
+        if (!orgId || slotCapacity < 1) {
+            toast.error('Enter a valid slot capacity (minimum 1)');
+            return;
+        }
+        setIsSavingCapacity(true);
+        try {
+            await fulfillmentService.updateSlotConfig(orgId, slotCapacity, locationId ?? undefined);
+            toast.success('Fulfillment slot capacity updated');
+        } catch (error) {
+            console.error('Failed to save slot capacity:', error);
+            toast.error('Failed to save slot capacity (requires fulfillment.manage permission)');
+        } finally {
+            setIsSavingCapacity(false);
+        }
+    };
 
     const fetchHours = async () => {
         setIsLoading(true);
@@ -140,7 +189,7 @@ export default function OperatingHoursPage() {
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Operating Hours</h1>
                     <p className="text-muted-foreground text-sm sm:text-base mt-2">
-                        Set your store's regular working hours. Orders placed outside these hours will be scheduled for processing when you open next.
+                        Set your store's regular working hours. Pickup and delivery slots are generated from these hours in 30-minute windows.
                     </p>
                 </div>
                 <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto shadow-md shrink-0">
@@ -210,6 +259,35 @@ export default function OperatingHoursPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {orgId && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg sm:text-xl">Fulfillment slot capacity</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">
+                            Maximum orders per 30-minute pickup or delivery slot at this location.
+                            Requires fulfillment.manage permission to save.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+                        <div className="grid gap-2 flex-1 max-w-xs">
+                            <Label htmlFor="slotCapacity">Orders per slot</Label>
+                            <Input
+                                id="slotCapacity"
+                                type="number"
+                                min={1}
+                                max={9999}
+                                value={slotCapacity}
+                                onChange={(e) => setSlotCapacity(parseInt(e.target.value, 10) || 1)}
+                            />
+                        </div>
+                        <Button onClick={handleSaveCapacity} disabled={isSavingCapacity}>
+                            {isSavingCapacity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Save capacity
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
