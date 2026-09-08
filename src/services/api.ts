@@ -324,7 +324,8 @@ export const orgService = {
     roleId: number,
     data: { name?: string; permissions?: string[] }
   ) => api.patch(`retailer/org/${orgId}/roles/${roleId}/`, data),
-  fetchStaff: (orgId: number) => api.get(`retailer/org/${orgId}/staff/`),
+  fetchStaff: (orgId: number, params?: Record<string, string | number>) =>
+    api.get(`retailer/org/${orgId}/staff/`, { params }),
   assignStaff: (
     orgId: number,
     data: {

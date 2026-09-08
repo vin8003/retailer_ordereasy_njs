@@ -100,19 +100,61 @@ export function hasPermission(
   return set.has(code);
 }
 
+/** DRF / OrgStaffPagination envelope — same unwrap as audit/inbox. */
+export function unwrapPaginatedResults<T>(data: unknown): T[] {
+  if (Array.isArray(data)) return data as T[];
+  if (
+    data &&
+    typeof data === "object" &&
+    Array.isArray((data as { results?: unknown }).results)
+  ) {
+    return (data as { results: T[] }).results;
+  }
+  return [];
+}
+
+export function userIdFromJwtPayload(token: string | null | undefined): number | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(normalized));
+    const raw = payload.user_id ?? payload.userId;
+    const id = typeof raw === "number" ? raw : Number(raw);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export function callerIsOrgOwner(
+  ownerId: number | null | undefined,
+  profile?: { user?: number; user_id?: number } | null,
+  accessToken?: string | null
+): boolean {
+  if (ownerId == null) return false;
+  const fromProfile = profile?.user ?? profile?.user_id;
+  if (typeof fromProfile === "number" && fromProfile === ownerId) return true;
+  return userIdFromJwtPayload(accessToken) === ownerId;
+}
+
 export function resolvePermissionsFromStaff(
   username: string,
-  staff: OrgStaffMember[],
-  permissionCatalog: string[]
+  staff: OrgStaffMember[] | unknown,
+  permissionCatalog: string[],
+  options?: { isOwner?: boolean }
 ): string[] {
-  const match = staff.find(
-    (m) => m.is_active && m.username === username
-  );
-  if (match?.permissions?.length) {
-    return match.permissions;
+  const list = unwrapPaginatedResults<OrgStaffMember>(staff);
+  const match = list.find((m) => m.is_active && m.username === username);
+  if (match) {
+    return match.permissions ?? [];
   }
-  // Owner bootstrap: implicit admin when staff seat missing but org is accessible.
-  return permissionCatalog;
+  // Owner bootstrap only: implicit admin when staff seat missing AND caller is org owner.
+  if (options?.isOwner) {
+    return permissionCatalog;
+  }
+  return [];
 }
 
 export function isModuleEnabled(

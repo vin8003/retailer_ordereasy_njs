@@ -36,4 +36,9 @@ describe("formatOrderSource", () => {
     expect(formatOrderSource("pos")).toBe("Store (POS)");
     expect(formatOrderSource("app")).toBe("Online (App)");
   });
+
+  it("labels missing or unknown sources without assuming app", () => {
+    expect(formatOrderSource()).toBe("Unknown");
+    expect(formatOrderSource("call_center")).toBe("CALL_CENTER");
+  });
 });

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/table";
 import { orgService } from "@/services/api";
 import { useOrgContext } from "@/hooks/useOrgContext";
-import { PERMISSIONS, type OrgRole, type OrgStaffMember } from "@/lib/org";
+import { PERMISSIONS, unwrapPaginatedResults, type OrgRole, type OrgStaffMember } from "@/lib/org";
 
 export default function StaffSettingsPage() {
   const { orgId, hasPermission } = useOrgContext();
@@ -49,11 +49,11 @@ export default function StaffSettingsPage() {
     try {
       const [rolesRes, staffRes, catalogRes] = await Promise.all([
         orgService.fetchRoles(orgId),
-        orgService.fetchStaff(orgId),
+        orgService.fetchStaff(orgId, { page_size: 100 }),
         orgService.fetchPermissionCatalog(orgId),
       ]);
       setRoles(rolesRes.data ?? []);
-      setStaff(staffRes.data ?? []);
+      setStaff(unwrapPaginatedResults<OrgStaffMember>(staffRes.data));
       const labels: Record<string, string> = {};
       for (const p of catalogRes.data?.permissions ?? []) {
         labels[p.code] = p.description ?? p.code;

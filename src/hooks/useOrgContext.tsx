@@ -15,9 +15,11 @@ import {
   type Organization,
   type OrgStaffMember,
   canAccessSettings,
+  callerIsOrgOwner,
   hasPermission,
   isModuleEnabled,
   resolvePermissionsFromStaff,
+  unwrapPaginatedResults,
 } from '@/lib/org';
 
 interface OrgContextValue {
@@ -74,17 +76,21 @@ export function OrgContextProvider({ children }: { children: ReactNode }) {
       const orgId = orgData.id;
       const [catalogRes, staffRes, flagsRes] = await Promise.all([
         orgService.fetchPermissionCatalog(orgId),
-        orgService.fetchStaff(orgId),
+        orgService.fetchStaff(orgId, { page_size: 100 }),
         orgService.fetchModuleFlags(orgId),
       ]);
 
       const catalogCodes: string[] =
         catalogRes.data?.permissions?.map((p: { code: string }) => p.code) ?? [];
-      const staff: OrgStaffMember[] = staffRes.data ?? [];
+      const staff = unwrapPaginatedResults<OrgStaffMember>(staffRes.data);
+      const accessToken =
+        typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+      const isOwner = callerIsOrgOwner(orgData.owner, profile, accessToken);
       const resolved = resolvePermissionsFromStaff(
         profile.username,
         staff,
-        catalogCodes
+        catalogCodes,
+        { isOwner }
       );
       setPermissions(new Set(resolved));
 
