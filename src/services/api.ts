@@ -145,10 +145,12 @@ export const operatingHoursService = {
 };
 
 export const fulfillmentService = {
+  /** Public slot list — mounted at /api/retailers/:id/fulfillment-slots/ */
   fetchSlots: (
     retailerId: number,
     params?: { delivery_mode?: string; days?: number }
-  ) => api.get(`retailer/${retailerId}/fulfillment-slots/`, { params }),
+  ) => api.get(`retailers/${retailerId}/fulfillment-slots/`, { params }),
+  /** Org config — mounted at /api/retailer/org/:org_id/fulfillment-slots/config/ */
   getSlotConfig: (orgId: number, locationId?: number) =>
     api.get(`retailer/org/${orgId}/fulfillment-slots/config/`, {
       params: locationId != null ? { location_id: locationId } : undefined,
@@ -173,10 +175,26 @@ export interface OrderStatusPatchPayload {
   notes?: string;
 }
 
+const TERMINAL_ORDER_STATUSES = new Set(['delivered', 'cancelled', 'returned']);
+
 export const orderService = {
-  fetchOrders: (params?: any) => api.get('orders/history/', { params }),
+  /** Active pipeline inbox — includes fulfillment_slot_* only (no delivery_info / pickup_code). */
   fetchInbox: (params?: Record<string, string | number | boolean | undefined>) =>
     api.get('orders/inbox/', { params }),
+  /** Full history — use for delivered / cancelled / returned tabs. */
+  fetchOrders: (params?: any) => api.get('orders/history/', { params }),
+  fetchOrderList: (params?: Record<string, string | number | boolean | undefined>) => {
+    const status = params?.status;
+    if (typeof status === 'string' && TERMINAL_ORDER_STATUSES.has(status)) {
+      return api.get('orders/history/', { params });
+    }
+    const inboxParams = { ...params };
+    if (status === 'all') {
+      delete inboxParams.status;
+    }
+    return api.get('orders/inbox/', { params: inboxParams });
+  },
+  /** Detail — required for delivery_info, pickup_code, and full order fields. */
   fetchOrderDetails: (id: number) => api.get(`orders/${id}/`),
   updateStatus: (id: number, payload: OrderStatusPatchPayload | string, preparation_time_minutes?: number) => {
     const body = typeof payload === 'string'

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDispatchPayload,
+  buildInboxDispatchPayload,
   formatFulfillmentSlot,
   formatSlotOptionLabel,
   FulfillmentSlotOption,
@@ -46,6 +47,23 @@ describe("formatSlotOptionLabel", () => {
       is_available: false,
     };
     expect(formatSlotOptionLabel(slot)).toContain("(full)");
+  });
+});
+
+describe("buildInboxDispatchPayload", () => {
+  it("maps courier fields to inbox dispatch action", () => {
+    expect(
+      buildInboxDispatchPayload({
+        name: " Raj ",
+        phone: "9876543210",
+        estimatedDeliveryTime: "2026-09-08T12:00:00.000Z",
+      })
+    ).toEqual({
+      action: "dispatch",
+      delivery_person_name: "Raj",
+      delivery_person_phone: "9876543210",
+      estimated_delivery_time: "2026-09-08T12:00:00.000Z",
+    });
   });
 });
 

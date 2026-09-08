@@ -93,7 +93,7 @@ function OrderDetailContent() {
             let id = Number(q.id);
             const orderNumber = q.number;
             if (!id && orderNumber) {
-                const listRes = await orderService.fetchOrders({ search: orderNumber });
+                const listRes = await orderService.fetchOrderList({ search: orderNumber });
                 const list = listRes.data.results || listRes.data || [];
                 const match = list.find((o: any) => String(o.order_number) === String(orderNumber)) || list[0];
                 id = Number(match?.id);
@@ -427,6 +427,15 @@ function OrderDetailContent() {
                                     orderStatus={order.status}
                                     onRescheduled={fetchOrderDetails}
                                 />
+                                {order.delivery_mode === 'pickup' && order.pickup_code && (
+                                    <div className="mt-4 p-3 rounded-md border bg-muted/40 text-sm">
+                                        <p className="font-medium mb-1">Pickup code</p>
+                                        <p className="font-mono text-lg tracking-widest">{order.pickup_code}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Shown on order detail only — not included in inbox list.
+                                        </p>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}

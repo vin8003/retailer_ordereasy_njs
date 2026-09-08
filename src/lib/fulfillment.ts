@@ -60,6 +60,21 @@ export interface StatusUpdatePayload {
   estimated_delivery_time?: string;
 }
 
+export function buildInboxDispatchPayload(courier: {
+  name: string;
+  phone: string;
+  estimatedDeliveryTime?: string;
+}) {
+  return {
+    action: 'dispatch' as const,
+    delivery_person_name: courier.name.trim(),
+    delivery_person_phone: courier.phone.trim(),
+    ...(courier.estimatedDeliveryTime
+      ? { estimated_delivery_time: courier.estimatedDeliveryTime }
+      : {}),
+  };
+}
+
 export function buildDispatchPayload(
   status: string,
   courier: { name: string; phone: string; estimatedDeliveryTime?: string }

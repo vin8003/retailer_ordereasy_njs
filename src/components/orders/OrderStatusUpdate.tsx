@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { orderService } from "@/services/api";
 import { dispatchOrderStatsRefresh } from "@/hooks/orderStatsRefresh";
-import { buildDispatchPayload } from "@/lib/fulfillment";
+import { buildInboxDispatchPayload } from "@/lib/fulfillment";
 import {
     Dialog,
     DialogContent,
@@ -56,6 +56,8 @@ export function OrderStatusUpdate({
         if (status === 'confirmed') {
             setSelectedStatus(status);
             setIsDialogOpen(true);
+        } else if (status === 'out_for_delivery' && deliveryMode === 'pickup') {
+            return;
         } else if (status === 'out_for_delivery') {
             setSelectedStatus(status);
             setCourierName("");
@@ -75,9 +77,9 @@ export function OrderStatusUpdate({
         setIsUpdating(true);
         try {
             if (status === 'out_for_delivery' && dispatch) {
-                await orderService.updateStatus(
+                await orderService.inboxAction(
                     orderId,
-                    buildDispatchPayload(status, dispatch)
+                    buildInboxDispatchPayload(dispatch)
                 );
             } else if (status === 'delivered' && deliveryMode === 'pickup') {
                 await orderService.inboxAction(orderId, { action: 'mark_delivered' });
