@@ -17,6 +17,8 @@ import { FulfillmentSlotReschedule } from "@/components/orders/FulfillmentSlotRe
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useOrgContext } from "@/hooks/useOrgContext";
+import { PERMISSIONS } from "@/lib/org";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +59,7 @@ function resolveOrderQuery(searchParams: ReturnType<typeof useSearchParams>) {
 function OrderDetailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { hasPermission } = useOrgContext();
     const [order, setOrder] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -386,6 +389,7 @@ function OrderDetailContent() {
                                     deliveryMode={order.delivery_mode}
                                     customerId={typeof order.customer === 'number' ? order.customer : (order.user?.id ?? order.customer_id)}
                                     onStatusUpdate={fetchOrderDetails}
+                                    canUpdateOrders={hasPermission(PERMISSIONS.ORDERS_UPDATE)}
                                 />
                             </div>
 
@@ -429,10 +433,20 @@ function OrderDetailContent() {
                                     onRescheduled={fetchOrderDetails}
                                 />
                                 {order.delivery_mode === 'pickup' && order.pickup_code && (
-                                    <div className="mt-4 p-3 rounded-md border bg-muted/40 text-sm">
-                                        <p className="font-medium mb-1">Pickup code</p>
-                                        <p className="font-mono text-lg tracking-widest">{order.pickup_code}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">
+                                    <div className="mt-4 p-3 rounded-md border bg-muted/40 text-sm space-y-2">
+                                        <div>
+                                            <p className="font-medium mb-1">Pickup code</p>
+                                            <p className="font-mono text-lg tracking-widest">{order.pickup_code}</p>
+                                        </div>
+                                        {order.pickup_ready_at && (
+                                            <div>
+                                                <p className="font-medium mb-1">Ready since</p>
+                                                <p className="text-sm">
+                                                    {format(new Date(order.pickup_ready_at), "MMM d, yyyy h:mm a")}
+                                                </p>
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-muted-foreground">
                                             Shown on order detail only — not included in inbox list.
                                         </p>
                                     </div>
