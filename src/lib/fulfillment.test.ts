@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDispatchPayload,
   buildInboxDispatchPayload,
+  buildInboxMarkDeliveredPayload,
   formatFulfillmentSlot,
   formatSlotOptionLabel,
   FulfillmentSlotOption,
@@ -63,6 +64,27 @@ describe("buildInboxDispatchPayload", () => {
       delivery_person_name: "Raj",
       delivery_person_phone: "9876543210",
       estimated_delivery_time: "2026-09-08T12:00:00.000Z",
+    });
+  });
+});
+
+describe("buildInboxMarkDeliveredPayload", () => {
+  it("maps pickup code to inbox mark_delivered action", () => {
+    expect(
+      buildInboxMarkDeliveredPayload({ pickupCode: " ABC123 " })
+    ).toEqual({
+      action: "mark_delivered",
+      pickup_code: "ABC123",
+    });
+  });
+
+  it("includes customer_id when provided", () => {
+    expect(
+      buildInboxMarkDeliveredPayload({ pickupCode: "XYZ", customerId: 42 })
+    ).toEqual({
+      action: "mark_delivered",
+      pickup_code: "XYZ",
+      customer_id: 42,
     });
   });
 });

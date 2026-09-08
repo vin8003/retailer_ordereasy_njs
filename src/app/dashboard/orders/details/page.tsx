@@ -384,6 +384,7 @@ function OrderDetailContent() {
                                     orderId={order.id}
                                     currentStatus={order.status}
                                     deliveryMode={order.delivery_mode}
+                                    customerId={order.customer?.id ?? order.user?.id ?? order.customer_id}
                                     onStatusUpdate={fetchOrderDetails}
                                 />
                             </div>

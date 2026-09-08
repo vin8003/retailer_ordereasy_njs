@@ -75,6 +75,20 @@ export function buildInboxDispatchPayload(courier: {
   };
 }
 
+export function buildInboxMarkDeliveredPayload(pickup: {
+  pickupCode: string;
+  customerId?: number;
+}) {
+  const payload: Record<string, unknown> = {
+    action: 'mark_delivered' as const,
+    pickup_code: pickup.pickupCode.trim(),
+  };
+  if (pickup.customerId != null) {
+    payload.customer_id = pickup.customerId;
+  }
+  return payload;
+}
+
 export function buildDispatchPayload(
   status: string,
   courier: { name: string; phone: string; estimatedDeliveryTime?: string }

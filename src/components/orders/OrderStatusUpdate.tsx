@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { orderService } from "@/services/api";
 import { dispatchOrderStatsRefresh } from "@/hooks/orderStatsRefresh";
-import { buildInboxDispatchPayload } from "@/lib/fulfillment";
+import { buildInboxDispatchPayload, buildInboxMarkDeliveredPayload } from "@/lib/fulfillment";
 import {
     Dialog,
     DialogContent,
@@ -21,6 +21,7 @@ interface OrderStatusUpdateProps {
     orderId: number;
     currentStatus: string;
     deliveryMode?: string;
+    customerId?: number;
     onStatusUpdate: () => void;
 }
 
@@ -28,17 +29,20 @@ export function OrderStatusUpdate({
     orderId,
     currentStatus,
     deliveryMode,
+    customerId,
     onStatusUpdate
 }: OrderStatusUpdateProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState(false);
+    const [isPickupDialogOpen, setIsPickupDialogOpen] = useState(false);
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
     const [prepTime, setPrepTime] = useState("30");
     const [selectedStatus, setSelectedStatus] = useState("");
     const [courierName, setCourierName] = useState("");
     const [courierPhone, setCourierPhone] = useState("");
     const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState("");
+    const [pickupCode, setPickupCode] = useState("");
 
     const getNextStatuses = (status: string, mode: string = 'delivery') => {
         const s = status.toLowerCase();
@@ -64,6 +68,10 @@ export function OrderStatusUpdate({
             setCourierPhone("");
             setEstimatedDeliveryTime("");
             setIsDispatchDialogOpen(true);
+        } else if (status === 'delivered' && deliveryMode === 'pickup') {
+            setSelectedStatus(status);
+            setPickupCode("");
+            setIsPickupDialogOpen(true);
         } else {
             handleUpdate(status);
         }
@@ -72,7 +80,8 @@ export function OrderStatusUpdate({
     const handleUpdate = async (
         status: string,
         prepTimeMinutes?: number,
-        dispatch?: { name: string; phone: string; estimatedDeliveryTime?: string }
+        dispatch?: { name: string; phone: string; estimatedDeliveryTime?: string },
+        pickup?: { pickupCode: string }
     ) => {
         setIsUpdating(true);
         try {
@@ -82,7 +91,15 @@ export function OrderStatusUpdate({
                     buildInboxDispatchPayload(dispatch)
                 );
             } else if (status === 'delivered' && deliveryMode === 'pickup') {
-                await orderService.inboxAction(orderId, { action: 'mark_delivered' });
+                const code = pickup?.pickupCode?.trim() ?? "";
+                if (!code) {
+                    toast.error("Pickup code is required");
+                    return;
+                }
+                await orderService.inboxAction(
+                    orderId,
+                    buildInboxMarkDeliveredPayload({ pickupCode: code, customerId })
+                );
             } else {
                 await orderService.updateStatus(orderId, status, prepTimeMinutes);
             }
@@ -90,6 +107,7 @@ export function OrderStatusUpdate({
             dispatchOrderStatsRefresh();
             setIsDialogOpen(false);
             setIsDispatchDialogOpen(false);
+            setIsPickupDialogOpen(false);
             onStatusUpdate();
         } catch (error) {
             console.error("Failed to update status", error);
@@ -117,6 +135,7 @@ export function OrderStatusUpdate({
 
     const canCancel = ['pending', 'confirmed', 'processing', 'waiting_for_customer_approval'].includes(currentStatus.toLowerCase());
     const isDispatchValid = courierName.trim().length > 0 && courierPhone.trim().length >= 10;
+    const isPickupValid = pickupCode.trim().length > 0;
 
     if (nextStatuses.length === 0 && !canCancel) {
         if (['cancelled', 'delivered'].includes(currentStatus.toLowerCase())) {
@@ -248,6 +267,38 @@ export function OrderStatusUpdate({
                             }
                         >
                             Dispatch
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isPickupDialogOpen} onOpenChange={setIsPickupDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Mark as picked up</DialogTitle>
+                        <DialogDescription>
+                            Enter the customer&apos;s pickup code to verify collection before completing this order.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="pickupCode">Pickup code</Label>
+                            <Input
+                                id="pickupCode"
+                                value={pickupCode}
+                                onChange={(e) => setPickupCode(e.target.value)}
+                                placeholder="Enter pickup code"
+                                autoComplete="off"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsPickupDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            disabled={isUpdating || !isPickupValid}
+                            onClick={() => handleUpdate('delivered', undefined, undefined, { pickupCode })}
+                        >
+                            Mark as picked up
                         </Button>
                     </DialogFooter>
                 </DialogContent>
