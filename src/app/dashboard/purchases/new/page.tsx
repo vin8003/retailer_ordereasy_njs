@@ -41,6 +41,7 @@ interface PurchaseRow {
 interface Supplier {
     id: number;
     company_name: string;
+    is_active?: boolean;
 }
 
 export default function NewPurchasePage() {
@@ -82,7 +83,7 @@ export default function NewPurchasePage() {
             toast.success("Supplier added successfully");
             setShowAddModal(false);
             
-            const allSuppliers = await fetchAllPages('/products/erp/suppliers/');
+            const allSuppliers = await fetchAllPages('/products/erp/suppliers/', { is_active: true });
             setSuppliers(allSuppliers);
             setSelectedSupplier(res.data.id.toString());
             
@@ -101,7 +102,7 @@ export default function NewPurchasePage() {
     useEffect(() => {
         const fetchData = async () => {
             const [suppliersResult, productsResult] = await Promise.allSettled([
-                fetchAllPages('/products/erp/suppliers/'),
+                fetchAllPages('/products/erp/suppliers/', { is_active: true }),
                 loadRetailerProducts(fetchAllPages),
             ]);
             if (suppliersResult.status === 'fulfilled') {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, RotateCcw, AlertCircle, ShoppingCart, Truck, ChevronRight } from 'lucide-react';
 import api from '@/services/api';
+import { fetchAllPages } from '@/utils/fetchAllPages';
 import { toast } from 'react-hot-toast';
 
 interface PurchaseReturnModalProps {
@@ -53,8 +54,8 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
 
     const fetchSuppliers = async () => {
         try {
-            const res = await api.get('/products/erp/suppliers/');
-            setSuppliers(res.data.results || res.data);
+            const all = await fetchAllPages('/products/erp/suppliers/', { is_active: true });
+            setSuppliers(all);
         } catch (err) {
             console.error(err);
         }

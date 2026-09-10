@@ -6,10 +6,11 @@ import api from '@/services/api';
 import { 
     ChevronLeft, CreditCard, History, Loader2, 
     ArrowUpCircle, ArrowDownCircle, Banknote, Calendar,
-    Receipt, Wallet
+    Receipt, Wallet, Pencil, Ban, RotateCcw
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
+import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -42,7 +43,10 @@ interface Supplier {
     company_name: string;
     contact_person: string;
     phone_number: string;
+    email?: string;
+    address?: string;
     balance_due: string | number;
+    is_active?: boolean;
 }
 
 interface LedgerEntry {
@@ -75,6 +79,10 @@ function SupplierLedgerDetails() {
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
     const [paymentMode, setPaymentMode] = useState('Cash');
     const [paymentNotes, setPaymentNotes] = useState('');
+    const [showFormModal, setShowFormModal] = useState(false);
+    const [formValues, setFormValues] = useState<SupplierFormValues>(EMPTY_SUPPLIER_FORM);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isToggling, setIsToggling] = useState(false);
 
     const fetchData = useCallback(async () => {
         if (!id) return;
@@ -139,6 +147,59 @@ function SupplierLedgerDetails() {
         }
     };
 
+    const openEditModal = () => {
+        if (!supplier) return;
+        setFormValues({
+            company_name: supplier.company_name || '',
+            contact_person: supplier.contact_person || '',
+            phone_number: supplier.phone_number || '',
+            email: supplier.email || '',
+            address: supplier.address || '',
+        });
+        setShowFormModal(true);
+    };
+
+    const handleSaveSupplier = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id) return;
+        setIsSaving(true);
+        try {
+            await api.patch(`/products/erp/suppliers/${id}/`, {
+                company_name: formValues.company_name,
+                contact_person: formValues.contact_person,
+                phone_number: formValues.phone_number,
+                address: formValues.address,
+            });
+            toast.success("Supplier updated");
+            setShowFormModal(false);
+            fetchData();
+        } catch (error) {
+            toast.error("Failed to update supplier");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleToggleActive = async () => {
+        if (!supplier || !id) return;
+        const currentlyActive = supplier.is_active !== false;
+        if (currentlyActive && !window.confirm(
+            `Deactivate ${supplier.company_name}? They will no longer appear when recording a new purchase. Khata and old bills stay available.`
+        )) {
+            return;
+        }
+        setIsToggling(true);
+        try {
+            await api.patch(`/products/erp/suppliers/${id}/`, { is_active: !currentlyActive });
+            toast.success(currentlyActive ? "Supplier deactivated" : "Supplier reactivated");
+            fetchData();
+        } catch (error) {
+            toast.error("Failed to update supplier status");
+        } finally {
+            setIsToggling(false);
+        }
+    };
+
     if (isLoading) return (
         <div className="flex h-[80vh] items-center justify-center">
             <Loader2 className="animate-spin text-primary" size={40} />
@@ -159,11 +220,35 @@ function SupplierLedgerDetails() {
                     </button>
                 </Link>
                 <div>
-                    <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight uppercase">{supplier.company_name}</h1>
+                    <h1 className="text-xl sm:text-3xl font-black text-gray-900 tracking-tight uppercase flex flex-wrap items-center gap-2">
+                        {supplier.company_name}
+                        {supplier.is_active === false && (
+                            <span className="text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-2 py-1 rounded-md">Inactive</span>
+                        )}
+                    </h1>
                     <p className="text-gray-500 mt-1 text-xs sm:text-base font-medium flex items-center gap-1.5 sm:gap-2">
                         <History size={14} className="sm:hidden" />
                         <History size={16} className="hidden sm:block" /> Transaction History & Ledger
                     </p>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={openEditModal}
+                        className="p-2 sm:p-3 hover:bg-white rounded-xl sm:rounded-2xl border border-gray-100 transition-all text-gray-400 hover:text-gray-900 shadow-sm"
+                        title="Edit"
+                    >
+                        <Pencil size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleToggleActive}
+                        disabled={isToggling}
+                        className="p-2 sm:p-3 hover:bg-white rounded-xl sm:rounded-2xl border border-gray-100 transition-all text-gray-400 hover:text-gray-900 shadow-sm disabled:opacity-50"
+                        title={supplier.is_active === false ? 'Reactivate' : 'Deactivate'}
+                    >
+                        {isToggling ? <Loader2 size={18} className="animate-spin" /> : supplier.is_active === false ? <RotateCcw size={18} /> : <Ban size={18} />}
+                    </button>
                 </div>
             </div>
 
@@ -430,6 +515,15 @@ function SupplierLedgerDetails() {
                     </div>
                 </div>
             )}
+            <SupplierFormModal
+                open={showFormModal}
+                mode="edit"
+                values={formValues}
+                onChange={setFormValues}
+                onClose={() => setShowFormModal(false)}
+                onSubmit={handleSaveSupplier}
+                isSubmitting={isSaving}
+            />
         </div>
     );
 }

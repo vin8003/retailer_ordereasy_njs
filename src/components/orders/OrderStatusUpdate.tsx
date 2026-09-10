@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { orderService } from "@/services/api";
+import { dispatchOrderStatsRefresh } from "@/hooks/orderStatsRefresh";
 import {
     Dialog,
     DialogContent,
@@ -60,6 +61,7 @@ export function OrderStatusUpdate({
         try {
             await orderService.updateStatus(orderId, status, prepTimeMinutes);
             toast.success(`Order status updated to ${status}`);
+            dispatchOrderStatsRefresh();
             setIsDialogOpen(false);
             onStatusUpdate();
         } catch (error) {
@@ -75,6 +77,7 @@ export function OrderStatusUpdate({
         try {
             await orderService.cancelOrder(orderId, "Cancelled by retailer");
             toast.success("Order cancelled successfully");
+            dispatchOrderStatsRefresh();
             setIsCancelDialogOpen(false);
             onStatusUpdate();
         } catch (error) {

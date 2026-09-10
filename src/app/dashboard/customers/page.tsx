@@ -57,6 +57,7 @@ interface RetailerCustomer {
 export default function CustomersPage() {
     const router = useRouter();
     const [customers, setCustomers] = useState<RetailerCustomer[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [nextPage, setNextPage] = useState<string | null>(null);
@@ -113,6 +114,7 @@ export default function CustomersPage() {
             // Handle pagination structure
             const resultsData = response.data.results || response.data;
             const nextLink = response.data.next || null;
+            const apiCount = response.data.count;
 
             const mappedData = resultsData.map((item: any) => ({
                 customerId: item.customer_id,
@@ -135,6 +137,11 @@ export default function CustomersPage() {
                 setCustomers(prev => [...prev, ...mappedData]);
             } else {
                 setCustomers(mappedData);
+            }
+            if (typeof apiCount === 'number') {
+                setTotalCount(apiCount);
+            } else if (!isAppend) {
+                setTotalCount(mappedData.length);
             }
             setNextPage(nextLink);
         } catch (err: any) {
@@ -183,8 +190,8 @@ export default function CustomersPage() {
         }
     };
 
-    // Analytics (using only currently loaded customers for basic summary, or could fetch from backend)
-    const totalCustomersCount = customers.length;
+    // Total Customers uses the API paginator count (KAN-74), not the loaded page.
+    const totalCustomersCount = totalCount;
     const totalBlacklistedCount = customers.filter(c => c.isBlacklisted).length;
     const avgRatingValue = customers.length
         ? customers.reduce((sum, c) => sum + (c.averageRating || 0), 0) / customers.length

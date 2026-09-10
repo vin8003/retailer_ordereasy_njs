@@ -40,6 +40,7 @@ interface PurchaseRow {
 interface Supplier {
     id: number;
     company_name: string;
+    is_active?: boolean;
 }
 
 function EditPurchaseContent() {
@@ -83,7 +84,7 @@ function EditPurchaseContent() {
             toast.success("Supplier added successfully");
             setShowAddModal(false);
             
-            const allSuppliers = await fetchAllPages('/products/erp/suppliers/');
+            const allSuppliers = await fetchAllPages('/products/erp/suppliers/', { is_active: true });
             setSuppliers(allSuppliers);
             setSelectedSupplier(res.data.id.toString());
             
@@ -103,14 +104,15 @@ function EditPurchaseContent() {
         const fetchData = async () => {
             try {
                 const [suppliersResult, productsResult] = await Promise.allSettled([
-                    fetchAllPages('/products/erp/suppliers/'),
+                    fetchAllPages('/products/erp/suppliers/', { is_active: true }),
                     loadRetailerProducts(fetchAllPages),
                 ]);
-                if (suppliersResult.status === 'fulfilled') {
-                    setSuppliers(suppliersResult.value);
-                } else {
+                let loadedSuppliers: Supplier[] =
+                    suppliersResult.status === 'fulfilled' ? suppliersResult.value : [];
+                if (suppliersResult.status === 'rejected') {
                     toast.error("Failed to load suppliers");
                 }
+
                 let fetchedProducts: Product[] = [];
                 if (productsResult.status === 'fulfilled') {
                     fetchedProducts = productsResult.value;
@@ -122,7 +124,20 @@ function EditPurchaseContent() {
                 if (invoiceId) {
                     const invRes = await api.get(`/products/erp/purchase-invoices/${invoiceId}/`);
                     const inv = invRes.data;
-                    setSelectedSupplier(inv.supplier?.toString() || '');
+                    const currentSupplierId = inv.supplier;
+                    if (
+                        currentSupplierId &&
+                        !loadedSuppliers.some((s) => s.id === currentSupplierId)
+                    ) {
+                        try {
+                            const current = await api.get(`/products/erp/suppliers/${currentSupplierId}/`);
+                            loadedSuppliers = [current.data, ...loadedSuppliers];
+                        } catch {
+                            // Keep the active picker list if the current supplier cannot be loaded.
+                        }
+                    }
+                    setSuppliers(loadedSuppliers);
+                    setSelectedSupplier(currentSupplierId?.toString() || '');
                     setInvoiceNumber(inv.invoice_number);
                     setInvoiceDate(inv.invoice_date);
                     setPaidAmount(Number(inv.paid_amount));
@@ -145,6 +160,8 @@ function EditPurchaseContent() {
                         };
                     });
                     setRows(mappedRows);
+                } else {
+                    setSuppliers(loadedSuppliers);
                 }
             } catch (error) {
                 toast.error("Failed to load bill data");
