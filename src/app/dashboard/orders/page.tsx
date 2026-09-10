@@ -85,6 +85,7 @@ export default function OrdersPage() {
 
     // Initial fetch and filter/search change
     useEffect(() => {
+        setNextPage(null);
         const timer = setTimeout(() => {
             fetchOrders(false);
         }, 300);
