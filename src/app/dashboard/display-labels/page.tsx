@@ -104,7 +104,7 @@ function DisplayLabelsContent() {
       name: catalogProduct.name,
       barcode: resolveProductBarcode(catalogProduct) || "",
       mrp: catalogProduct.original_price || null,
-      price: catalogProduct.price,
+      price: catalogProduct.price ?? 0,
       quantity: 1, // Default 1 for display labels
       fields: { ...prefs.fields },
       savingsOverride: promo.savingsOverride,
