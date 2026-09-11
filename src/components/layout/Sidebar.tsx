@@ -15,7 +15,8 @@ import {
     Calculator,
     Package,
     BookOpen,
-    Barcode
+    Barcode,
+    Tag
 } from 'lucide-react';
 
 const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
@@ -38,6 +39,7 @@ const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
         { label: 'Khata/Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
         { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
         { label: 'Print Labels', icon: Barcode, href: '/dashboard/print-labels' },
+        { label: 'Display Labels', icon: Tag, href: '/dashboard/display-labels' },
         { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
         { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
