@@ -1,7 +1,7 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import type { DisplayLabelFieldFlags } from "@/lib/labelPrint";
 
 interface DisplayLabelFieldTogglesProps {
@@ -10,8 +10,8 @@ interface DisplayLabelFieldTogglesProps {
 }
 
 export function DisplayLabelFieldToggles({ fields, onChange }: DisplayLabelFieldTogglesProps) {
-  const toggle = (key: keyof DisplayLabelFieldFlags) => {
-    onChange({ ...fields, [key]: !fields[key] });
+  const toggle = (key: keyof DisplayLabelFieldFlags, checked: boolean) => {
+    onChange({ ...fields, [key]: checked });
   };
 
   const ITEMS: { key: keyof DisplayLabelFieldFlags; label: string }[] = [
@@ -24,13 +24,17 @@ export function DisplayLabelFieldToggles({ fields, onChange }: DisplayLabelField
   ];
 
   return (
-    <div className="flex flex-wrap gap-4 rounded-md border p-4 bg-muted/20">
+    <div className="grid grid-cols-2 gap-3 rounded-md border p-4 bg-muted/20">
       {ITEMS.map(({ key, label }) => (
-        <div key={key} className="flex items-center space-x-2">
-          <Checkbox id={key} checked={fields[key]} onCheckedChange={() => toggle(key)} />
-          <Label htmlFor={key} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+        <div key={key} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 bg-background">
+          <Label htmlFor={key} className="text-xs font-medium cursor-pointer">
             {label}
           </Label>
+          <Switch
+            id={key}
+            checked={fields[key]}
+            onCheckedChange={(checked) => toggle(key, checked)}
+          />
         </div>
       ))}
     </div>
