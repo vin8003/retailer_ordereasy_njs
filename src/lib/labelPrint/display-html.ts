@@ -119,6 +119,9 @@ export function renderDisplayLabelInner(
 export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean, layoutStyle: DisplayLabelLayoutStyle): string {
   const isHorizontal = layoutStyle === "horizontal";
   
+  // Calculate proportional sizes based on height
+  const getMm = (multiplier: number) => `${(heightMm * multiplier).toFixed(2)}mm`;
+
   return `
     .label {
       width: ${isA4 ? `${widthMm}mm` : '100%'};
@@ -129,7 +132,7 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
       display: flex;
       flex-direction: ${isHorizontal ? "row" : "column"};
       justify-content: ${isHorizontal ? "space-between" : "flex-start"};
-      gap: 1mm;
+      gap: ${getMm(0.02)};
       font-family: Arial, Helvetica, sans-serif;
       color: #000;
       background: #fff;
@@ -145,14 +148,14 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
         height: 100%;
       }
       .hz-left { width: 50%; }
-      .hz-right { width: 45%; align-items: flex-end; justify-content: center; gap: 1mm; }
-      .name { font-size: 4.5mm; font-weight: 700; line-height: 1.2; max-height: 10mm; overflow: hidden; }
-      .promo-header { display: flex; gap: 1mm; background: #000; color: #fff; padding: 1mm 2mm; border-radius: 1mm; font-weight: bold; font-size: 4mm; }
-      .price { font-weight: 900; font-size: 11mm; white-space: nowrap; line-height: 1; }
-      .mrp-wrapper { font-size: 3.5mm; color: #333; }
+      .hz-right { width: 45%; align-items: flex-end; justify-content: center; gap: ${getMm(0.05)}; }
+      .name { font-size: ${getMm(0.18)}; font-weight: 700; line-height: 1.2; max-height: ${getMm(0.4)}; overflow: hidden; }
+      .promo-header { display: flex; gap: 1mm; background: #000; color: #fff; padding: ${getMm(0.04)} ${getMm(0.08)}; border-radius: 1mm; font-weight: bold; font-size: ${getMm(0.15)}; }
+      .price { font-weight: 900; font-size: ${getMm(0.45)}; white-space: nowrap; line-height: 1; }
+      .mrp-wrapper { font-size: ${getMm(0.14)}; color: #333; }
       .mrp { text-decoration: line-through; }
-      .barcode-slot { height: 7mm; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden; }
-      svg.barcode { max-height: 7mm; width: auto; }
+      .barcode-slot { height: ${getMm(0.3)}; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden; }
+      svg.barcode { max-height: ${getMm(0.3)}; width: auto; }
     ` : `
       .promo-header {
         display: flex;
@@ -160,23 +163,23 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
         align-items: center;
         background: #000;
         color: #fff;
-        padding: 1.5mm 3mm;
+        padding: ${getMm(0.02)} ${getMm(0.04)};
         border-radius: 1mm;
         font-weight: bold;
         flex-shrink: 0;
       }
       .discount {
-        font-size: ${layoutStyle === 'square' ? '6mm' : '5mm'};
+        font-size: ${getMm(layoutStyle === 'square' ? 0.08 : 0.07)};
         text-transform: uppercase;
       }
       .savings {
-        font-size: ${layoutStyle === 'square' ? '5mm' : '4.5mm'};
+        font-size: ${getMm(layoutStyle === 'square' ? 0.07 : 0.06)};
       }
       .name {
-        font-size: ${layoutStyle === 'square' ? '7mm' : '5.5mm'};
+        font-size: ${getMm(layoutStyle === 'square' ? 0.11 : 0.10)};
         font-weight: 700;
         line-height: 1.2;
-        max-height: 14mm;
+        max-height: ${getMm(0.25)};
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
@@ -184,18 +187,18 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
         -webkit-box-orient: vertical;
         flex-shrink: 0;
         text-align: center;
-        margin-top: 2mm;
+        margin-top: ${getMm(0.02)};
       }
       .prices {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1mm;
-        margin-top: 2mm;
+        gap: ${getMm(0.01)};
+        margin-top: ${getMm(0.02)};
         flex-shrink: 0;
       }
       .mrp-wrapper {
-        font-size: ${layoutStyle === 'square' ? '5.5mm' : '4.5mm'};
+        font-size: ${getMm(layoutStyle === 'square' ? 0.07 : 0.06)};
         color: #333;
       }
       .mrp { 
@@ -203,15 +206,15 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
       }
       .price { 
         font-weight: 900; 
-        font-size: ${layoutStyle === 'square' ? '18mm' : '15mm'}; 
+        font-size: ${getMm(layoutStyle === 'square' ? 0.26 : 0.24)}; 
         white-space: nowrap; 
         line-height: 1;
       }
       .barcode-slot {
         margin-top: auto;
-        height: 12mm;
-        min-height: 12mm;
-        max-height: 12mm;
+        height: ${getMm(0.18)};
+        min-height: ${getMm(0.18)};
+        max-height: ${getMm(0.18)};
         display: flex;
         align-items: flex-end;
         justify-content: center;
@@ -221,7 +224,7 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
       svg.barcode {
         display: block;
         max-width: 100%;
-        max-height: 12mm;
+        max-height: ${getMm(0.18)};
         height: auto;
         width: auto;
       }
@@ -233,7 +236,7 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
       }
       svg.barcode {
         width: auto !important;
-        height: ${isHorizontal ? '7mm' : '12mm'} !important;
+        height: ${isHorizontal ? getMm(0.3) : getMm(0.18)} !important;
         max-width: 100% !important;
       }
     }
