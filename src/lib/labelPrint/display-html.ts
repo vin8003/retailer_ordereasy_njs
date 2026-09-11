@@ -121,8 +121,8 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
   
   return `
     .label {
-      width: ${widthMm}mm;
-      height: ${heightMm}mm;
+      width: ${isA4 ? `${widthMm}mm` : '100%'};
+      height: ${isA4 ? `${heightMm}mm` : '100%'};
       box-sizing: border-box;
       overflow: hidden;
       padding: ${isA4 ? "2mm" : "3mm"};
@@ -144,15 +144,15 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
         justify-content: space-between;
         height: 100%;
       }
-      .hz-left { width: 55%; }
-      .hz-right { width: 40%; align-items: flex-end; }
-      .name { font-size: 3.5mm; font-weight: 700; line-height: 1.2; max-height: 8mm; overflow: hidden; }
-      .promo-header { display: flex; gap: 1mm; background: #000; color: #fff; padding: 1mm; border-radius: 1mm; font-weight: bold; font-size: 3mm; }
-      .price { font-weight: 900; font-size: 6mm; white-space: nowrap; }
-      .mrp-wrapper { font-size: 2.5mm; color: #333; }
+      .hz-left { width: 50%; }
+      .hz-right { width: 45%; align-items: flex-end; justify-content: center; gap: 1mm; }
+      .name { font-size: 4.5mm; font-weight: 700; line-height: 1.2; max-height: 10mm; overflow: hidden; }
+      .promo-header { display: flex; gap: 1mm; background: #000; color: #fff; padding: 1mm 2mm; border-radius: 1mm; font-weight: bold; font-size: 4mm; }
+      .price { font-weight: 900; font-size: 11mm; white-space: nowrap; line-height: 1; }
+      .mrp-wrapper { font-size: 3.5mm; color: #333; }
       .mrp { text-decoration: line-through; }
-      .barcode-slot { height: 8mm; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden; }
-      svg.barcode { max-height: 8mm; width: auto; }
+      .barcode-slot { height: 7mm; display: flex; align-items: flex-end; justify-content: flex-end; overflow: hidden; }
+      svg.barcode { max-height: 7mm; width: auto; }
     ` : `
       .promo-header {
         display: flex;
@@ -160,23 +160,23 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
         align-items: center;
         background: #000;
         color: #fff;
-        padding: 1mm 2mm;
+        padding: 1.5mm 3mm;
         border-radius: 1mm;
         font-weight: bold;
         flex-shrink: 0;
       }
       .discount {
-        font-size: ${layoutStyle === 'square' ? '5mm' : '4mm'};
+        font-size: ${layoutStyle === 'square' ? '6mm' : '5mm'};
         text-transform: uppercase;
       }
       .savings {
-        font-size: ${layoutStyle === 'square' ? '4mm' : '3.5mm'};
+        font-size: ${layoutStyle === 'square' ? '5mm' : '4.5mm'};
       }
       .name {
-        font-size: ${layoutStyle === 'square' ? '5.5mm' : '4.5mm'};
+        font-size: ${layoutStyle === 'square' ? '7mm' : '5.5mm'};
         font-weight: 700;
         line-height: 1.2;
-        max-height: 10mm;
+        max-height: 14mm;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
@@ -195,7 +195,7 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
         flex-shrink: 0;
       }
       .mrp-wrapper {
-        font-size: ${layoutStyle === 'square' ? '4.5mm' : '3.5mm'};
+        font-size: ${layoutStyle === 'square' ? '5.5mm' : '4.5mm'};
         color: #333;
       }
       .mrp { 
@@ -203,8 +203,9 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
       }
       .price { 
         font-weight: 900; 
-        font-size: ${layoutStyle === 'square' ? '12mm' : '9mm'}; 
+        font-size: ${layoutStyle === 'square' ? '18mm' : '15mm'}; 
         white-space: nowrap; 
+        line-height: 1;
       }
       .barcode-slot {
         margin-top: auto;
@@ -232,7 +233,7 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
       }
       svg.barcode {
         width: auto !important;
-        height: ${isHorizontal ? '8mm' : '12mm'} !important;
+        height: ${isHorizontal ? '7mm' : '12mm'} !important;
         max-width: 100% !important;
       }
     }
@@ -299,8 +300,8 @@ export function buildDisplayLabelPrintDocument(context: DisplayLabelPrintContext
     bodyContent = `
       <style>
         .sheet-row {
-          width: ${size.widthMm}mm;
-          height: ${size.heightMm}mm;
+          width: 100vw;
+          height: 100vh;
           box-sizing: border-box;
           page-break-after: always;
           break-after: page;
