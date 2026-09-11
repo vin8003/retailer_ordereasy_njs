@@ -32,13 +32,13 @@ export function DisplayLabelPreview({
     const host = hostRef.current;
     if (!host) return;
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
-    shadow.innerHTML = `<style>${displayLabelCss(size.widthMm, size.heightMm, size.isA4)}</style><div class="label">${renderDisplayLabelInner(item, barcodeFormat)}</div>`;
+    shadow.innerHTML = `<style>${displayLabelCss(size.widthMm, size.heightMm, size.isA4, size.layoutStyle)}</style><div class="label">${renderDisplayLabelInner(item, barcodeFormat, size.layoutStyle)}</div>`;
     shadow.querySelectorAll("svg.barcode").forEach((svg) => {
       const value = svg.getAttribute("data-value") || "";
       const format = (svg.getAttribute("data-format") || "CODE128") as BarcodeFormat;
       renderBarcodeSvg(svg, value, format);
     });
-  }, [item, sizeId, barcodeFormat, size.widthMm, size.heightMm, size.isA4]);
+  }, [item, sizeId, barcodeFormat, size.widthMm, size.heightMm, size.isA4, size.layoutStyle]);
 
   return (
     <div

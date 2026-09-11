@@ -1,6 +1,6 @@
 export type BarcodeFormat = "CODE128" | "EAN13";
 
-export type DisplayLabelSizeId = "75x50" | "100x75" | "A4_21";
+export type DisplayLabelSizeId = "75x50" | "100x75" | "A4_21" | "75x25" | "75x75";
 
 export interface DisplayLabelFieldFlags {
   productName: boolean;
@@ -11,11 +11,14 @@ export interface DisplayLabelFieldFlags {
   barcode: boolean;
 }
 
+export type DisplayLabelLayoutStyle = "vertical" | "horizontal" | "square";
+
 export interface DisplayLabelSize {
   id: DisplayLabelSizeId;
   label: string;
   widthMm: number;
   heightMm: number;
+  layoutStyle: DisplayLabelLayoutStyle;
   isA4: boolean;
   columns?: number;
   rows?: number;
