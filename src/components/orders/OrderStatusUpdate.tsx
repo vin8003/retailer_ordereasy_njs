@@ -23,6 +23,8 @@ interface OrderStatusUpdateProps {
     deliveryMode?: string;
     customerId?: number;
     onStatusUpdate: () => void;
+    /** When false, status action buttons are hidden (OE-98 orders.update). */
+    canUpdateOrders?: boolean;
 }
 
 export function OrderStatusUpdate({
@@ -30,7 +32,8 @@ export function OrderStatusUpdate({
     currentStatus,
     deliveryMode,
     customerId,
-    onStatusUpdate
+    onStatusUpdate,
+    canUpdateOrders = true,
 }: OrderStatusUpdateProps) {
     const [isUpdating, setIsUpdating] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -136,6 +139,14 @@ export function OrderStatusUpdate({
     const canCancel = ['pending', 'confirmed', 'processing', 'waiting_for_customer_approval'].includes(currentStatus.toLowerCase());
     const isDispatchValid = courierName.trim().length > 0 && courierPhone.trim().length >= 10;
     const isPickupValid = pickupCode.trim().length > 0;
+
+    if (!canUpdateOrders) {
+        return (
+            <div className="text-muted-foreground text-sm italic">
+                You do not have permission to update orders (orders.update).
+            </div>
+        );
+    }
 
     if (nextStatuses.length === 0 && !canCancel) {
         if (['cancelled', 'delivered'].includes(currentStatus.toLowerCase())) {

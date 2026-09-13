@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
 import { 
     LayoutDashboard, 
     ShoppingBag, 
@@ -18,7 +19,9 @@ import {
     Package,
     BookOpen,
     Barcode,
-    Tag
+    Tag,
+    Inbox,
+    Shield,
 } from 'lucide-react';
 import {
     Drawer,
@@ -28,29 +31,39 @@ import {
     DrawerTitle,
     DrawerTrigger,
 } from "@/components/ui/drawer";
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { filterNavByModules } from '@/lib/org';
 
 const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
     const pathname = usePathname();
+    const { moduleFlags, canAccessSettings } = useOrgContext();
 
     const mainNavItems = [
         { label: 'Home', icon: LayoutDashboard, href: '/dashboard' },
+        { label: 'Inbox', icon: Inbox, href: '/dashboard/inbox' },
         { label: 'POS', icon: Calculator, href: '/dashboard/pos' },
         { label: 'Orders', icon: ClipboardList, href: '/dashboard/orders' },
     ];
 
-    const moreNavItems = [
-        { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
-        { label: 'Print Labels', icon: Barcode, href: '/dashboard/print-labels' },
-        { label: 'Display Labels', icon: Tag, href: '/dashboard/display-labels' },
-        { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
-        { label: 'Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
-        { label: 'Profile', icon: User, href: '/dashboard/profile' },
-        { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
-        { label: 'Customers', icon: Users, href: '/dashboard/customers' },
-        { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
-        { label: 'Offers', icon: Award, href: '/dashboard/offers' },
-        { label: 'Operating Hours', icon: Clock, href: '/dashboard/operating-hours' },
-    ];
+    const moreNavItems = useMemo(() => {
+        const items = [
+            { label: 'Products', icon: ShoppingBag, href: '/dashboard/products' },
+            { label: 'Print Labels', icon: Barcode, href: '/dashboard/print-labels' },
+            { label: 'Display Labels', icon: Tag, href: '/dashboard/display-labels' },
+            { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
+            { label: 'Suppliers', icon: BookOpen, href: '/dashboard/suppliers' },
+            { label: 'Profile', icon: User, href: '/dashboard/profile' },
+            { label: 'Categories', icon: Layers, href: '/dashboard/categories' },
+            { label: 'Customers', icon: Users, href: '/dashboard/customers' },
+            { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
+            { label: 'Offers', icon: Award, href: '/dashboard/offers' },
+            { label: 'Operating Hours', icon: Clock, href: '/dashboard/operating-hours' },
+        ];
+        if (canAccessSettings) {
+            items.push({ label: 'Settings', icon: Shield, href: '/dashboard/settings' });
+        }
+        return filterNavByModules(items, moduleFlags);
+    }, [moduleFlags, canAccessSettings]);
 
     const handleLogout = () => {
         if (typeof window !== 'undefined') {
@@ -71,7 +84,7 @@ const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
                     <Link
                         key={item.href}
                         href={item.href}
-                        className={`flex flex-col items-center justify-center py-3 space-y-1 transition-all duration-300 w-1/4 relative ${
+                        className={`flex flex-col items-center justify-center py-3 space-y-1 transition-all duration-300 w-1/5 relative ${
                             isItemActive ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                         }`}
                     >
@@ -91,10 +104,9 @@ const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
                 );
             })}
 
-            {/* Menu Drawer */}
             <Drawer>
                 <DrawerTrigger asChild>
-                    <button className="flex flex-col items-center justify-center py-2 space-y-1 transition-colors w-1/4 text-muted-foreground hover:text-foreground">
+                    <button className="flex flex-col items-center justify-center py-2 space-y-1 transition-colors w-1/5 text-muted-foreground hover:text-foreground">
                         <Menu className="h-5 w-5" />
                         <span className="text-[10px] font-medium">Menu</span>
                     </button>

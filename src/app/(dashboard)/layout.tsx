@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { usePendingOrderCount } from "@/hooks/usePendingOrderCount";
+import { OrgContextProvider } from "@/hooks/useOrgContext";
 
 export default function DashboardLayout({
     children,
@@ -23,14 +24,16 @@ export default function DashboardLayout({
     }, [router]);
 
     return (
-        <div className="grid min-h-screen w-full lg:grid-cols-[250px_1fr]">
-            <Sidebar pendingCount={pendingCount} />
-            <div className="flex flex-col">
-                <Header />
-                <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
-                    {children}
-                </main>
+        <OrgContextProvider>
+            <div className="grid min-h-screen w-full lg:grid-cols-[250px_1fr]">
+                <Sidebar pendingCount={pendingCount} />
+                <div className="flex flex-col">
+                    <Header />
+                    <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+                        {children}
+                    </main>
+                </div>
             </div>
-        </div>
+        </OrgContextProvider>
     );
 }

@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { authService, operatingHoursService, fulfillmentService } from '@/services/api';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { PERMISSIONS } from '@/lib/org';
 import { toast } from 'sonner';
 import { Loader2, Copy } from 'lucide-react';
 
@@ -30,6 +32,8 @@ const DAYS = [
 ];
 
 export default function OperatingHoursPage() {
+    const { hasPermission } = useOrgContext();
+    const canManageFulfillment = hasPermission(PERMISSIONS.FULFILLMENT_MANAGE);
     const [hours, setHours] = useState<OperatingHour[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -281,7 +285,7 @@ export default function OperatingHoursPage() {
                                 onChange={(e) => setSlotCapacity(parseInt(e.target.value, 10) || 1)}
                             />
                         </div>
-                        <Button onClick={handleSaveCapacity} disabled={isSavingCapacity}>
+                        <Button onClick={handleSaveCapacity} disabled={isSavingCapacity || !canManageFulfillment}>
                             {isSavingCapacity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Save capacity
                         </Button>

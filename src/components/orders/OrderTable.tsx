@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { Eye, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatFulfillmentSlot } from "@/lib/fulfillment";
+import { formatOrderSource } from "@/lib/inbox";
 
 import {
     Table,
@@ -72,12 +73,23 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
         }
     };
 
-    const getSourceBadge = (source?: string) => {
-        if (source === 'pos') {
-            return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 shadow-none text-[10px] px-1.5 py-0 mt-1.5">Store Order 🏪</Badge>;
-        }
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 shadow-none text-[10px] px-1.5 py-0 mt-1.5">Online Order 📱</Badge>;
+    const getSourceBadgeClass = (source?: string) => {
+        if (source === 'pos') return 'bg-orange-50 text-orange-700 border-orange-200';
+        if (source === 'app') return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-gray-50 text-gray-700 border-gray-200';
     };
+
+    const getSourceBadge = (source?: string) => (
+        <Badge
+            variant="outline"
+            className={cn(
+                "shadow-none text-[10px] px-1.5 py-0 mt-1.5",
+                getSourceBadgeClass(source)
+            )}
+        >
+            {formatOrderSource(source)}
+        </Badge>
+    );
 
     if (isLoading) {
         return <div className="p-8 text-center text-muted-foreground">Loading orders...</div>;
