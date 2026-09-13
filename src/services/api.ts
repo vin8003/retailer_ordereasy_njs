@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 
-// Dummy/local API only for working-model testing — never *.ordereasy.win
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/';
+const BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://api.ordereasy.win/api/'
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/');
+// const BASE_URL = 'http://127.0.0.1:8000/api/';
 
 const api = axios.create({
   baseURL: BASE_URL,
