@@ -25,8 +25,6 @@ export interface PosUpiQrInput {
   upiId?: string | null;
   shopName?: string | null;
   billRef: string;
-  /** Varies per generated QR so each scan carries a fresh `tr`. */
-  nonce: string;
 }
 
 export type PosUpiQr =
@@ -60,12 +58,13 @@ export function resolveUpiPayableAmount(input: {
 }
 
 /**
- * Transaction reference for a single QR. Includes the amount in paise so a
- * changed split UPI amount always yields a different reference.
+ * Transaction reference for a single QR. The bill reference is unique per bill
+ * and the amount is included in paise, so a changed split UPI amount always
+ * yields a different reference.
  */
-export function buildUpiTxnRef(input: { billRef: string; amount: number; nonce: string }): string {
+export function buildUpiTxnRef(input: { billRef: string; amount: number }): string {
   const paise = Math.round(input.amount * 100);
-  return sanitizeRef(`OE${input.billRef}${paise}${input.nonce}`);
+  return sanitizeRef(`OE${input.billRef}${paise}`);
 }
 
 /** Builds the NPCI intent URI, or `null` when the shop or amount cannot fund one. */
@@ -98,7 +97,7 @@ export function buildPosUpiQr(input: PosUpiQrInput): PosUpiQr {
   const amount = resolveUpiPayableAmount(input);
   if (amount <= 0) return { status: 'hidden' };
 
-  const txnRef = buildUpiTxnRef({ billRef: input.billRef, amount, nonce: input.nonce });
+  const txnRef = buildUpiTxnRef({ billRef: input.billRef, amount });
   const intentUri = buildUpiIntentUri({
     upiId,
     shopName: input.shopName?.trim() || 'OrderEasy Store',

@@ -45,23 +45,23 @@ describe("resolveUpiPayableAmount", () => {
 
 describe("buildUpiTxnRef", () => {
   it("strips punctuation and uppercases", () => {
-    expect(buildUpiTxnRef({ billRef: "pos-101", amount: 499.5, nonce: "17" })).toBe("OEPOS1014995017");
+    expect(buildUpiTxnRef({ billRef: "pos-101", amount: 499.5 })).toBe("OEPOS10149950");
   });
 
   it("changes when the amount changes", () => {
-    const a = buildUpiTxnRef({ billRef: "POS101", amount: 200, nonce: "17" });
-    const b = buildUpiTxnRef({ billRef: "POS101", amount: 250, nonce: "17" });
+    const a = buildUpiTxnRef({ billRef: "POS101", amount: 200 });
+    const b = buildUpiTxnRef({ billRef: "POS101", amount: 250 });
     expect(a).not.toBe(b);
   });
 
-  it("changes when the nonce changes", () => {
-    const a = buildUpiTxnRef({ billRef: "POS101", amount: 200, nonce: "17" });
-    const b = buildUpiTxnRef({ billRef: "POS101", amount: 200, nonce: "18" });
+  it("differs across bills paying the same amount", () => {
+    const a = buildUpiTxnRef({ billRef: "POSMB1XYZ", amount: 200 });
+    const b = buildUpiTxnRef({ billRef: "POSMB1XZA", amount: 200 });
     expect(a).not.toBe(b);
   });
 
   it("caps length at 35 characters", () => {
-    const ref = buildUpiTxnRef({ billRef: "B".repeat(60), amount: 200, nonce: "1758000000000" });
+    const ref = buildUpiTxnRef({ billRef: "B".repeat(60), amount: 200 });
     expect(ref).toHaveLength(35);
   });
 });
@@ -72,12 +72,12 @@ describe("buildUpiIntentUri", () => {
     shopName: "Sharma Kirana",
     amount: 499.5,
     billRef: "POS101",
-    txnRef: "OEPOS1014995017",
+    txnRef: "OEPOS10149950",
   };
 
   it("builds the NPCI intent in the expected parameter order", () => {
     expect(buildUpiIntentUri(base)).toBe(
-      "upi://pay?pa=shop%40okhdfcbank&pn=Sharma%20Kirana&am=499.50&cu=INR&tn=OE-POS101&tr=OEPOS1014995017"
+      "upi://pay?pa=shop%40okhdfcbank&pn=Sharma%20Kirana&am=499.50&cu=INR&tn=OE-POS101&tr=OEPOS10149950"
     );
   });
 
@@ -100,7 +100,6 @@ describe("buildPosUpiQr", () => {
     upiId: "shop@okhdfcbank",
     shopName: "Sharma Kirana",
     billRef: "POS101",
-    nonce: "17",
   };
 
   it("smoke: full UPI bill uses the bill total as am", () => {
@@ -108,9 +107,9 @@ describe("buildPosUpiQr", () => {
     expect(qr).toEqual({
       status: "ready",
       amount: 499.5,
-      txnRef: "OEPOS1014995017",
+      txnRef: "OEPOS10149950",
       intentUri:
-        "upi://pay?pa=shop%40okhdfcbank&pn=Sharma%20Kirana&am=499.50&cu=INR&tn=OE-POS101&tr=OEPOS1014995017",
+        "upi://pay?pa=shop%40okhdfcbank&pn=Sharma%20Kirana&am=499.50&cu=INR&tn=OE-POS101&tr=OEPOS10149950",
     });
   });
 

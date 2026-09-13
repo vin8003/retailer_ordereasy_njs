@@ -15,6 +15,7 @@ import POSReturnModal from '@/components/pos/POSReturnModal';
 import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
+import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 
 interface Product {
     id: number;
@@ -50,8 +51,12 @@ interface CustomerSuggestion {
     status: 'verified' | 'returning_guest';
 }
 
+/** Reference for an open bill, unique per bill so UPI intents never reuse a `tr`. */
+const createBillRef = () => `POS${Date.now().toString(36).toUpperCase()}`;
+
 interface POSSession {
     id: string;
+    billRef: string;
     cart: CartItem[];
     customerName: string;
     customerMobile: string;
@@ -68,6 +73,7 @@ interface POSSession {
 
 interface RetailerProfile {
     shop_name: string;
+    upi_id?: string | null;
     contact_phone: string;
     address_line1: string;
     city: string;
@@ -101,6 +107,7 @@ export default function POSPage() {
     const [sessions, setSessions] = useState<POSSession[]>([
         {
             id: '1',
+            billRef: createBillRef(),
             cart: [],
             customerName: '',
             customerMobile: '',
@@ -620,6 +627,9 @@ export default function POSPage() {
 
     const total = Math.max(0, subtotal - Math.max(offerCalculation.totalSavings, activeSession.discountAmount));
 
+    // Order number once the bill is settled, otherwise the open bill's reference.
+    const upiBillRef = activeSession.completedOrder?.order_number || activeSession.billRef;
+
     const handleCheckout = async () => {
         if (activeSession.cart.length === 0) {
             toast.error("Cart is empty");
@@ -689,6 +699,7 @@ export default function POSPage() {
 
     const handleNewBill = () => {
         updateActiveSession({
+            billRef: createBillRef(),
             cart: [],
             customerName: '',
             customerMobile: '',
@@ -733,6 +744,7 @@ export default function POSPage() {
         const newId = String(Date.now());
         const newSession: POSSession = {
             id: newId,
+            billRef: createBillRef(),
             cart: [],
             customerName: '',
             customerMobile: '',
@@ -1550,6 +1562,15 @@ export default function POSPage() {
                                 )}
                             </div>
                         )}
+
+                        <UpiQrPanel
+                            paymentMode={activeSession.paymentMode}
+                            total={total}
+                            paymentSplit={activeSession.paymentSplit}
+                            upiId={retailerProfile?.upi_id}
+                            shopName={retailerProfile?.shop_name}
+                            billRef={upiBillRef}
+                        />
                     </div>
 
                     <button
