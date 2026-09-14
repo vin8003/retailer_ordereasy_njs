@@ -106,9 +106,12 @@ describe("buildInboxQueryParams", () => {
     });
   });
 
-  it("sends a single exact status for packed and cancelled chips", () => {
+  it("sends a single exact status for packed, delivered, and cancelled chips", () => {
     expect(buildInboxQueryParams({ statusChip: "packed" })).toEqual({
       status: "packed",
+    });
+    expect(buildInboxQueryParams({ statusChip: "delivered" })).toEqual({
+      status: "delivered",
     });
     expect(buildInboxQueryParams({ statusChip: "cancelled" })).toEqual({
       status: "cancelled",

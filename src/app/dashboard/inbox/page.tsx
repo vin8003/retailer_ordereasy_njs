@@ -53,6 +53,7 @@ export default function InboxPage() {
           search: searchQuery,
         });
 
+        // BE inbox supports exact ?status= including delivered/cancelled (no history hop).
         let response;
         if (append && nextPage) {
           const url = new URL(nextPage);
@@ -79,6 +80,7 @@ export default function InboxPage() {
   );
 
   useEffect(() => {
+    setNextPage(null);
     const timer = setTimeout(() => {
       fetchInbox(false);
     }, 300);

@@ -130,7 +130,7 @@ export function InboxFiltersBar({
                     <TabsTrigger
                       key={option.chip || "all"}
                       value={option.chip || "all"}
-                      className="text-xs px-3"
+                      className="text-xs px-3 shrink-0"
                     >
                       {option.label}
                     </TabsTrigger>
