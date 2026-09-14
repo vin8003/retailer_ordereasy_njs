@@ -5,7 +5,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { orderService } from "@/services/api";
 import { dispatchOrderStatsRefresh } from "@/hooks/orderStatsRefresh";
-import { buildInboxDispatchPayload, buildInboxMarkDeliveredPayload } from "@/lib/fulfillment";
+import {
+    buildInboxDispatchPayload,
+    buildInboxMarkDeliveredPayload,
+    buildInboxMarkFailedPayload,
+    buildInboxOfdMarkDeliveredPayload,
+    isOfdDeliveryCloseOut,
+    validateFailedReason,
+} from "@/lib/fulfillment";
 import {
     Dialog,
     DialogContent,
@@ -16,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface OrderStatusUpdateProps {
     orderId: number;
@@ -40,12 +48,15 @@ export function OrderStatusUpdate({
     const [isDispatchDialogOpen, setIsDispatchDialogOpen] = useState(false);
     const [isPickupDialogOpen, setIsPickupDialogOpen] = useState(false);
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+    const [isFailedDialogOpen, setIsFailedDialogOpen] = useState(false);
     const [prepTime, setPrepTime] = useState("30");
     const [selectedStatus, setSelectedStatus] = useState("");
     const [courierName, setCourierName] = useState("");
     const [courierPhone, setCourierPhone] = useState("");
     const [estimatedDeliveryTime, setEstimatedDeliveryTime] = useState("");
     const [pickupCode, setPickupCode] = useState("");
+    const [failedReason, setFailedReason] = useState("");
+    const [failedReasonError, setFailedReasonError] = useState<string | null>(null);
 
     const getNextStatuses = (status: string, mode: string = 'delivery') => {
         const s = status.toLowerCase();
@@ -103,6 +114,11 @@ export function OrderStatusUpdate({
                     orderId,
                     buildInboxMarkDeliveredPayload({ pickupCode: code, customerId })
                 );
+            } else if (status === 'delivered' && isOfdDeliveryCloseOut(currentStatus, deliveryMode)) {
+                await orderService.inboxAction(
+                    orderId,
+                    buildInboxOfdMarkDeliveredPayload()
+                );
             } else {
                 await orderService.updateStatus(orderId, status, prepTimeMinutes);
             }
@@ -136,7 +152,34 @@ export function OrderStatusUpdate({
         }
     };
 
+    const handleMarkFailed = async () => {
+        const reasonError = validateFailedReason(failedReason);
+        if (reasonError) {
+            setFailedReasonError(reasonError);
+            return;
+        }
+        setIsUpdating(true);
+        try {
+            await orderService.inboxAction(
+                orderId,
+                buildInboxMarkFailedPayload(failedReason)
+            );
+            toast.success("Order marked as failed");
+            dispatchOrderStatsRefresh();
+            setIsFailedDialogOpen(false);
+            setFailedReason("");
+            setFailedReasonError(null);
+            onStatusUpdate();
+        } catch (error) {
+            console.error("Failed to mark order as failed", error);
+            toast.error("Failed to mark order as failed");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     const canCancel = ['pending', 'confirmed', 'processing', 'waiting_for_customer_approval'].includes(currentStatus.toLowerCase());
+    const canMarkFailed = isOfdDeliveryCloseOut(currentStatus, deliveryMode);
     const isDispatchValid = courierName.trim().length > 0 && courierPhone.trim().length >= 10;
     const isPickupValid = pickupCode.trim().length > 0;
 
@@ -148,7 +191,7 @@ export function OrderStatusUpdate({
         );
     }
 
-    if (nextStatuses.length === 0 && !canCancel) {
+    if (nextStatuses.length === 0 && !canCancel && !canMarkFailed) {
         if (['cancelled', 'delivered'].includes(currentStatus.toLowerCase())) {
             return (
                 <div className="text-muted-foreground italic text-sm">
@@ -168,6 +211,7 @@ export function OrderStatusUpdate({
                     if (status === 'delivered') label = 'MARK AS PICKED UP';
                 }
                 if (status === 'out_for_delivery') label = 'DISPATCH';
+                if (status === 'delivered' && canMarkFailed) label = 'MARK AS DELIVERED';
 
                 return (
                     <Button
@@ -179,6 +223,20 @@ export function OrderStatusUpdate({
                     </Button>
                 );
             })}
+
+            {canMarkFailed && (
+                <Button
+                    variant="destructive"
+                    onClick={() => {
+                        setFailedReason("");
+                        setFailedReasonError(null);
+                        setIsFailedDialogOpen(true);
+                    }}
+                    disabled={isUpdating}
+                >
+                    MARK AS FAILED
+                </Button>
+            )}
 
             {canCancel && (
                 <Button 
@@ -310,6 +368,47 @@ export function OrderStatusUpdate({
                             onClick={() => handleUpdate('delivered', undefined, undefined, { pickupCode })}
                         >
                             Mark as picked up
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isFailedDialogOpen} onOpenChange={setIsFailedDialogOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Mark as failed</DialogTitle>
+                        <DialogDescription>
+                            Record why this out-for-delivery order failed. A reason is required.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-2 py-4">
+                        <Label htmlFor="failedReason">Reason</Label>
+                        <Textarea
+                            id="failedReason"
+                            value={failedReason}
+                            onChange={(e) => {
+                                setFailedReason(e.target.value);
+                                if (failedReasonError) setFailedReasonError(null);
+                            }}
+                            placeholder="Why did this delivery fail?"
+                            aria-invalid={!!failedReasonError}
+                        />
+                        {failedReasonError && (
+                            <p className="text-sm text-destructive" role="alert">
+                                {failedReasonError}
+                            </p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" disabled={isUpdating} onClick={() => setIsFailedDialogOpen(false)}>
+                            Go back
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            disabled={isUpdating}
+                            onClick={handleMarkFailed}
+                        >
+                            Mark as failed
                         </Button>
                     </DialogFooter>
                 </DialogContent>

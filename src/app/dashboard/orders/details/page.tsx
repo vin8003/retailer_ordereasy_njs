@@ -231,6 +231,11 @@ function OrderDetailContent() {
                                 By {order.cancelled_by.charAt(0).toUpperCase() + order.cancelled_by.slice(1)}
                             </Badge>
                         )}
+                        {order.status.toLowerCase() === 'cancelled' && order.cancellation_reason && (
+                            <span className="text-sm text-muted-foreground">
+                                Reason: {order.cancellation_reason}
+                            </span>
+                        )}
                     </div>
                     <p className="text-muted-foreground">
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
