@@ -89,6 +89,54 @@ export function buildInboxMarkDeliveredPayload(pickup: {
   return payload;
 }
 
+/** Shop close-out from OFD for delivery-mode orders (OE-281). Pickup stays on pickup_code. */
+export function isOfdDeliveryCloseOut(
+  status: string,
+  deliveryMode?: string
+): boolean {
+  return (
+    status.toLowerCase() === 'out_for_delivery' &&
+    (deliveryMode ?? 'delivery') === 'delivery'
+  );
+}
+
+/** Inbox mark_delivered without pickup_code — reuse #32 action for OFD delivery. */
+export function buildInboxOfdMarkDeliveredPayload() {
+  return {
+    action: 'mark_delivered' as const,
+  };
+}
+
+/** Retailer OFD shop close-out copy — delivery failed, not Cancel. Customer Failed label is out of scope. */
+export const OFD_CLOSEOUT_COPY = {
+  markFailedButton: 'Mark as failed',
+  dialogTitle: 'Delivery failed',
+  dialogDescription:
+    'Shop close-out for this out-for-delivery order. A reason is required.',
+  reasonLabel: 'Reason',
+  reasonPlaceholder: 'Why did this delivery fail?',
+  submit: 'Mark as failed',
+  successToast: 'Marked as delivery failed',
+} as const;
+
+export const FAILED_REASON_REQUIRED = 'Reason is required';
+
+export function validateFailedReason(reason: string): string | null {
+  if (!reason.trim()) return FAILED_REASON_REQUIRED;
+  return null;
+}
+
+export function buildInboxMarkFailedPayload(reason: string) {
+  const validationError = validateFailedReason(reason);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+  return {
+    action: 'mark_failed' as const,
+    reason: reason.trim(),
+  };
+}
+
 export function buildDispatchPayload(
   status: string,
   courier: { name: string; phone: string; estimatedDeliveryTime?: string }
