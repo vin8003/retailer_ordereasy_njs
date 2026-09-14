@@ -1,5 +1,12 @@
 import React, { forwardRef } from 'react';
 import { format } from 'date-fns';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+    buildReceiptUpiQr,
+    formatUpiAmount,
+    shouldPrintReceiptUpiQr,
+    type PrintUpiQrScope,
+} from '@/lib/upiIntent';
 
 interface OrderItem {
     product_name: string;
@@ -26,10 +33,13 @@ interface OrderData {
     retailer_gst_number?: string;
     retailer_receipt_footer?: string;
     retailer_show_gst?: boolean;
+    retailer_print_upi_qr?: boolean;
+    retailer_upi_id?: string;
+    print_upi_qr_scope?: PrintUpiQrScope;
+    retailer_printer_size?: string;
     order_source?: string;
     delivery_address?: string;
     payment_status?: string;
-    retailer_printer_size?: string;
     ledger_previous_balance?: number | string | null;
     ledger_new_balance?: number | string | null;
 }
@@ -60,6 +70,19 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
         order.payment_mode.toLowerCase() === 'credit' || 
         order.payment_mode.toLowerCase() === 'khata'
     );
+
+    const receiptQr = shouldPrintReceiptUpiQr({
+        enabled: order.retailer_print_upi_qr,
+        scope: order.print_upi_qr_scope ?? 'orders',
+        paymentMode: order.payment_mode,
+    })
+        ? buildReceiptUpiQr({
+            upiId: order.retailer_upi_id,
+            shopName: order.retailer_name,
+            amount: Number(order.total_amount),
+            billRef: order.order_number,
+        })
+        : { status: 'hidden' as const };
 
     return (
         <div className="hidden">
@@ -266,6 +289,20 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                         PAYMENT: {String(order.payment_mode).toUpperCase()} 
                         {order.payment_status ? ` (${order.payment_status})` : ''}
                     </div>
+
+                    {receiptQr.status === 'ready' && (
+                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <QRCodeSVG value={receiptQr.intentUri} size={is58mm ? 96 : 120} level="M" />
+                            <div style={{ fontWeight: 'bold', marginTop: '6px', fontSize: is58mm ? '10px' : '11px' }}>
+                                SCAN TO PAY ₹{formatUpiAmount(receiptQr.amount)}
+                            </div>
+                            {order.retailer_upi_id && (
+                                <div style={{ fontSize: is58mm ? '8px' : '9px', marginTop: '2px' }}>
+                                    {order.retailer_upi_id}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {order.order_source === 'Store Order' && (
                         <div style={{ 

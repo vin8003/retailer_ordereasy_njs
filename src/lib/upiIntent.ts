@@ -34,6 +34,20 @@ export type PosUpiQr =
   | { status: 'missing_upi_id' }
   | { status: 'ready'; amount: number; txnRef: string; intentUri: string };
 
+export interface ReceiptUpiQrInput {
+  upiId?: string | null;
+  shopName?: string | null;
+  amount: number;
+  billRef: string;
+}
+
+export type ReceiptUpiQr =
+  | { status: 'hidden' }
+  | { status: 'missing_upi_id' }
+  | { status: 'ready'; amount: number; txnRef: string; intentUri: string };
+
+export type PrintUpiQrScope = 'pos' | 'orders';
+
 /** UPI reference fields accept alphanumerics only, capped for scanner safety. */
 const MAX_REF_LENGTH = 35;
 
@@ -109,4 +123,37 @@ export function buildPosUpiQr(input: PosUpiQrInput): PosUpiQr {
   if (!intentUri) return { status: 'hidden' };
 
   return { status: 'ready', amount, txnRef, intentUri };
+}
+
+/** Builds the exact-amount UPI intent for thermal receipt printing. */
+export function buildReceiptUpiQr(input: ReceiptUpiQrInput): ReceiptUpiQr {
+  const upiId = input.upiId?.trim() ?? '';
+  if (!upiId) return { status: 'missing_upi_id' };
+
+  const amount = Math.max(0, input.amount);
+  if (amount <= 0) return { status: 'hidden' };
+
+  const txnRef = buildUpiTxnRef({ billRef: input.billRef, amount });
+  const intentUri = buildUpiIntentUri({
+    upiId,
+    shopName: input.shopName?.trim() || 'OrderEasy Store',
+    amount,
+    billRef: input.billRef,
+    txnRef,
+  });
+
+  if (!intentUri) return { status: 'hidden' };
+
+  return { status: 'ready', amount, txnRef, intentUri };
+}
+
+/** Whether a printed receipt should include the dynamic UPI QR. */
+export function shouldPrintReceiptUpiQr(input: {
+  enabled?: boolean;
+  scope: PrintUpiQrScope;
+  paymentMode?: string | null;
+}): boolean {
+  if (!input.enabled) return false;
+  if (input.scope === 'orders') return true;
+  return String(input.paymentMode ?? '').toLowerCase() === 'upi';
 }

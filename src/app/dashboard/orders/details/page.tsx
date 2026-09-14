@@ -293,6 +293,9 @@ function OrderDetailContent() {
                                 retailer_gst_number: order.retailer_gst_number || retailerProfile?.gst_number,
                                 retailer_receipt_footer: order.retailer_receipt_footer || retailerProfile?.receipt_footer,
                                 retailer_show_gst: order.retailer_show_gst ?? (retailerProfile?.show_gst_on_receipt || false),
+                                retailer_print_upi_qr: order.retailer_print_upi_qr ?? (retailerProfile?.print_upi_qr_on_receipt || false),
+                                retailer_upi_id: order.retailer_upi_id || retailerProfile?.upi_id,
+                                print_upi_qr_scope: 'orders',
                                 order_source: order.source === 'pos' ? 'Store Order' : 'Online Order',
                                 delivery_address: order.order_type === 'delivery' || order.delivery_mode === 'delivery'
                                     ? (order.shipping_address?.address_line1 || order.delivery_address_text || 'Address not provided') 

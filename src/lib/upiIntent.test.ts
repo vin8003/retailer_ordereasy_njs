@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPosUpiQr,
+  buildReceiptUpiQr,
   buildUpiIntentUri,
   buildUpiTxnRef,
   formatUpiAmount,
   resolveUpiPayableAmount,
+  shouldPrintReceiptUpiQr,
   type PosUpiQrInput,
 } from "./upiIntent";
 
@@ -161,5 +163,61 @@ describe("buildPosUpiQr", () => {
     expect(qr.status).toBe("ready");
     if (qr.status !== "ready") return;
     expect(qr.intentUri).toContain("pn=OrderEasy%20Store");
+  });
+});
+
+describe("buildReceiptUpiQr", () => {
+  it("builds a receipt QR for the full bill amount", () => {
+    expect(
+      buildReceiptUpiQr({
+        upiId: "shop@okhdfcbank",
+        shopName: "Sharma Kirana",
+        amount: 750,
+        billRef: "ORD101",
+      })
+    ).toEqual({
+      status: "ready",
+      amount: 750,
+      txnRef: "OEORD10175000",
+      intentUri:
+        "upi://pay?pa=shop%40okhdfcbank&pn=Sharma%20Kirana&am=750.00&cu=INR&tn=OE-ORD101&tr=OEORD10175000",
+    });
+  });
+
+  it("stays hidden when nothing is payable", () => {
+    expect(
+      buildReceiptUpiQr({
+        upiId: "shop@okhdfcbank",
+        shopName: "Sharma Kirana",
+        amount: 0,
+        billRef: "ORD101",
+      })
+    ).toEqual({ status: "hidden" });
+  });
+});
+
+describe("shouldPrintReceiptUpiQr", () => {
+  it("prints on POS only for UPI bills when enabled", () => {
+    expect(
+      shouldPrintReceiptUpiQr({ enabled: true, scope: "pos", paymentMode: "upi" })
+    ).toBe(true);
+    expect(
+      shouldPrintReceiptUpiQr({ enabled: true, scope: "pos", paymentMode: "cash" })
+    ).toBe(false);
+  });
+
+  it("prints on orders for any payment mode when enabled", () => {
+    expect(
+      shouldPrintReceiptUpiQr({ enabled: true, scope: "orders", paymentMode: "cash" })
+    ).toBe(true);
+    expect(
+      shouldPrintReceiptUpiQr({ enabled: true, scope: "orders", paymentMode: "credit" })
+    ).toBe(true);
+  });
+
+  it("never prints when disabled", () => {
+    expect(
+      shouldPrintReceiptUpiQr({ enabled: false, scope: "orders", paymentMode: "upi" })
+    ).toBe(false);
   });
 });

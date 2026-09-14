@@ -80,6 +80,7 @@ interface RetailerProfile {
     gst_number?: string;
     receipt_footer?: string;
     show_gst_on_receipt?: boolean;
+    print_upi_qr_on_receipt?: boolean;
     printer_size?: string;
 }
 
@@ -1133,6 +1134,9 @@ export default function POSPage() {
                             retailer_gst_number: activeSession.completedOrder.retailer_gst_number || retailerProfile?.gst_number,
                             retailer_receipt_footer: activeSession.completedOrder.retailer_receipt_footer || retailerProfile?.receipt_footer,
                             retailer_show_gst: activeSession.completedOrder.retailer_show_gst ?? (retailerProfile?.show_gst_on_receipt || false),
+                            retailer_print_upi_qr: activeSession.completedOrder.retailer_print_upi_qr ?? (retailerProfile?.print_upi_qr_on_receipt || false),
+                            retailer_upi_id: activeSession.completedOrder.retailer_upi_id || retailerProfile?.upi_id,
+                            print_upi_qr_scope: 'pos',
                             retailer_name: retailerProfile?.shop_name || activeSession.completedOrder.retailer_name,
                             retailer_address: retailerProfile ? `${retailerProfile.address_line1}, ${retailerProfile.city}` : activeSession.completedOrder.retailer_address,
                             retailer_phone: retailerProfile?.contact_phone || activeSession.completedOrder.retailer_phone,
