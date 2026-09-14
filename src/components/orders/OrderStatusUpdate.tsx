@@ -11,6 +11,7 @@ import {
     buildInboxMarkFailedPayload,
     buildInboxOfdMarkDeliveredPayload,
     isOfdDeliveryCloseOut,
+    OFD_CLOSEOUT_COPY,
     validateFailedReason,
 } from "@/lib/fulfillment";
 import {
@@ -164,7 +165,7 @@ export function OrderStatusUpdate({
                 orderId,
                 buildInboxMarkFailedPayload(failedReason)
             );
-            toast.success("Order marked as failed");
+            toast.success(OFD_CLOSEOUT_COPY.successToast);
             dispatchOrderStatsRefresh();
             setIsFailedDialogOpen(false);
             setFailedReason("");
@@ -234,7 +235,7 @@ export function OrderStatusUpdate({
                     }}
                     disabled={isUpdating}
                 >
-                    MARK AS FAILED
+                    {OFD_CLOSEOUT_COPY.markFailedButton}
                 </Button>
             )}
 
@@ -376,13 +377,13 @@ export function OrderStatusUpdate({
             <Dialog open={isFailedDialogOpen} onOpenChange={setIsFailedDialogOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle className="text-destructive">Mark as failed</DialogTitle>
+                        <DialogTitle className="text-destructive">{OFD_CLOSEOUT_COPY.dialogTitle}</DialogTitle>
                         <DialogDescription>
-                            Record why this out-for-delivery order failed. A reason is required.
+                            {OFD_CLOSEOUT_COPY.dialogDescription}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-2 py-4">
-                        <Label htmlFor="failedReason">Reason</Label>
+                        <Label htmlFor="failedReason">{OFD_CLOSEOUT_COPY.reasonLabel}</Label>
                         <Textarea
                             id="failedReason"
                             value={failedReason}
@@ -390,7 +391,7 @@ export function OrderStatusUpdate({
                                 setFailedReason(e.target.value);
                                 if (failedReasonError) setFailedReasonError(null);
                             }}
-                            placeholder="Why did this delivery fail?"
+                            placeholder={OFD_CLOSEOUT_COPY.reasonPlaceholder}
                             aria-invalid={!!failedReasonError}
                         />
                         {failedReasonError && (
@@ -408,7 +409,7 @@ export function OrderStatusUpdate({
                             disabled={isUpdating}
                             onClick={handleMarkFailed}
                         >
-                            Mark as failed
+                            {OFD_CLOSEOUT_COPY.submit}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

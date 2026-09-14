@@ -107,6 +107,18 @@ export function buildInboxOfdMarkDeliveredPayload() {
   };
 }
 
+/** Retailer OFD shop close-out copy — delivery failed, not Cancel. Customer Failed label is out of scope. */
+export const OFD_CLOSEOUT_COPY = {
+  markFailedButton: 'Mark as failed',
+  dialogTitle: 'Delivery failed',
+  dialogDescription:
+    'Shop close-out for this out-for-delivery order. A reason is required.',
+  reasonLabel: 'Reason',
+  reasonPlaceholder: 'Why did this delivery fail?',
+  submit: 'Mark as failed',
+  successToast: 'Marked as delivery failed',
+} as const;
+
 export const FAILED_REASON_REQUIRED = 'Reason is required';
 
 export function validateFailedReason(reason: string): string | null {

@@ -6,6 +6,7 @@ import {
   buildInboxMarkFailedPayload,
   buildInboxOfdMarkDeliveredPayload,
   FAILED_REASON_REQUIRED,
+  OFD_CLOSEOUT_COPY,
   formatFulfillmentSlot,
   formatSlotOptionLabel,
   FulfillmentSlotOption,
@@ -163,5 +164,20 @@ describe("buildInboxMarkFailedPayload", () => {
   it("throws when reason is empty", () => {
     expect(() => buildInboxMarkFailedPayload("")).toThrow(FAILED_REASON_REQUIRED);
     expect(() => buildInboxMarkFailedPayload("  ")).toThrow(FAILED_REASON_REQUIRED);
+  });
+
+  it("does not send a cancel action", () => {
+    expect(buildInboxMarkFailedPayload("not home").action).toBe("mark_failed");
+    expect(buildInboxMarkFailedPayload("not home")).not.toHaveProperty("status", "cancelled");
+  });
+});
+
+describe("OFD_CLOSEOUT_COPY", () => {
+  it("reads as delivery failed / Mark as failed, not Cancel", () => {
+    expect(OFD_CLOSEOUT_COPY.dialogTitle).toBe("Delivery failed");
+    expect(OFD_CLOSEOUT_COPY.markFailedButton).toBe("Mark as failed");
+    expect(OFD_CLOSEOUT_COPY.submit).toBe("Mark as failed");
+    const surface = Object.values(OFD_CLOSEOUT_COPY).join(" ");
+    expect(surface.toLowerCase()).not.toMatch(/cancel/);
   });
 });
