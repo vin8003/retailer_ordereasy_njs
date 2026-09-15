@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import api, { offerService } from '@/services/api';
+import api, { customerService, offerService } from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
@@ -16,6 +16,19 @@ import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
 import { formatInrAmount, hasDistinctAppPrice, posUnitPrice } from '@/lib/channelPrice';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { PERMISSIONS } from '@/lib/org';
+import { CreditLockBanner } from '@/components/pos/CreditLockBanner';
+import {
+    attachCreditOverride,
+    creditAmountForPos,
+    creditSaleLockReasons,
+    khataFromDetail,
+    lockReasonsFromCheckoutError,
+    mergeLockReasons,
+    pickCustomerFromList,
+    type KhataMapping,
+} from '@/lib/creditLock';
 
 interface Product {
     id: number;
@@ -80,6 +93,8 @@ interface RetailerProfile {
 }
 
 export default function POSPage() {
+    const { hasPermission } = useOrgContext();
+    const canOverrideCredit = hasPermission(PERMISSIONS.ORDERS_UPDATE);
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
 
@@ -167,6 +182,9 @@ export default function POSPage() {
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
+    const [khata, setKhata] = useState<(KhataMapping & { customerId: number | null }) | null>(null);
+    const [creditOverride, setCreditOverride] = useState(false);
+    const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -432,6 +450,42 @@ export default function POSPage() {
         return () => clearTimeout(timer);
     }, [activeSession.customerMobile, showSuggestions]);
 
+    useEffect(() => {
+        setCreditOverride(false);
+        setServerLockReasons([]);
+        const mobile = activeSession.customerMobile;
+        if (mobile.length !== 10) {
+            setKhata(null);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const listRes = await customerService.getRetailerCustomers({ search: mobile });
+                const rows = listRes.data?.results || listRes.data;
+                const list = Array.isArray(rows) ? rows : [];
+                const match = pickCustomerFromList<{
+                    phone_number?: string;
+                    customer_id?: number;
+                    customerId?: number;
+                }>(list, mobile);
+                const customerId = match?.customer_id ?? match?.customerId;
+                if (!customerId) {
+                    if (!cancelled) setKhata(null);
+                    return;
+                }
+                const detail = await customerService.getRetailerCustomerDetail(customerId);
+                if (!cancelled) setKhata(khataFromDetail(detail.data));
+            } catch (err) {
+                console.error(err);
+                if (!cancelled) setKhata(null);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [activeSession.customerMobile]);
+
     // Debounced Barcode Backup (for manual typing/slow scanners)
     useEffect(() => {
         if (!searchTerm || searchTerm.length < 3) return;
@@ -677,13 +731,19 @@ export default function POSPage() {
                 };
             }
 
-            const response = await api.post('/products/erp/pos-checkout/', payload);
+            const checkoutPayload = attachCreditOverride(payload, creditOverride && canOverrideCredit);
+            const response = await api.post('/products/erp/pos-checkout/', checkoutPayload);
             toast.success(`Order ${response.data.order.order_number} created successfully!`);
             
             updateActiveSession({ completedOrder: response.data.order });
+            setCreditOverride(false);
+            setServerLockReasons([]);
             fetchProducts(); // Refresh stock
         } catch (error: any) {
-            toast.error(error.response?.data?.error || "Checkout failed");
+            const errMsg = error.response?.data?.error || "Checkout failed";
+            const fromServer = lockReasonsFromCheckoutError(errMsg);
+            if (fromServer.length) setServerLockReasons(fromServer);
+            toast.error(errMsg);
         } finally {
             setIsCheckoutLoading(false);
         }
@@ -703,6 +763,9 @@ export default function POSPage() {
         setRatingSubmitted(false);
         setSelectedRating(5);
         setRatingComment('');
+        setCreditOverride(false);
+        setServerLockReasons([]);
+        setKhata(null);
         setActiveGridIndex(-1);
         setActiveCartIndex(-1);
         setCurrentFocus('search');
@@ -1561,9 +1624,33 @@ export default function POSPage() {
                         )}
                     </div>
 
+                    {(() => {
+                        const creditAmt = creditAmountForPos(
+                            activeSession.paymentMode,
+                            activeSession.paymentSplit,
+                            total
+                        );
+                        const mapping = khata ?? { creditLimit: 0, currentBalance: 0, creditDueDays: null };
+                        const reasons = mergeLockReasons(
+                            creditSaleLockReasons(khata, creditAmt),
+                            serverLockReasons
+                        );
+                        const locked = creditAmt > 0 && reasons.length > 0;
+                        const blockComplete = locked && !(creditOverride && canOverrideCredit);
+                        return (
+                            <>
+                                {creditAmt > 0 && (
+                                    <CreditLockBanner
+                                        mapping={mapping}
+                                        reasons={reasons}
+                                        canOverride={canOverrideCredit}
+                                        override={creditOverride}
+                                        onOverrideChange={setCreditOverride}
+                                    />
+                                )}
                     <button
                         onClick={handleCheckout}
-                        disabled={activeSession.cart.length === 0 || isCheckoutLoading}
+                        disabled={activeSession.cart.length === 0 || isCheckoutLoading || blockComplete}
                         className="w-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-5 rounded-2xl font-black text-xl flex justify-center items-center gap-3 transition-all active:scale-[0.98] border-b-4 border-primary/20"
                         data-tour="checkout"
                     >
@@ -1575,6 +1662,9 @@ export default function POSPage() {
                             </>
                         )}
                     </button>
+                            </>
+                        );
+                    })()}
                 </div>
             </div>
 
