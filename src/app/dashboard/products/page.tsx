@@ -25,11 +25,13 @@ import { PriceUpdatePrintPrompt } from "@/components/labels/PriceUpdatePrintProm
 import { enqueuePrintProductIds } from "@/lib/labelPrint/printList";
 import { useOrgContext } from "@/hooks/useOrgContext";
 import { PERMISSIONS } from "@/lib/org";
+import { QTY_ADJUST_MESSAGE, axiosInventoryAdjustError, canAdjustInventory } from "@/lib/inventoryAdjust";
 
 export default function ProductsPage() {
     const router = useRouter();
-    const { hasPermission } = useOrgContext();
+    const { hasPermission, permissions } = useOrgContext();
     const canEditAppPrice = hasPermission(PERMISSIONS.CATALOG_PRICE);
+    const canAdjust = canAdjustInventory(permissions);
     const [products, setProducts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -563,6 +565,10 @@ export default function ProductsPage() {
                         }
                     }}
                     onUpdateStock={async (product: any, newStock: number) => {
+                        if (!canAdjust) {
+                            toast.error(QTY_ADJUST_MESSAGE);
+                            throw new Error(QTY_ADJUST_MESSAGE);
+                        }
                         try {
                             setProducts(products.map(p => p.id === product.id ? { ...p, quantity: newStock } : p));
                             const formData = new FormData();
@@ -570,7 +576,10 @@ export default function ProductsPage() {
                             await productService.updateProduct(product.id, formData);
                             toast.success(`Stock updated to ${newStock} for ${product.name}`);
                         } catch (e) {
-                            toast.error("Failed to update stock");
+                            toast.error(
+                                axiosInventoryAdjustError(e as { response?: { status?: number; data?: { error?: string } } }, "quantity")
+                                || "Failed to update stock"
+                            );
                             setProducts([...products]);
                             throw e;
                         }
@@ -619,6 +628,7 @@ export default function ProductsPage() {
                     open={isBulkMatrixOpen}
                     products={products.filter(p => selectedProductIds.has(p.id))}
                     canEditAppPrice={canEditAppPrice}
+                    canAdjustInventory={canAdjust}
                     onClose={() => setIsBulkMatrixOpen(false)}
                     onSave={async (changes) => {
                         try {
@@ -651,7 +661,10 @@ export default function ProductsPage() {
                             setSelectionMode(false);
                             setSelectedProductIds(new Set());
                         } catch (e) {
-                            toast.error("Bulk update failed.");
+                            toast.error(
+                                axiosInventoryAdjustError(e as { response?: { status?: number; data?: { error?: string } } }, "quantity")
+                                || "Bulk update failed."
+                            );
                             fetchProducts(currentPage); // Revert optimistic changes
                             throw e;
                         }

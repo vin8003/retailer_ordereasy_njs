@@ -41,6 +41,18 @@ import {
     expiryHint,
     prepareBatchesForSave,
 } from "@/lib/batchExpiry";
+import {
+    ERR_CONVERSION_FACTOR,
+    PACK_ADJUST_MESSAGE,
+    QTY_ADJUST_MESSAGE,
+    axiosInventoryAdjustError,
+    isPositiveConversionFactor,
+    packLinkDiffers,
+    packLinkIsSet,
+    quantityDiffers,
+    applyLinkedChildQuantity,
+    type PackLinkFields,
+} from "@/lib/inventoryAdjust";
 
 interface ProductFormProps {
     initialData?: any;
@@ -273,6 +285,36 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             return;
         }
 
+        const originalPack: PackLinkFields = {
+            is_parent_bulk: !!initialData?.is_parent_bulk,
+            isLinkedToParent: !!initialData?.parent_bulk_product,
+            parent_bulk_product_id: String(
+                typeof initialData?.parent_bulk_product === "object"
+                    ? initialData?.parent_bulk_product?.id ?? ""
+                    : initialData?.parent_bulk_product ?? ""
+            ),
+            conversion_factor:
+                initialData?.conversion_factor != null ? String(initialData.conversion_factor) : "",
+        };
+        const nextPack: PackLinkFields = {
+            is_parent_bulk: isParentBulk,
+            isLinkedToParent,
+            parent_bulk_product_id: parentBulkProductId,
+            conversion_factor: String(conversionFactor ?? ""),
+        };
+        if (isLinkedToParent && !isParentBulk && !isPositiveConversionFactor(conversionFactor)) {
+            toast.error(ERR_CONVERSION_FACTOR);
+            return;
+        }
+        if (!canAdjust && packLinkIsSet(nextPack) && (!isEditing || packLinkDiffers(originalPack, nextPack))) {
+            toast.error(PACK_ADJUST_MESSAGE);
+            return;
+        }
+        if (isEditing && !canAdjust && quantityDiffers(initialData?.quantity, quantity)) {
+            toast.error(QTY_ADJUST_MESSAGE);
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -318,8 +360,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (isLinkedToParent && !isParentBulk) {
                 if (parentBulkProductId) formData.append("parent_bulk_product", parentBulkProductId);
                 if (conversionFactor) formData.append("conversion_factor", conversionFactor);
-                // Child products: force quantity to 0 (stock comes from parent)
-                formData.set("quantity", "0");
+                applyLinkedChildQuantity(formData, {
+                    isLinkedChild: true,
+                    canAdjust,
+                });
             }
 
             // KAN-49: visibility toggle lives on the parent bulk SKU.
@@ -351,8 +395,9 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
         } catch (error: any) {
             console.error("Failed to save product", error);
             const expiryMsg = axiosBatchExpiryError(error);
-            let errorMsg = expiryMsg || "Failed to save product";
-            if (!expiryMsg && error.response?.data) {
+            const adjustMsg = axiosInventoryAdjustError(error, "generic");
+            let errorMsg = expiryMsg || adjustMsg || "Failed to save product";
+            if (!expiryMsg && !adjustMsg && error.response?.data) {
                 const data = error.response.data;
                 if (data.error) {
                     errorMsg = data.error;
@@ -596,13 +641,16 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                     value={isLinkedToParent ? quantity : quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
                                     required={trackInventory && !hasBatches}
-                                    disabled={isLinkedToParent}
-                                    className={isLinkedToParent ? 'opacity-50 cursor-not-allowed' : ''}
+                                    disabled={isLinkedToParent || (isEditing && !canAdjust)}
+                                    className={isLinkedToParent || (isEditing && !canAdjust) ? 'opacity-50 cursor-not-allowed' : ''}
                                 />
                                 {isLinkedToParent && (
                                     <p className="text-xs text-blue-600 font-medium">
                                         ⓘ Stock is automatically synced from the parent bulk product. Manual editing is disabled.
                                     </p>
+                                )}
+                                {isEditing && !canAdjust && !isLinkedToParent && (
+                                    <p className="text-xs text-muted-foreground">{QTY_ADJUST_MESSAGE}</p>
                                 )}
                             </div>
                         )}
@@ -689,6 +737,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                                         type="number"
                                                         value={batch.quantity ?? ''} 
                                                         onChange={(e) => updateBatch(index, "quantity", e.target.value)}
+                                                        disabled={isEditing && !canAdjust}
                                                         className="h-8 text-xs"
                                                     />
                                                 </TableCell>
@@ -813,12 +862,16 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                 {/* Product Grouping (Pack & Bulk sizing) KAN-13 */}
                 <div className="md:col-span-2 space-y-4 rounded-md border p-4 bg-muted/5 mt-4">
                     <h3 className="text-sm font-semibold text-primary">Fractional Sizing (Pack & Bulk)</h3>
+                    {!canAdjust && (
+                        <p className="text-xs text-muted-foreground">{PACK_ADJUST_MESSAGE}</p>
+                    )}
 
                     {/* Toggle 1: Is Master Bulk Product */}
                     <div className="flex items-center space-x-2">
                         <Switch
                             id="isParentBulk"
                             checked={isParentBulk}
+                            disabled={!canAdjust}
                             onCheckedChange={(checked) => {
                                 setIsParentBulk(checked);
                                 if (checked) {
@@ -860,6 +913,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                             <Switch
                                 id="isLinkedToParent"
                                 checked={isLinkedToParent}
+                                disabled={!canAdjust}
                                 onCheckedChange={(checked) => {
                                     setIsLinkedToParent(checked);
                                     if (!checked) {
@@ -907,6 +961,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                         placeholder="e.g. 0.10 for 5kg from 50kg"
                                         value={conversionFactor}
                                         onChange={(e) => setConversionFactor(e.target.value)}
+                                        disabled={!canAdjust}
                                     />
                                     <p className="text-xs text-muted-foreground">
                                         This is the weight ratio of this pack relative to the parent. E.g. 5kg ÷ 50kg = 0.10
