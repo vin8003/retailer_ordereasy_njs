@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   ORDERS_UPDATE: 'orders.update',
   FULFILLMENT_MANAGE: 'fulfillment.manage',
   CATALOG_PRICE: 'catalog.price',
+  CATALOG_IMAGE: 'catalog.image',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
