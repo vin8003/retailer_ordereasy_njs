@@ -12,6 +12,7 @@ export const PERMISSIONS = {
   CATALOG_PRICE: 'catalog.price',
   CATALOG_IMAGE: 'catalog.image',
   INVENTORY_ADJUST: 'inventory.adjust',
+  PURCHASING_TERMS: 'purchasing.terms',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

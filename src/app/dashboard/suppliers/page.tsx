@@ -11,6 +11,16 @@ import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import {
+    GSTIN_FORMAT_MESSAGE,
+    PAYMENT_TERMS_WHITESPACE,
+    buildSupplierWritePayload,
+    canEditPaymentTerms,
+    isValidGstin,
+    isWhitespaceOnlyPaymentTerms,
+    supplierErrorMessage,
+} from '@/lib/suppliers';
 
 interface Supplier {
     id: number;
@@ -21,12 +31,16 @@ interface Supplier {
     address: string;
     balance_due: string | number;
     is_active?: boolean;
+    gst_number?: string | null;
+    payment_terms?: string | null;
 }
 
 const DEACTIVATE_CONFIRM = (name: string) =>
     `Deactivate ${name}? They will no longer appear when recording a new purchase. Khata and old bills stay available.`;
 
 export default function SuppliersPage() {
+    const { permissions } = useOrgContext();
+    const canEditTerms = canEditPaymentTerms(permissions);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -93,6 +107,9 @@ export default function SuppliersPage() {
             phone_number: supplier.phone_number || '',
             email: supplier.email || '',
             address: supplier.address || '',
+            gst_number: supplier.gst_number || '',
+            payment_terms: supplier.payment_terms || '',
+            is_active: supplier.is_active !== false,
         });
         setShowFormModal(true);
     };
@@ -105,25 +122,30 @@ export default function SuppliersPage() {
 
     const handleSaveSupplier = async (e: React.FormEvent) => {
         e.preventDefault();
+        const details = buildSupplierWritePayload(formValues, { canEditTerms });
+        if (!details) {
+            toast.error(
+                isWhitespaceOnlyPaymentTerms(formValues.payment_terms)
+                    ? PAYMENT_TERMS_WHITESPACE
+                    : !isValidGstin(formValues.gst_number)
+                      ? GSTIN_FORMAT_MESSAGE
+                      : "Check supplier details"
+            );
+            return;
+        }
         setIsSaving(true);
-        const details = {
-            company_name: formValues.company_name,
-            contact_person: formValues.contact_person,
-            phone_number: formValues.phone_number,
-            address: formValues.address,
-        };
         try {
             if (editingSupplier) {
                 await api.patch(`/products/erp/suppliers/${editingSupplier.id}/`, details);
                 toast.success("Supplier updated");
             } else {
-                await api.post('/products/erp/suppliers/', { ...details, email: formValues.email });
+                await api.post('/products/erp/suppliers/', details);
                 toast.success("Supplier added successfully");
             }
             closeFormModal();
             fetchSuppliers();
         } catch (error) {
-            toast.error(editingSupplier ? "Failed to update supplier" : "Failed to add supplier");
+            toast.error(supplierErrorMessage(error as { response?: { status?: number; data?: unknown } }));
         } finally {
             setIsSaving(false);
         }
@@ -328,6 +350,9 @@ export default function SuppliersPage() {
                                                 </div>
                                                 <div>
                                                     <div className="font-black text-gray-900 text-lg uppercase tracking-tight">{supplier.company_name}</div>
+                                                    {supplier.gst_number ? (
+                                                        <div className="text-[11px] font-medium text-gray-400 tracking-wide">GSTIN {supplier.gst_number}</div>
+                                                    ) : null}
                                                     {supplier.is_active === false && (
                                                         <span className="inline-block mt-1 text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-2 py-0.5 rounded-md">Inactive</span>
                                                     )}
@@ -400,6 +425,9 @@ export default function SuppliersPage() {
                                         </div>
                                         <div className="min-w-0">
                                             <div className="font-black text-gray-900 text-sm uppercase tracking-tight truncate max-w-[150px]">{supplier.company_name}</div>
+                                            {supplier.gst_number ? (
+                                                <div className="text-[10px] text-gray-400 truncate max-w-[150px]">GSTIN {supplier.gst_number}</div>
+                                            ) : null}
                                             {supplier.is_active === false && (
                                                 <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-1.5 py-0.5 rounded">Inactive</span>
                                             )}
@@ -447,6 +475,7 @@ export default function SuppliersPage() {
                 onClose={closeFormModal}
                 onSubmit={handleSaveSupplier}
                 isSubmitting={isSaving}
+                canEditTerms={canEditTerms}
             />
 
             <InfiniteScrollTrigger 
