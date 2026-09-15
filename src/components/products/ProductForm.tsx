@@ -34,6 +34,13 @@ import { BarcodeScanner } from "@/components/products/BarcodeScanner";
 import { useOrgContext } from "@/hooks/useOrgContext";
 import { appendAppPriceToFormData } from "@/lib/channelPrice";
 import { PERMISSIONS } from "@/lib/org";
+import {
+    FIFO_PICK_HINT,
+    axiosBatchExpiryError,
+    canAdjustInventory,
+    expiryHint,
+    prepareBatchesForSave,
+} from "@/lib/batchExpiry";
 
 interface ProductFormProps {
     initialData?: any;
@@ -42,8 +49,14 @@ interface ProductFormProps {
 
 export function ProductForm({ initialData, isEditing = false }: ProductFormProps) {
     const router = useRouter();
-    const { hasPermission } = useOrgContext();
+    const { hasPermission, permissions } = useOrgContext();
     const canEditApp = hasPermission(PERMISSIONS.CATALOG_PRICE);
+    const canAdjust = canAdjustInventory(permissions);
+    const originalExpiryById = Object.fromEntries(
+        (initialData?.batches || [])
+            .filter((b: { id?: number }) => typeof b.id === "number")
+            .map((b: { id: number; expiry_date?: string | null }) => [b.id, b.expiry_date ?? null])
+    ) as Record<number, string | null>;
     const [isLoading, setIsLoading] = useState(false);
 
     // Form State
@@ -194,6 +207,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             price: price,
             original_price: originalPrice,
             quantity: "0",
+            expiry_date: "",
             is_active: true,
             show_on_app: true
         }]);
@@ -288,7 +302,15 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("has_batches", String(hasBatches));
             // Omit empty batches on edit so the API does not deactivate every batch.
             if (hasBatches && batches.length > 0) {
-                formData.append("batches", JSON.stringify(batches));
+                formData.append(
+                    "batches",
+                    JSON.stringify(
+                        prepareBatchesForSave(batches, {
+                            canAdjust,
+                            originalById: originalExpiryById,
+                        })
+                    )
+                );
             }
 
             // KAN-13 Product Grouping fields
@@ -328,8 +350,9 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             router.refresh(); // Ensure list is updated
         } catch (error: any) {
             console.error("Failed to save product", error);
-            let errorMsg = "Failed to save product";
-            if (error.response?.data) {
+            const expiryMsg = axiosBatchExpiryError(error);
+            let errorMsg = expiryMsg || "Failed to save product";
+            if (!expiryMsg && error.response?.data) {
                 const data = error.response.data;
                 if (data.error) {
                     errorMsg = data.error;
@@ -608,6 +631,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                     <Plus className="h-4 w-4" /> Add Batch
                                 </Button>
                             </CardHeader>
+                            <p className="px-4 pt-3 text-xs text-muted-foreground">
+                                {FIFO_PICK_HINT}
+                                {!canAdjust ? " inventory.adjust is required to change expiry." : ""}
+                            </p>
                             <CardContent className="p-0">
                                 <Table>
                                     <TableHeader>
@@ -617,6 +644,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                             <TableHead className="w-[100px]">MRP</TableHead>
                                             <TableHead className="w-[100px]">Selling</TableHead>
                                             <TableHead className="w-[80px]">Stock</TableHead>
+                                            <TableHead className="w-[120px]">Expiry</TableHead>
                                             <TableHead className="w-[70px]">App</TableHead>
                                             <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
@@ -663,6 +691,18 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                                         onChange={(e) => updateBatch(index, "quantity", e.target.value)}
                                                         className="h-8 text-xs"
                                                     />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input
+                                                        type="date"
+                                                        value={batch.expiry_date ? String(batch.expiry_date).slice(0, 10) : ""}
+                                                        onChange={(e) => updateBatch(index, "expiry_date", e.target.value)}
+                                                        disabled={!canAdjust}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                                        {expiryHint(batch.expiry_date)}
+                                                    </p>
                                                 </TableCell>
                                                 <TableCell className="p-2 text-center">
                                                     <button 
