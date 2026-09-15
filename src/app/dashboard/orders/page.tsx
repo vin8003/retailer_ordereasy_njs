@@ -38,9 +38,9 @@ export default function OrdersPage() {
             if (isAppend && nextPage) {
                 const url = new URL(nextPage);
                 const page = url.searchParams.get('page');
-                response = await orderService.fetchOrders({ ...params, page });
+                response = await orderService.fetchOrderList({ ...params, page });
             } else {
-                response = await orderService.fetchOrders(params);
+                response = await orderService.fetchOrderList(params);
             }
 
             const payload = response.data;
@@ -107,7 +107,7 @@ export default function OrdersPage() {
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
                 <p className="text-muted-foreground">
-                    Manage and track your customer orders here.
+                    Manage active orders from the inbox. Open an order for courier and pickup details.
                 </p>
             </div>
 
