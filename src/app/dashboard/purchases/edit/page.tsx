@@ -506,7 +506,7 @@ function EditPurchaseContent() {
                                                 <div className="font-bold text-gray-900">{row.product.name}</div>
                                                 <div className="text-xs text-gray-400 font-medium font-mono">{row.product.barcode}</div>
                                             </td>
-                                            <td className="p-4 w-28">
+                                            <td className="p-4 w-36">
                                                 <input 
                                                     type="number"
                                                     value={row.quantity}
@@ -514,7 +514,7 @@ function EditPurchaseContent() {
                                                     className="w-full bg-white border border-gray-100 rounded-lg py-2 px-3 text-center font-black focus:ring-2 focus:ring-primary/20 text-primary"
                                                 />
                                             </td>
-                                            <td className="p-4 w-32">
+                                            <td className="p-4 w-40">
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs text-primary font-bold">₹</span>
                                                     <input 
@@ -525,7 +525,7 @@ function EditPurchaseContent() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className="p-4 w-32">
+                                            <td className="p-4 w-40">
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
                                                     <input 
@@ -536,7 +536,7 @@ function EditPurchaseContent() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className="p-4 w-32">
+                                            <td className="p-4 w-40">
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-xs font-bold">₹</span>
                                                     <input 
