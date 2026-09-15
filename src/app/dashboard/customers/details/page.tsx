@@ -69,6 +69,7 @@ interface CustomerDetail {
     isBlacklisted: boolean;
     creditLimit: number;
     currentBalance: number;
+    creditDueDays: number | null;
     recentOrders: any[];
     rewardHistory: any[];
 }
@@ -137,6 +138,7 @@ function CustomerDetailContent() {
 
     // Credit Limit state
     const [newCreditLimit, setNewCreditLimit] = useState('');
+    const [newCreditDueDays, setNewCreditDueDays] = useState('');
 
 
     const fetchDetails = async () => {
@@ -164,10 +166,18 @@ function CustomerDetailContent() {
                     isBlacklisted: data.is_blacklisted,
                     creditLimit: data.credit_limit ? parseFloat(data.credit_limit) : 0,
                     currentBalance: data.current_balance ? parseFloat(data.current_balance) : 0,
+                    creditDueDays: data.credit_due_days == null || data.credit_due_days === ''
+                        ? null
+                        : Number(data.credit_due_days),
                     recentOrders: data.recent_orders || [],
                     rewardHistory: data.reward_history || [],
                 });
                 setNewCreditLimit(data.credit_limit?.toString() || '0');
+                setNewCreditDueDays(
+                    data.credit_due_days == null || data.credit_due_days === ''
+                        ? ''
+                        : String(data.credit_due_days)
+                );
                 try { sessionStorage.removeItem('oe:qs:' + window.location.pathname.replace(/\/$/, '')); } catch (e) {}
             } else {
                 throw new Error('Failed to load details');
@@ -278,7 +288,10 @@ function CustomerDetailContent() {
         if (!id || !newCreditLimit) return;
         setActionLoading(true);
         try {
-            await customerService.updateCreditLimit(id, parseFloat(newCreditLimit));
+            const dueRaw = newCreditDueDays.trim();
+            await customerService.updateCreditLimit(id, parseFloat(newCreditLimit), {
+                credit_due_days: dueRaw === '' ? null : parseInt(dueRaw, 10),
+            });
             toast.success('Credit limit updated successfully');
             setShowCreditLimitDialog(false);
             fetchDetails();
@@ -370,6 +383,11 @@ function CustomerDetailContent() {
                                 valueClassName={customer.currentBalance > 0 ? "text-red-600" : "text-green-600"}
                             />
                             <StatRow icon={CreditCard} label="Credit Limit" value={formatCurrency(customer.creditLimit)} />
+                            <StatRow
+                                icon={Calendar}
+                                label="Credit due days"
+                                value={customer.creditDueDays == null ? "Not set" : `${customer.creditDueDays} days`}
+                            />
                             <StatRow icon={ShoppingBag} label="Total Orders" value={customer.customerName === "Walking Customer" ? "POS Only" : customer.totalOrders.toString()} />
                             <StatRow icon={Star} label="Avg Rating" value={(customer.averageRating || 0).toFixed(1)} />
 
@@ -773,6 +791,20 @@ function CustomerDetailContent() {
                             />
                             <p className="text-xs text-muted-foreground italic">
                                 Currently set to {formatCurrency(customer.creditLimit)}
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="credit-due-days">Credit due days</Label>
+                            <Input
+                                id="credit-due-days"
+                                type="number"
+                                min="0"
+                                value={newCreditDueDays}
+                                onChange={(e) => setNewCreditDueDays(e.target.value)}
+                                placeholder="Empty = no due-days lock"
+                            />
+                            <p className="text-xs text-muted-foreground italic">
+                                After this many days with outstanding, new credit sales lock. Leave empty to disable.
                             </p>
                         </div>
                     </div>
