@@ -56,6 +56,7 @@ interface RewardConfig {
     referral_reward_points: string;
     referee_reward_points: string;
     min_referral_order_amount: string;
+    otp_required_for_redeem: boolean;
 }
 
 export default function OffersPage() {
@@ -82,11 +83,13 @@ export default function OffersPage() {
             earning_type: 'percentage',
             loyalty_earning_value: "1.0",
             loyalty_min_order_value: "0.0",
+            otp_required_for_redeem: false,
         }
     });
 
     const isLoyaltyActive = watch("is_active");
     const isReferralEnabled = watch("is_referral_enabled");
+    const otpRequiredForRedeem = watch("otp_required_for_redeem");
 
     // --- Effects ---
     useEffect(() => {
@@ -125,6 +128,7 @@ export default function OffersPage() {
                 earning_type: data.earning_type || "percentage",
                 loyalty_earning_value: data.loyalty_earning_value?.toString() || "1.0",
                 loyalty_min_order_value: data.loyalty_min_order_value?.toString() || "0.0",
+                otp_required_for_redeem: Boolean(data.otp_required_for_redeem),
             });
         } catch (error) {
             console.error("Failed to fetch reward config:", error);
@@ -151,6 +155,7 @@ export default function OffersPage() {
                 earning_type: data.earning_type,
                 loyalty_earning_value: parseFloat(data.loyalty_earning_value) || 0,
                 loyalty_min_order_value: parseFloat(data.loyalty_min_order_value) || 0,
+                otp_required_for_redeem: Boolean(data.otp_required_for_redeem),
             });
             toast.success("Settings saved successfully");
             fetchConfig();
@@ -384,6 +389,20 @@ export default function OffersPage() {
                                         </div>
 
                                         <Separator />
+
+                                        <div className="flex items-center justify-between rounded-lg border p-3">
+                                            <div>
+                                                <Label htmlFor="otp-required">Require OTP to redeem</Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Staff and app checkout must send/enter a redeem OTP when this is on.
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="otp-required"
+                                                checked={otpRequiredForRedeem}
+                                                onCheckedChange={(checked) => setValue("otp_required_for_redeem", checked)}
+                                            />
+                                        </div>
 
                                         <div className="grid gap-4 md:grid-cols-2">
                                             <div className="space-y-2">

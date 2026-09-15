@@ -30,12 +30,19 @@ import {
   parseLookupExport,
   parseLookupResponse,
 } from "@/lib/customerLookup";
+import { LoyaltyRedeemPanel } from "@/components/customers/LoyaltyRedeemPanel";
 
 interface CustomerLookupPanelProps {
   canExport?: boolean;
+  canRedeem?: boolean;
+  locationId?: number | null;
 }
 
-export function CustomerLookupPanel({ canExport = false }: CustomerLookupPanelProps) {
+export function CustomerLookupPanel({
+  canExport = false,
+  canRedeem = false,
+  locationId = null,
+}: CustomerLookupPanelProps) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -181,6 +188,12 @@ export function CustomerLookupPanel({ canExport = false }: CustomerLookupPanelPr
                 Showing first export page (orders.read). Duplicate merge is not available.
               </p>
             )}
+            <LoyaltyRedeemPanel
+              customerId={result.customer_id}
+              locationId={locationId}
+              orders={result.recent_orders}
+              canRedeem={canRedeem}
+            />
           </div>
         )}
       </CardContent>

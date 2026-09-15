@@ -54,6 +54,9 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { toast } from 'sonner';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { LoyaltyRedeemPanel } from '@/components/customers/LoyaltyRedeemPanel';
+import { canStaffRedeem } from '@/lib/loyaltyRedeem';
 
 interface CustomerDetail {
     customerId: number;
@@ -103,6 +106,8 @@ function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>):
 function CustomerDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { permissions, isModuleEnabled, locationId } = useOrgContext();
+    const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [id, setId] = useState<number | null>(null);
     const capturedIdRef = useRef<number | null>(null);
     // Capture once on first client render — never re-resolve after Next wipes search.
@@ -609,6 +614,15 @@ function CustomerDetailContent() {
                                 </TabsContent>
 
                                 <TabsContent value="rewards">
+                                    <div className="mb-6 p-4 border rounded-lg">
+                                        <LoyaltyRedeemPanel
+                                            customerId={customer.customerId}
+                                            locationId={locationId}
+                                            orders={customer.recentOrders}
+                                            canRedeem={canRedeemLoyalty}
+                                            onRedeemed={() => fetchDetails()}
+                                        />
+                                    </div>
                                     {customer.rewardHistory?.length === 0 ? (
                                         <div className="text-center py-10 text-muted-foreground">No reward history.</div>
                                     ) : (

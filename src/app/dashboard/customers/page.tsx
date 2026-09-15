@@ -39,6 +39,7 @@ import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrig
 import { CustomerLookupPanel } from '@/components/customers/CustomerLookupPanel';
 import { useOrgContext } from '@/hooks/useOrgContext';
 import { PERMISSIONS } from '@/lib/org';
+import { canStaffRedeem } from '@/lib/loyaltyRedeem';
 
 interface RetailerCustomer {
     customerId: number;
@@ -59,8 +60,9 @@ interface RetailerCustomer {
 
 export default function CustomersPage() {
     const router = useRouter();
-    const { hasPermission } = useOrgContext();
+    const { hasPermission, isModuleEnabled, locationId, permissions } = useOrgContext();
     const canExportHistory = hasPermission(PERMISSIONS.ORDERS_READ);
+    const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [customers, setCustomers] = useState<RetailerCustomer[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -242,7 +244,11 @@ export default function CustomersPage() {
                 <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
             </div>
 
-            <CustomerLookupPanel canExport={canExportHistory} />
+            <CustomerLookupPanel
+                canExport={canExportHistory}
+                canRedeem={canRedeemLoyalty}
+                locationId={locationId}
+            />
 
             {/* Analytics Cards */}
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
