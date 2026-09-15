@@ -23,9 +23,13 @@ import { Switch } from "@/components/ui/switch";
 import { productService } from "@/services/api";
 import { PriceUpdatePrintPrompt } from "@/components/labels/PriceUpdatePrintPrompt";
 import { enqueuePrintProductIds } from "@/lib/labelPrint/printList";
+import { useOrgContext } from "@/hooks/useOrgContext";
+import { PERMISSIONS } from "@/lib/org";
 
 export default function ProductsPage() {
     const router = useRouter();
+    const { hasPermission } = useOrgContext();
+    const canEditAppPrice = hasPermission(PERMISSIONS.CATALOG_PRICE);
     const [products, setProducts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -614,6 +618,7 @@ export default function ProductsPage() {
                 <BulkEditMatrix
                     open={isBulkMatrixOpen}
                     products={products.filter(p => selectedProductIds.has(p.id))}
+                    canEditAppPrice={canEditAppPrice}
                     onClose={() => setIsBulkMatrixOpen(false)}
                     onSave={async (changes) => {
                         try {
@@ -624,6 +629,7 @@ export default function ProductsPage() {
                                     return {
                                         ...p,
                                         ...(modification.price !== undefined ? { price: modification.price } : {}),
+                                        ...(modification.app_price !== undefined ? { app_price: modification.app_price } : {}),
                                         ...(modification.quantity !== undefined ? { quantity: modification.quantity } : {}),
                                         ...(modification.is_active !== undefined ? { is_active: modification.is_active } : {}),
                                         ...(modification.is_seasonal !== undefined ? { is_seasonal: modification.is_seasonal } : {})

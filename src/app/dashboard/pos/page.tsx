@@ -15,11 +15,13 @@ import POSReturnModal from '@/components/pos/POSReturnModal';
 import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
+import { formatInrAmount, hasDistinctAppPrice, posUnitPrice } from '@/lib/channelPrice';
 
 interface Product {
     id: number;
     name: string;
     price: number | string;
+    app_price?: number | string | null;
     discounted_price: number | string;
     image: string;
     quantity: number; // Stock qty
@@ -522,7 +524,7 @@ export default function POSPage() {
 
     const finalizeAddToCart = (product: Product, batch?: any) => {
         const shouldTrack = product.track_inventory !== false;
-        const price = batch ? parseFloat(batch.price) : (typeof product.price === 'string' ? parseFloat(product.price) : product.price);
+        const price = posUnitPrice(product, batch);
         const originalPrice = batch 
             ? parseFloat(batch.original_price) 
             : (typeof product.discounted_price === 'string' 
@@ -1024,7 +1026,8 @@ export default function POSPage() {
                     ) : (
                         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 pb-20">
                             {displayedProducts.map((product, gridIdx) => {
-                                const price = product.discounted_price || product.price;
+                                const price = posUnitPrice(product);
+                                const showApp = hasDistinctAppPrice(product);
                                 const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
                                 const isGridActive = gridIdx === activeGridIndex;
                                 
@@ -1062,7 +1065,13 @@ export default function POSPage() {
                                             </h3>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
-                                            <span className="text-lg font-bold text-gray-900">₹{price}</span>
+                                            <div className="flex flex-col">
+                                                <span className="text-lg font-bold text-gray-900">₹{price}</span>
+                                                <span className="text-[10px] font-semibold uppercase text-gray-400">Store</span>
+                                                {showApp && (
+                                                    <span className="text-[10px] text-gray-400">App ₹{formatInrAmount(product.app_price)} (not charged)</span>
+                                                )}
+                                            </div>
                                             <span className={`text-xs font-medium px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
                                                 {product.track_inventory === false ? 'Available' : `${product.quantity} in stock`}
                                             </span>

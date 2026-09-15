@@ -31,6 +31,9 @@ import {
 import { Autocomplete } from "@/components/ui/Autocomplete";
 import { productService } from "@/services/api";
 import { BarcodeScanner } from "@/components/products/BarcodeScanner";
+import { useOrgContext } from "@/hooks/useOrgContext";
+import { appendAppPriceToFormData } from "@/lib/channelPrice";
+import { PERMISSIONS } from "@/lib/org";
 
 interface ProductFormProps {
     initialData?: any;
@@ -39,12 +42,15 @@ interface ProductFormProps {
 
 export function ProductForm({ initialData, isEditing = false }: ProductFormProps) {
     const router = useRouter();
+    const { hasPermission } = useOrgContext();
+    const canEditApp = hasPermission(PERMISSIONS.CATALOG_PRICE);
     const [isLoading, setIsLoading] = useState(false);
 
     // Form State
     const [name, setName] = useState(initialData?.name ?? "");
     const [description, setDescription] = useState(initialData?.description ?? "");
     const [price, setPrice] = useState(initialData?.price ?? "");
+    const [appPrice, setAppPrice] = useState(initialData?.app_price ?? "");
     const [purchasePrice, setPurchasePrice] = useState(initialData?.purchase_price ?? "");
     const [originalPrice, setOriginalPrice] = useState(initialData?.original_price ?? "");
     const [quantity, setQuantity] = useState(initialData?.quantity !== undefined ? String(initialData.quantity) : "0");
@@ -260,6 +266,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             formData.append("name", name);
             if (description) formData.append("description", description);
             formData.append("price", price);
+            appendAppPriceToFormData(formData, String(appPrice ?? ""), canEditApp);
             if (purchasePrice) formData.append("purchase_price", purchasePrice);
             if (originalPrice) formData.append("original_price", originalPrice);
             if (trackInventory) {
@@ -479,9 +486,9 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
 
                 {!hasBatches ? (
                     <>
-                        {/* Price */}
+                        {/* Store / POS price */}
                         <div className="space-y-2">
-                            <Label htmlFor="price">Selling Price (₹) *</Label>
+                            <Label htmlFor="price">Store price (POS) (₹) *</Label>
                             <Input
                                 id="price"
                                 type="number"
@@ -491,6 +498,27 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                                 onChange={(e) => setPrice(e.target.value)}
                                 required={!hasBatches}
                             />
+                            <p className="text-xs text-muted-foreground">
+                                Charged at the counter. Customer app uses app price when set.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="appPrice">App price (₹)</Label>
+                            <Input
+                                id="appPrice"
+                                type="number"
+                                step="0.01"
+                                placeholder="Same as store"
+                                value={appPrice}
+                                onChange={(e) => setAppPrice(e.target.value)}
+                                disabled={!canEditApp}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                {canEditApp
+                                    ? "Leave empty to use store price on the app. Needs catalog.price."
+                                    : "Read-only — catalog.price is required to change the app list."}
+                            </p>
                         </div>
 
                         {/* Purchase Price */}
@@ -558,6 +586,21 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                     </>
                 ) : (
                     <div className="md:col-span-2 space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="appPriceBatches">App price (₹)</Label>
+                            <Input
+                                id="appPriceBatches"
+                                type="number"
+                                step="0.01"
+                                placeholder="Same as store"
+                                value={appPrice}
+                                onChange={(e) => setAppPrice(e.target.value)}
+                                disabled={!canEditApp}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Product-level app list. Batch rows stay store / POS selling price.
+                            </p>
+                        </div>
                         <Card className="border-primary/20">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-primary/5">
                                 <CardTitle className="text-sm font-medium">Batch Management</CardTitle>
