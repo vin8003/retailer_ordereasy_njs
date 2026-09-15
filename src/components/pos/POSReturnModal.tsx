@@ -23,6 +23,7 @@ interface OrderItem {
     batch_id: number | null;
     hsn_code: string;
     gst_rate: number;
+    product_gst_rate?: number;
     tax_type: 'GST' | 'IGST';
 }
 
@@ -92,15 +93,16 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
         setReturnQtys(prev => ({ ...prev, [itemId]: newQty }));
     };
 
-    const calculateReturnTax = () => calculateInclusiveReturnTax(
+    const returnTaxTotals = calculateInclusiveReturnTax(
         selectedOrder?.items.map(item => ({
             quantity: returnQtys[item.id] || 0,
             unitPrice: item.unit_price,
             gstRate: item.gst_rate,
+            productGstRate: item.product_gst_rate,
         })) || [],
     );
 
-    const calculateRefund = () => calculateReturnTax().inclusiveTotal;
+    const calculateRefund = () => returnTaxTotals.inclusiveTotal;
 
     const handleSubmit = async () => {
         const itemsToReturn = selectedOrder?.items
@@ -346,7 +348,10 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
                         <div>
                             <div className="text-sm text-gray-500 font-medium">Total Refund (incl. tax)</div>
                             <div className="text-xs text-gray-400">
-                                Taxable ₹{calculateReturnTax().taxableAmount.toFixed(2)} + Tax ₹{calculateReturnTax().taxAmount.toFixed(2)}
+                                Taxable ₹{returnTaxTotals.taxableAmount.toFixed(2)} + Tax ₹{returnTaxTotals.taxAmount.toFixed(2)}
+                                {returnTaxTotals.rateCoerced && (
+                                    <span className="block text-amber-600">Tax preview adjusted: invalid GST rate on line</span>
+                                )}
                             </div>
                         </div>
                         <div className="text-3xl font-black text-gray-900">₹{calculateRefund().toFixed(2)}</div>

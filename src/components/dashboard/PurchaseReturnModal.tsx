@@ -26,6 +26,7 @@ interface PurchaseItem {
     batch_number?: string;
     hsn_code: string;
     gst_rate: number;
+    product_gst_rate?: number;
     tax_type: 'GST' | 'IGST';
 }
 
@@ -115,15 +116,16 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
         setReturnQtys(prev => ({ ...prev, [itemId]: newQty }));
     };
 
-    const calculateReturnTax = () => calculateInclusiveReturnTax(
+    const returnTaxTotals = calculateInclusiveReturnTax(
         invoiceItems.map(item => ({
             quantity: returnQtys[item.id] || 0,
             unitPrice: item.purchase_price,
             gstRate: item.gst_rate,
+            productGstRate: item.product_gst_rate,
         })),
     );
 
-    const calculateTotal = () => calculateReturnTax().inclusiveTotal;
+    const calculateTotal = () => returnTaxTotals.inclusiveTotal;
 
     const handleSubmit = async () => {
         const itemsToReturn = invoiceItems
@@ -299,7 +301,10 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estimated Credit Note (Incl. Tax)</p>
                         <div className="text-3xl font-black text-gray-900">₹{calculateTotal().toLocaleString('en-IN')}</div>
                         <p className="text-xs text-gray-400 mt-1">
-                            Taxable ₹{calculateReturnTax().taxableAmount.toFixed(2)} + Tax ₹{calculateReturnTax().taxAmount.toFixed(2)}
+                            Taxable ₹{returnTaxTotals.taxableAmount.toFixed(2)} + Tax ₹{returnTaxTotals.taxAmount.toFixed(2)}
+                            {returnTaxTotals.rateCoerced && (
+                                <span className="block text-amber-600">Tax preview adjusted: invalid GST rate on line</span>
+                            )}
                         </p>
                     </div>
                     <div className="flex gap-4">
