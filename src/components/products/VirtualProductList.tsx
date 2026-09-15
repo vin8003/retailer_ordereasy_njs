@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineNumpadSheet } from "@/components/products/InlineNumpadSheet";
+import { ChannelPriceLines } from "@/components/products/ChannelPriceLines";
 
 interface Product {
     id: number;
@@ -25,6 +26,7 @@ interface Product {
     category_name?: string;
     unit: string;
     price: string | number;
+    app_price?: string | number | null;
     original_price?: string | number;
     quantity: number;
     track_inventory: boolean;
@@ -160,7 +162,7 @@ export function VirtualProductList({
                 <div>Name</div>
                 <div>Category</div>
                 <div>Stock</div>
-                <div className="text-right">Price</div>
+                <div className="text-right">Store / App</div>
                 <div className="text-center">Featured</div>
                 <div></div>
             </div>
@@ -424,7 +426,7 @@ function SwipeableRow({
                             className="cursor-pointer p-2 -mr-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/10 inline-block"
                             onClick={(e) => { e.stopPropagation(); onPriceClick?.(); }}
                         >
-                            <div className="font-bold text-right">₹{Number(product.price).toFixed(2)}</div>
+                            <ChannelPriceLines product={product} />
                             {product.original_price && Number(product.original_price) > Number(product.price) && (
                                 <div className="text-xs text-muted-foreground line-through text-right">
                                     ₹{Number(product.original_price).toFixed(2)}
@@ -568,7 +570,10 @@ function SwipeableRow({
                             className="text-right cursor-pointer"
                             onClick={(e) => { e.stopPropagation(); onPriceClick?.(); }}
                         >
-                            <div className="font-extrabold text-sm text-foreground">₹{Number(product.price).toFixed(2)}</div>
+                            <ChannelPriceLines
+                                product={product}
+                                storeClassName="font-extrabold text-sm text-foreground"
+                            />
                             {product.original_price && Number(product.original_price) > Number(product.price) && (
                                 <div className="text-[10px] text-muted-foreground line-through">
                                     ₹{Number(product.original_price).toFixed(2)}

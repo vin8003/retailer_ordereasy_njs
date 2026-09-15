@@ -13,6 +13,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ChannelPriceLines } from "@/components/products/ChannelPriceLines";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -29,6 +30,7 @@ interface Product {
     category_name?: string;
     unit: string;
     price: string | number;
+    app_price?: string | number | null;
     original_price?: string | number;
     quantity: number;
     image?: string;
@@ -67,7 +69,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                             <TableHead>Name</TableHead>
                             <TableHead>Category</TableHead>
                             <TableHead>Stock</TableHead>
-                            <TableHead className="text-right">Price</TableHead>
+                            <TableHead className="text-right">Store / App</TableHead>
                             <TableHead className="text-center w-[100px]">Featured</TableHead>
                             <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
@@ -111,7 +113,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <div className="font-bold">₹{Number(product.price).toFixed(2)}</div>
+                                    <ChannelPriceLines product={product} />
                                     {product.original_price && Number(product.original_price) > Number(product.price) && (
                                         <div className="text-xs text-muted-foreground line-through">
                                             ₹{Number(product.original_price).toFixed(2)}
@@ -225,13 +227,14 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[10px] text-muted-foreground font-semibold">Selling Price</span>
-                                    <div className="flex items-baseline gap-1 mt-0.5">
-                                        <span className="font-extrabold text-[15px] text-gray-900">₹{Number(product.price).toFixed(2)}</span>
-                                        {product.original_price && Number(product.original_price) > Number(product.price) && (
-                                            <span className="text-[10px] text-muted-foreground line-through">₹{Number(product.original_price).toFixed(0)}</span>
-                                        )}
-                                    </div>
+                                    <span className="text-[10px] text-muted-foreground font-semibold">Store / App</span>
+                                    <ChannelPriceLines
+                                        product={product}
+                                        storeClassName="font-extrabold text-[15px] text-gray-900"
+                                    />
+                                    {product.original_price && Number(product.original_price) > Number(product.price) && (
+                                        <span className="text-[10px] text-muted-foreground line-through">₹{Number(product.original_price).toFixed(0)}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>

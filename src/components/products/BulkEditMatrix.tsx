@@ -11,6 +11,7 @@ interface Product {
     id: number;
     name: string;
     price: string | number;
+    app_price?: string | number | null;
     quantity: number;
     original_price?: string | number;
     barcode?: string;
@@ -24,12 +25,14 @@ interface BulkEditMatrixProps {
     products: Product[];
     onClose: () => void;
     onSave: (changes: any[]) => Promise<void>;
+    canEditAppPrice?: boolean;
 }
 
-export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatrixProps) {
+export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPrice = false }: BulkEditMatrixProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [changes, setChanges] = useState<Record<number, {
         price?: string,
+        app_price?: string,
         quantity?: string,
         name?: string,
         original_price?: string,
@@ -72,6 +75,9 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
             const payloadItem: any = { id };
             if (changeData.price !== undefined && changeData.price !== "") {
                 payloadItem.price = Number(changeData.price);
+            }
+            if (canEditAppPrice && changeData.app_price !== undefined) {
+                payloadItem.app_price = changeData.app_price === "" ? null : Number(changeData.app_price);
             }
             if (changeData.quantity !== undefined && changeData.quantity !== "") {
                 payloadItem.quantity = Number(changeData.quantity);
@@ -132,10 +138,11 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
 
             {/* Matrix Header Columns */}
             <div className="overflow-x-auto w-full">
-                <div className="grid grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px] gap-2 p-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground sticky top-0 md:px-6">
+                <div className={`grid ${canEditAppPrice ? "grid-cols-[200px_100px_100px_100px_100px_150px_80px_100px] min-w-[930px]" : "grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px]"} gap-2 p-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground sticky top-0 md:px-6`}>
                     <div>Product Name</div>
                     <div className="text-right">Original Price (₹)</div>
-                    <div className="text-right">Sell Price (₹)</div>
+                    <div className="text-right">Store (₹)</div>
+                    {canEditAppPrice && <div className="text-right">App (₹)</div>}
                     <div className="text-right">Stock</div>
                     <div>Barcode</div>
                     <div className="text-center">Active</div>
@@ -161,6 +168,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                             const currentName = productChanges?.name !== undefined ? productChanges.name : product.name;
                             const currentMRP = productChanges?.original_price !== undefined ? productChanges.original_price : (product.original_price || "");
                             const currentPrice = productChanges?.price !== undefined ? productChanges.price : product.price;
+                            const currentAppPrice = productChanges?.app_price !== undefined ? productChanges.app_price : (product.app_price ?? "");
                             const currentQuantity = productChanges?.quantity !== undefined ? productChanges.quantity : product.quantity;
                             const currentBarcode = productChanges?.barcode !== undefined ? productChanges.barcode : (product.barcode || "");
                             const currentIsActive = productChanges?.is_active !== undefined ? productChanges.is_active : (product.is_active !== false);
@@ -180,7 +188,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                     className={`
-                                    grid grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px] gap-2 items-center 
+                                    grid ${canEditAppPrice ? "grid-cols-[200px_100px_100px_100px_100px_150px_80px_100px] min-w-[930px]" : "grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px]"} gap-2 items-center 
                                     p-2 border-b bg-background
                                     ${isEdited ? 'border-l-2 border-l-blue-500 bg-blue-50/20' : ''}
                                 `}
@@ -213,6 +221,18 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                             placeholder="0.00"
                                         />
                                     </div>
+                                    {canEditAppPrice && (
+                                    <div>
+                                        <Input
+                                            type="number"
+                                            inputMode="decimal"
+                                            className="h-9 w-full text-right bg-white dark:bg-black focus:ring-blue-500"
+                                            value={currentAppPrice}
+                                            onChange={(e) => handleInputChange(product.id, 'app_price', e.target.value)}
+                                            placeholder="Store"
+                                        />
+                                    </div>
+                                    )}
                                     <div>
                                         <Input
                                             type="number"
