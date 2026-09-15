@@ -50,6 +50,7 @@ import {
     packLinkDiffers,
     packLinkIsSet,
     quantityDiffers,
+    applyLinkedChildQuantity,
     type PackLinkFields,
 } from "@/lib/inventoryAdjust";
 
@@ -359,8 +360,10 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (isLinkedToParent && !isParentBulk) {
                 if (parentBulkProductId) formData.append("parent_bulk_product", parentBulkProductId);
                 if (conversionFactor) formData.append("conversion_factor", conversionFactor);
-                // Child products: force quantity to 0 (stock comes from parent)
-                formData.set("quantity", "0");
+                applyLinkedChildQuantity(formData, {
+                    isLinkedChild: true,
+                    canAdjust,
+                });
             }
 
             // KAN-49: visibility toggle lives on the parent bulk SKU.

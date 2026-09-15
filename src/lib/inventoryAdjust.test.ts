@@ -5,6 +5,7 @@ import {
   PACK_ADJUST_MESSAGE,
   PERM_INVENTORY_ADJUST,
   QTY_ADJUST_MESSAGE,
+  applyLinkedChildQuantity,
   axiosInventoryAdjustError,
   canAdjustInventory,
   isPositiveConversionFactor,
@@ -43,6 +44,31 @@ describe("pack / qty diffs", () => {
     expect(packLinkDiffers(base, base)).toBe(false);
     expect(quantityDiffers("10", "10.0")).toBe(false);
     expect(quantityDiffers("10", "11")).toBe(true);
+    expect(quantityDiffers("50", "0")).toBe(true);
+  });
+});
+
+describe("linked child quantity on save", () => {
+  it("omits quantity for linked child without inventory.adjust (does not send 0)", () => {
+    const fd = new FormData();
+    fd.set("quantity", "50");
+    applyLinkedChildQuantity(fd, { isLinkedChild: true, canAdjust: false });
+    expect(fd.has("quantity")).toBe(false);
+    expect(fd.get("quantity")).toBeNull();
+  });
+
+  it("keeps form quantity for linked child when canAdjust (intentional adjust still sent)", () => {
+    const fd = new FormData();
+    fd.set("quantity", "12");
+    applyLinkedChildQuantity(fd, { isLinkedChild: true, canAdjust: true });
+    expect(fd.get("quantity")).toBe("12");
+  });
+
+  it("leaves non-child quantity untouched without inventory.adjust", () => {
+    const fd = new FormData();
+    fd.set("quantity", "7");
+    applyLinkedChildQuantity(fd, { isLinkedChild: false, canAdjust: false });
+    expect(fd.get("quantity")).toBe("7");
   });
 });
 

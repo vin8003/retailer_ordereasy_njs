@@ -59,6 +59,22 @@ export function quantityDiffers(
   return a !== b;
 }
 
+/**
+ * Linked child on-hand is derived from parent/factor (not 0).
+ * Forcing quantity=0 after the quantityDiffers gate 403s users without inventory.adjust.
+ * Omit quantity when !canAdjust. When canAdjust, leave the form value so an
+ * intentional on-hand edit still goes through.
+ */
+export function applyLinkedChildQuantity(
+  formData: FormData,
+  opts: { isLinkedChild: boolean; canAdjust: boolean }
+): void {
+  if (!opts.isLinkedChild) return;
+  if (!opts.canAdjust) {
+    formData.delete("quantity");
+  }
+}
+
 export type AdjustDeniedKind = "quantity" | "pack" | "generic";
 
 export function classifyAdjustError(
