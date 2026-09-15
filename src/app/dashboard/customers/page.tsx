@@ -36,6 +36,9 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { CustomerLookupPanel } from '@/components/customers/CustomerLookupPanel';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { PERMISSIONS } from '@/lib/org';
 
 interface RetailerCustomer {
     customerId: number;
@@ -56,6 +59,8 @@ interface RetailerCustomer {
 
 export default function CustomersPage() {
     const router = useRouter();
+    const { hasPermission } = useOrgContext();
+    const canExportHistory = hasPermission(PERMISSIONS.ORDERS_READ);
     const [customers, setCustomers] = useState<RetailerCustomer[]>([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -236,6 +241,8 @@ export default function CustomersPage() {
             <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
             </div>
+
+            <CustomerLookupPanel canExport={canExportHistory} />
 
             {/* Analytics Cards */}
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

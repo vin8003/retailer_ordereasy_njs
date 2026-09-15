@@ -309,6 +309,15 @@ export const customerService = {
       credit_limit,
       ...(extra && "credit_due_days" in extra ? { credit_due_days: extra.credit_due_days } : {}),
     }),
+  lookupByPhone: (phone: string) =>
+    api.get("customer/retailer/lookup/", { params: { phone } }),
+  exportLookupHistory: (
+    phone: string,
+    params?: { page?: number; page_size?: number }
+  ) =>
+    api.get("customer/retailer/lookup/", {
+      params: { phone, export: 1, ...params },
+    }),
 };
 
 export const rewardService = {
