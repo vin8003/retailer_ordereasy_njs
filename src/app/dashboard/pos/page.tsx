@@ -37,9 +37,8 @@ import {
     FIFO_PICK_HINT,
     expiryHint,
     isBatchExpired,
-    saleableBatches,
-    saleableQuantityHint,
     sortBatchesFifo,
+    unexpiredBatches,
 } from '@/lib/batchExpiry';
 
 interface Product {
@@ -55,7 +54,6 @@ interface Product {
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
-    saleable_quantity?: number | string;
 }
 
 interface CartItem {
@@ -573,7 +571,7 @@ export default function POSPage() {
         if (product.has_batches && product.batches && product.batches.length > 0) {
             // Default is_active to true — POS fast path only returns active batches
             const activeBatches = product.batches.filter(b => b.is_active !== false);
-            const pickable = saleableBatches(activeBatches);
+            const pickable = unexpiredBatches(activeBatches);
             
             if (scanBarcode) {
                 // Barcode scan: find batches matching this specific barcode
@@ -599,7 +597,7 @@ export default function POSPage() {
             
             // Manual click (no scan) or barcode didn't match any batch
             if (pickable.length === 1 && activeBatches.length === 1) {
-                // Only 1 active saleable batch -> auto-select, no modal needed
+                // Only 1 active unexpired batch -> auto-select, no modal needed
                 finalizeAddToCart(product, pickable[0]);
             } else if (pickable.length === 0 && activeBatches.length > 0) {
                 toast.error(EXPIRED_BATCH_SALE_MESSAGE);
@@ -1770,8 +1768,7 @@ export default function POSPage() {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
                                     const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
                                     const expired = isBatchExpired(batch.expiry_date);
-                                    const saleableHint = saleableQuantityHint(batch.saleable_quantity ?? batchModalProduct.saleable_quantity);
-                                    
+
                                     return (
                                         <button
                                             key={batch.id}
@@ -1810,11 +1807,8 @@ export default function POSPage() {
                                                 <p className={`text-xs font-bold uppercase tracking-wider ${batch.quantity > 5 ? 'text-green-600' : 'text-red-500'}`}>
                                                     {batch.quantity} in stock
                                                 </p>
-                                                {saleableHint && (
-                                                    <p className="text-[10px] text-gray-400 font-medium">{saleableHint}</p>
-                                                )}
                                                 <div className="mt-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold text-sm">
-                                                    {expired ? 'Not saleable' : <>Select <Check size={16} /></>}
+                                                    {expired ? 'Expired' : <>Select <Check size={16} /></>}
                                                 </div>
                                             </div>
                                         </button>

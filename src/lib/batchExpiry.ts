@@ -13,8 +13,6 @@ export interface ExpiryBatch {
   expiry_date?: string | null;
   quantity?: number | string;
   is_active?: boolean;
-  saleable?: boolean;
-  saleable_quantity?: number | string;
 }
 
 export function canAdjustInventory(
@@ -47,20 +45,14 @@ export function isBatchExpired(
   return day < today;
 }
 
-export function isBatchSaleable(
-  batch: ExpiryBatch,
-  today: string = todayIsoDate()
-): boolean {
-  if (batch.is_active === false) return false;
-  if (typeof batch.saleable === "boolean") return batch.saleable;
-  return !isBatchExpired(batch.expiry_date, today);
-}
-
-export function saleableBatches<T extends ExpiryBatch>(
+/** Active lots that are not past expiry_date. Undated lots stay eligible. */
+export function unexpiredBatches<T extends ExpiryBatch>(
   batches: T[],
   today: string = todayIsoDate()
 ): T[] {
-  return batches.filter((b) => isBatchSaleable(b, today));
+  return batches.filter(
+    (b) => b.is_active !== false && !isBatchExpired(b.expiry_date, today)
+  );
 }
 
 /** Display order matching BE FIFO: earliest dated expiry, nulls last. Not a second engine. */
@@ -80,14 +72,6 @@ export function expiryHint(expiryDate: string | null | undefined): string {
   if (!day) return "No expiry";
   if (isBatchExpired(day)) return `Expired ${day}`;
   return `Exp ${day}`;
-}
-
-/** Only when the API already sends saleable_quantity — do not invent a field. */
-export function saleableQuantityHint(value: unknown): string | null {
-  if (value == null || value === "") return null;
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return null;
-  return `Saleable ${n}`;
 }
 
 export function expiryDateForWrite(value: string | null | undefined): string | null {

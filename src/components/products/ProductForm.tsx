@@ -40,7 +40,6 @@ import {
     canAdjustInventory,
     expiryHint,
     prepareBatchesForSave,
-    saleableQuantityHint,
 } from "@/lib/batchExpiry";
 
 interface ProductFormProps {
@@ -58,7 +57,6 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             .filter((b: { id?: number }) => typeof b.id === "number")
             .map((b: { id: number; expiry_date?: string | null }) => [b.id, b.expiry_date ?? null])
     ) as Record<number, string | null>;
-    const saleableHint = saleableQuantityHint(initialData?.saleable_quantity);
     const [isLoading, setIsLoading] = useState(false);
 
     // Form State
@@ -635,7 +633,6 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                             </CardHeader>
                             <p className="px-4 pt-3 text-xs text-muted-foreground">
                                 {FIFO_PICK_HINT}
-                                {saleableHint ? ` ${saleableHint} (from API).` : ""}
                                 {!canAdjust ? " inventory.adjust is required to change expiry." : ""}
                             </p>
                             <CardContent className="p-0">

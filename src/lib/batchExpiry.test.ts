@@ -7,11 +7,9 @@ import {
   canAdjustInventory,
   expiryHint,
   isBatchExpired,
-  isBatchSaleable,
   prepareBatchesForSave,
-  saleableBatches,
-  saleableQuantityHint,
   sortBatchesFifo,
+  unexpiredBatches,
 } from "./batchExpiry";
 
 describe("canAdjustInventory", () => {
@@ -22,26 +20,31 @@ describe("canAdjustInventory", () => {
   });
 });
 
-describe("expiry / saleable hints", () => {
+describe("expiry hints", () => {
   it("treats null expiry as still valid (BE optional until filled)", () => {
     expect(isBatchExpired(null, "2026-09-15")).toBe(false);
     expect(isBatchExpired("", "2026-09-15")).toBe(false);
-    expect(isBatchSaleable({ expiry_date: null }, "2026-09-15")).toBe(true);
+    expect(unexpiredBatches([{ expiry_date: null }], "2026-09-15")).toHaveLength(1);
   });
 
   it("marks dated lots expired when before today (negative)", () => {
     expect(isBatchExpired("2026-09-14", "2026-09-15")).toBe(true);
     expect(isBatchExpired("2026-09-15", "2026-09-15")).toBe(false);
-    expect(isBatchSaleable({ expiry_date: "2026-01-01" }, "2026-09-15")).toBe(false);
+    expect(unexpiredBatches([{ expiry_date: "2026-01-01" }], "2026-09-15")).toHaveLength(0);
     expect(expiryHint("2026-01-01")).toMatch(/Expired/);
   });
 
-  it("uses API saleable flag when present and ignores missing saleable_quantity", () => {
-    expect(isBatchSaleable({ expiry_date: "2020-01-01", saleable: true }, "2026-09-15")).toBe(
-      true
-    );
-    expect(saleableQuantityHint(undefined)).toBeNull();
-    expect(saleableQuantityHint("4.00")).toBe("Saleable 4");
+  it("filters pickable lots from expiry_date only (no saleable_* contract)", () => {
+    expect(
+      unexpiredBatches(
+        [
+          { expiry_date: "2020-01-01", is_active: true },
+          { expiry_date: null, is_active: true },
+          { expiry_date: "2026-12-01", is_active: false },
+        ],
+        "2026-09-15"
+      )
+    ).toEqual([{ expiry_date: null, is_active: true }]);
   });
 
   it("sorts FIFO earliest expiry, nulls last (display hint only)", () => {
@@ -51,9 +54,9 @@ describe("expiry / saleable hints", () => {
       { id: 3, expiry_date: "2026-10-01" },
     ]);
     expect(sorted.map((b) => b.id)).toEqual([3, 2, 1]);
-    expect(saleableBatches([{ expiry_date: "2020-01-01" }, { expiry_date: null }]).length).toBe(
-      1
-    );
+    expect(
+      unexpiredBatches([{ expiry_date: "2020-01-01" }, { expiry_date: null }], "2026-09-15")
+    ).toHaveLength(1);
   });
 });
 
