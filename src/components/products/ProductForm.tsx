@@ -459,6 +459,7 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         id="hsnCode"
                         placeholder="e.g. 21069099"
                         value={hsnCode}
+                        maxLength={8}
                         onChange={(e) => setHsnCode(e.target.value)}
                     />
                     {shouldRecommendHsn(gstRate, hsnCode) && (

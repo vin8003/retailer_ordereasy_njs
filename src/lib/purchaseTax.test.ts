@@ -15,6 +15,16 @@ describe('calculatePurchaseTax', () => {
       taxableAmount: 150.34,
       taxAmount: 18.06,
       grandTotal: 168,
+      roundOff: -0.4,
+    });
+  });
+
+  it('reports a zero round off when the inclusive total is already whole rupees', () => {
+    expect(calculatePurchaseTax([{ total: 118, gstRate: 18 }])).toEqual({
+      taxableAmount: 100,
+      taxAmount: 18,
+      grandTotal: 118,
+      roundOff: 0,
     });
   });
 });

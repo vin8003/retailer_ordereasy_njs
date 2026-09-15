@@ -192,6 +192,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                             id="bulkHsnCode"
                             className="h-9 w-44 bg-background"
                             value={bulkHsnCode}
+                            maxLength={8}
                             onChange={(event) => setBulkHsnCode(event.target.value)}
                             disabled={!applyHsn}
                             placeholder="HSN code"
@@ -333,6 +334,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                         <Input
                                             className="h-9 w-full bg-white text-xs dark:bg-black"
                                             value={currentHsnCode}
+                                            maxLength={8}
                                             onChange={(e) => handleInputChange(product.id, 'hsn_code', e.target.value)}
                                             placeholder="HSN code"
                                         />

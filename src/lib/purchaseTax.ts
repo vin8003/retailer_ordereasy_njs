@@ -7,6 +7,8 @@ export interface PurchaseTaxTotals {
   taxableAmount: number;
   taxAmount: number;
   grandTotal: number;
+  /** grandTotal - (taxableAmount + taxAmount), from nearest-rupee rounding. */
+  roundOff: number;
 }
 
 interface PurchaseTaxSnapshotSource {
@@ -47,10 +49,15 @@ export function calculatePurchaseTax(rows: PurchaseTaxRow[]): PurchaseTaxTotals 
     inclusiveTotal += lineTotal;
   }
 
+  const roundedTaxable = roundCurrency(taxableAmount);
+  const roundedTax = roundCurrency(taxAmount);
+  const grandTotal = Math.round(inclusiveTotal);
+
   return {
-    taxableAmount: roundCurrency(taxableAmount),
-    taxAmount: roundCurrency(taxAmount),
-    grandTotal: Math.round(inclusiveTotal),
+    taxableAmount: roundedTaxable,
+    taxAmount: roundedTax,
+    grandTotal,
+    roundOff: roundCurrency(grandTotal - (roundedTaxable + roundedTax)),
   };
 }
 

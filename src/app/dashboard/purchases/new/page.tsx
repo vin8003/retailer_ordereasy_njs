@@ -586,6 +586,12 @@ export default function NewPurchasePage() {
                                 <span>{taxType}</span>
                                 <span>₹{taxTotals.taxAmount.toFixed(2)}</span>
                             </div>
+                            {Math.abs(taxTotals.roundOff) >= 0.005 && (
+                                <div className="flex justify-between text-gray-500 font-medium">
+                                    <span>Round Off</span>
+                                    <span>{taxTotals.roundOff < 0 ? '-' : '+'}₹{Math.abs(taxTotals.roundOff).toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-end pt-4 border-t border-dashed border-gray-200">
                                 <span className="text-lg font-bold text-gray-900">Grand Total</span>
                                 <span className="text-4xl font-black text-primary tracking-tighter">₹{taxTotals.grandTotal}</span>

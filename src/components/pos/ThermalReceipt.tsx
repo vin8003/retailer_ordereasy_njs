@@ -84,6 +84,13 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
         return groups;
     }, new Map<string, { label: string; amount: number }>()).values());
 
+    // Taxable + GST are paisa-exact while TOTAL is rounded to the nearest rupee,
+    // so print the difference instead of leaving it unexplained on a tax document.
+    const roundOff = order.taxable_amount !== undefined
+        ? Number(order.total_amount) - (Number(order.taxable_amount) + Number(order.tax_amount || 0))
+        : 0;
+    const showRoundOff = Math.abs(roundOff) >= 0.005;
+
     const isCreditOrder = order.payment_mode && (
         order.payment_mode.toLowerCase() === 'credit' || 
         order.payment_mode.toLowerCase() === 'khata'
@@ -281,6 +288,12 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                         <span>GST:</span>
                         <span>₹{Number(order.tax_amount).toFixed(2)}</span>
+                    </div>
+                )}
+                {showRoundOff && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Round Off:</span>
+                        <span>{roundOff < 0 ? '-' : '+'}₹{Math.abs(roundOff).toFixed(2)}</span>
                     </div>
                 )}
                 
