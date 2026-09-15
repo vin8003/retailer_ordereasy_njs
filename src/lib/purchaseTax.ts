@@ -9,8 +9,27 @@ export interface PurchaseTaxTotals {
   grandTotal: number;
 }
 
+interface PurchaseTaxSnapshotSource {
+  gst_rate?: number | string;
+  hsn_code?: string;
+}
+
+export interface PurchaseTaxSnapshot {
+  gstRate: number;
+  hsnCode: string;
+}
+
 const roundCurrency = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
+
+export function purchaseTaxSnapshot(
+  source: PurchaseTaxSnapshotSource,
+): PurchaseTaxSnapshot {
+  return {
+    gstRate: Number(source.gst_rate) || 0,
+    hsnCode: source.hsn_code || '',
+  };
+}
 
 export function calculatePurchaseTax(rows: PurchaseTaxRow[]): PurchaseTaxTotals {
   let taxableAmount = 0;

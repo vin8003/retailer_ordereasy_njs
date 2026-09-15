@@ -6,7 +6,7 @@ import api, { authService } from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
 import { findProductByBarcode, loadRetailerProducts, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { productService } from '@/services/api';
-import { calculatePurchaseTax, resolvePurchaseTaxType } from '@/lib/purchaseTax';
+import { calculatePurchaseTax, purchaseTaxSnapshot, resolvePurchaseTaxType } from '@/lib/purchaseTax';
 import {
     Plus, Trash2, ScanLine,
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
@@ -38,6 +38,8 @@ interface PurchaseRow {
     new_price: number;
     new_original_price: number;
     total: number;
+    gstRate: number;
+    hsnCode: string;
 }
 
 interface Supplier {
@@ -53,6 +55,11 @@ interface InvoiceItem {
     quantity: number | string;
     purchase_price: number | string;
     total: number | string;
+    hsn_code: string;
+    gst_rate: number | string;
+    taxable_value: number | string;
+    tax_amount: number | string;
+    tax_type: 'GST' | 'IGST';
 }
 
 const getApiError = (error: unknown, fallback: string) => {
@@ -181,7 +188,8 @@ function EditPurchaseContent() {
                             purchase_price: Number(item.purchase_price),
                             new_price: Number(prod?.price || 0),
                             new_original_price: Number(prod?.original_price || 0),
-                            total: Number(item.total)
+                            total: Number(item.total),
+                            ...purchaseTaxSnapshot(item),
                         };
                     });
                     setRows(mappedRows);
@@ -229,6 +237,7 @@ function EditPurchaseContent() {
             const newRows = [...rows];
             newRows[existingIdx].quantity += 1;
             newRows[existingIdx].total = newRows[existingIdx].quantity * newRows[existingIdx].purchase_price;
+            Object.assign(newRows[existingIdx], purchaseTaxSnapshot(product));
             setRows(newRows);
         } else {
             setRows([...rows, {
@@ -237,7 +246,8 @@ function EditPurchaseContent() {
                 purchase_price: Number(product.purchase_price) || 0,
                 new_price: Number(product.price) || 0,
                 new_original_price: Number(product.original_price) || 0,
-                total: Number(product.purchase_price) || 0
+                total: Number(product.purchase_price) || 0,
+                ...purchaseTaxSnapshot(product),
             }]);
         }
         setSearchTerm('');
@@ -266,7 +276,7 @@ function EditPurchaseContent() {
 
     const updateRow = (
         index: number,
-        field: Exclude<keyof PurchaseRow, 'product'>,
+        field: 'quantity' | 'purchase_price' | 'new_price' | 'new_original_price' | 'total',
         value: number,
     ) => {
         const newRows = [...rows];
@@ -283,7 +293,7 @@ function EditPurchaseContent() {
 
     const taxTotals = calculatePurchaseTax(rows.map((row) => ({
         total: row.total,
-        gstRate: row.product.gst_rate || 0,
+        gstRate: row.gstRate,
     })));
     const selectedSupplierRecord = suppliers.find(
         (supplier) => supplier.id.toString() === selectedSupplier
@@ -544,9 +554,9 @@ function EditPurchaseContent() {
                                             <td className="p-4 px-6">
                                                 <div className="font-bold text-gray-900">{row.product.name}</div>
                                                 <div className="text-xs text-gray-400 font-medium font-mono">{row.product.barcode}</div>
-                                                {Number(row.product.gst_rate) > 0 && !row.product.hsn_code?.trim() && (
+                                                {row.gstRate > 0 && !row.hsnCode.trim() && (
                                                     <div className="mt-1 text-[11px] font-bold text-amber-600">
-                                                        GST {Number(row.product.gst_rate)}%: HSN code missing
+                                                        GST {row.gstRate}%: HSN code missing
                                                     </div>
                                                 )}
                                             </td>

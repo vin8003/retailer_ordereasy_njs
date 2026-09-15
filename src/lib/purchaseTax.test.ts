@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculatePurchaseTax, resolvePurchaseTaxType } from './purchaseTax';
+import {
+  calculatePurchaseTax,
+  purchaseTaxSnapshot,
+  resolvePurchaseTaxType,
+} from './purchaseTax';
 
 describe('calculatePurchaseTax', () => {
   it('splits GST-inclusive purchase rows and rounds the grand total to rupees', () => {
@@ -20,5 +24,17 @@ describe('resolvePurchaseTaxType', () => {
     expect(resolvePurchaseTaxType('27ABCDE1234F1Z5', '29ABCDE1234F1Z6')).toBe('IGST');
     expect(resolvePurchaseTaxType('27ABCDE1234F1Z5', '27ABCDE1234F1Z6')).toBe('GST');
     expect(resolvePurchaseTaxType('27ABCDE1234F1Z5', '')).toBe('GST');
+  });
+});
+
+describe('purchaseTaxSnapshot', () => {
+  it('normalizes persisted invoice tax fields for historical edit rows', () => {
+    expect(purchaseTaxSnapshot({
+      gst_rate: '5.00',
+      hsn_code: '09011111',
+    })).toEqual({
+      gstRate: 5,
+      hsnCode: '09011111',
+    });
   });
 });
