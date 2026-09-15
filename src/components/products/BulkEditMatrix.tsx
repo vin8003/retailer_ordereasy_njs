@@ -26,9 +26,10 @@ interface BulkEditMatrixProps {
     onClose: () => void;
     onSave: (changes: any[]) => Promise<void>;
     canEditAppPrice?: boolean;
+    canAdjustInventory?: boolean;
 }
 
-export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPrice = false }: BulkEditMatrixProps) {
+export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPrice = false, canAdjustInventory = false }: BulkEditMatrixProps) {
     const parentRef = useRef<HTMLDivElement>(null);
     const [changes, setChanges] = useState<Record<number, {
         price?: string,
@@ -79,7 +80,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPric
             if (canEditAppPrice && changeData.app_price !== undefined) {
                 payloadItem.app_price = changeData.app_price === "" ? null : Number(changeData.app_price);
             }
-            if (changeData.quantity !== undefined && changeData.quantity !== "") {
+            if (canAdjustInventory && changeData.quantity !== undefined && changeData.quantity !== "") {
                 payloadItem.quantity = Number(changeData.quantity);
             }
             if (changeData.name !== undefined) {
@@ -143,7 +144,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPric
                     <div className="text-right">Original Price (₹)</div>
                     <div className="text-right">Store (₹)</div>
                     {canEditAppPrice && <div className="text-right">App (₹)</div>}
-                    <div className="text-right">Stock</div>
+                    <div className="text-right" title={canAdjustInventory ? undefined : "inventory.adjust is required to change on-hand quantity."}>Stock</div>
                     <div>Barcode</div>
                     <div className="text-center">Active</div>
                     <div className="text-center">Seasonal Pick</div>
@@ -241,6 +242,8 @@ export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPric
                                             value={currentQuantity}
                                             onChange={(e) => handleInputChange(product.id, 'quantity', e.target.value)}
                                             placeholder="0"
+                                            disabled={!canAdjustInventory}
+                                            title={!canAdjustInventory ? "inventory.adjust is required to change on-hand quantity." : undefined}
                                         />
                                     </div>
                                     <div>
