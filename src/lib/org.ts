@@ -11,6 +11,7 @@ export const PERMISSIONS = {
   FULFILLMENT_MANAGE: 'fulfillment.manage',
   CATALOG_PRICE: 'catalog.price',
   CATALOG_IMAGE: 'catalog.image',
+  INVENTORY_ADJUST: 'inventory.adjust',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

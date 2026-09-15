@@ -275,11 +275,23 @@ export const productService = {
     });
   },
   downloadTemplate: () => api.get('products/bulk-template/', { responseType: 'blob' }),
+  writeOff: (
+    id: number,
+    data: { quantity: string; reason: string; batch_id?: number }
+  ) => api.post(`products/${id}/write-off/`, data),
+  fetchInventoryLedger: (params: { product_id?: number; reason?: string }) =>
+    api.get('products/erp/inventory-ledger/', { params }),
   /** Zip and/or csv+files → attach to existing shop SKUs (OE-124). */
   uploadProductImages: (formData: FormData) =>
     api.post('products/upload/images/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  writeOff: (
+    id: number,
+    data: { quantity: string; reason: string; batch_id?: number }
+  ) => api.post(`products/${id}/write-off/`, data),
+  fetchInventoryLedger: (params: { product_id?: number; reason?: string }) =>
+    api.get('products/erp/inventory-ledger/', { params }),
 
   // Scanner Sessions
   getActiveSessions: () => api.get('products/upload/session/active/'),

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import api from '@/services/api';
+import api, { productService } from '@/services/api';
 import { 
     History, ChevronLeft, Loader2, Package, 
     PlusCircle, MinusCircle, ShoppingCart, 
@@ -11,6 +11,9 @@ import {
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { orderDetailsHref, parseOrderNumberFromText } from '@/lib/orderLinks';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { WriteOffForm } from '@/components/products/WriteOffForm';
+import { WRITE_OFF_REASONS, canWriteOffStock, ledgerReasonQuery } from '@/lib/writeOff';
 
 interface LogEntry {
     id: number;
@@ -28,27 +31,48 @@ interface Product {
     name: string;
     quantity: number;
     unit: string;
+    has_batches?: boolean;
+    batches?: {
+        id: number;
+        batch_number?: string;
+        expiry_date?: string | null;
+        quantity?: number | string;
+        is_active?: boolean;
+    }[];
 }
 
 function LedgerContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const productId = searchParams.get('id');
+    const { permissions } = useOrgContext();
+    const canWriteOff = canWriteOffStock(permissions);
 
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [product, setProduct] = useState<Product | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [reasonFilter, setReasonFilter] = useState('all');
+
+    const loadLedger = async (reason = reasonFilter) => {
+        if (!productId) return;
+        const reasonParam = ledgerReasonQuery(reason);
+        const logRes = await productService.fetchInventoryLedger({
+            product_id: Number(productId),
+            ...(reasonParam ? { reason: reasonParam } : {}),
+        });
+        const rows = Array.isArray(logRes.data) ? logRes.data : logRes.data?.results ?? [];
+        setLogs(rows);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
             if (!productId) return;
             setIsLoading(true);
             try {
-                const [logRes, prodRes] = await Promise.all([
-                    api.get(`/products/erp/inventory-ledger/?product_id=${productId}`),
+                const [_, prodRes] = await Promise.all([
+                    loadLedger('all'),
                     api.get(`/products/${productId}/`)
                 ]);
-                setLogs(logRes.data);
                 setProduct(prodRes.data);
             } catch (error) {
                 toast.error("Failed to load inventory history");
@@ -57,6 +81,8 @@ function LedgerContent() {
             }
         };
         fetchData();
+        // Mount / id only — reason filter reloads via onChange.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [productId]);
 
     if (isLoading) return (
@@ -94,21 +120,46 @@ function LedgerContent() {
                     </div>
                 </div>
 
-                <div className="md:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-8">
-                    <div className="size-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center">
-                        <Package size={32} />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-black text-gray-900">Total Movements</h3>
-                        <p className="text-gray-400 font-medium">Tracking all inward & outward changes</p>
-                    </div>
+                <div className="md:col-span-2 bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+                    <WriteOffForm
+                        productId={product.id}
+                        hasBatches={Boolean(product.has_batches)}
+                        batches={product.batches || []}
+                        canWriteOff={canWriteOff}
+                        onWrittenOff={async () => {
+                            const prodRes = await api.get(`/products/${productId}/`);
+                            setProduct(prodRes.data);
+                            await loadLedger(reasonFilter);
+                        }}
+                    />
                 </div>
             </div>
 
             {/* Logs Table */}
             <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                <div className="p-8 border-b border-gray-100 bg-gray-50/30">
+                <div className="p-8 border-b border-gray-100 bg-gray-50/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <h3 className="text-xl font-black text-gray-900">Transition History</h3>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Reason
+                        <select
+                            className="ml-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-gray-800 normal-case tracking-normal"
+                            value={reasonFilter}
+                            onChange={async (e) => {
+                                const next = e.target.value;
+                                setReasonFilter(next);
+                                try {
+                                    await loadLedger(next);
+                                } catch {
+                                    toast.error("Failed to filter ledger");
+                                }
+                            }}
+                        >
+                            <option value="all">All</option>
+                            {WRITE_OFF_REASONS.map((code) => (
+                                <option key={code} value={code}>{code}</option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -134,7 +185,9 @@ function LedgerContent() {
                                         log.log_type === 'added' ? 'text-green-600 bg-green-50' :
                                         log.log_type === 'sold' ? 'text-blue-600 bg-blue-50' :
                                         log.log_type === 'removed' ? 'text-red-600 bg-red-50' :
-                                        'text-gray-600 bg-gray-50';
+                                        log.log_type === 'damaged' || log.log_type === 'expired' || log.log_type === 'spoiled'
+                                            ? 'text-orange-700 bg-orange-50'
+                                            : 'text-gray-600 bg-gray-50';
 
                                     return (
                                         <tr key={log.id} className="hover:bg-gray-50/30 transition-colors">
