@@ -16,7 +16,7 @@ import {
 import {
     GST_RATE_OPTIONS,
     buildBulkTaxChanges,
-    shouldRecommendHsn,
+    shouldRecommendBulkHsnWarning,
     type GstRate,
 } from "@/lib/productTax";
 
@@ -217,7 +217,7 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                 <Button type="button" variant="outline" onClick={handleApplyTaxToAll} disabled={!applyHsn && !applyGst}>
                     Apply to selected
                 </Button>
-                {applyGst && shouldRecommendHsn(bulkGstRate, applyHsn ? bulkHsnCode : "") && (
+                {applyGst && shouldRecommendBulkHsnWarning(bulkGstRate, applyHsn, bulkHsnCode, products, changes) && (
                     <p className="text-xs font-medium text-amber-600">
                         HSN recommended when GST is not 0%
                     </p>

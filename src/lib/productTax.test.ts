@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   GST_RATE_OPTIONS,
   buildBulkTaxChanges,
+  shouldRecommendBulkHsnWarning,
   shouldRecommendHsn,
 } from "./productTax";
 
@@ -15,6 +16,30 @@ describe("product tax helpers", () => {
     expect(shouldRecommendHsn("5.00", "   ")).toBe(true);
     expect(shouldRecommendHsn(0, "")).toBe(false);
     expect(shouldRecommendHsn(18, "21069099")).toBe(false);
+  });
+
+  it("recommends bulk HSN only when GST apply would leave rows without HSN", () => {
+    const products = [
+      { id: 1, hsn_code: "21069099" },
+      { id: 2, hsn_code: "" },
+    ];
+
+    expect(
+      shouldRecommendBulkHsnWarning(18, false, "", products),
+    ).toBe(true);
+    expect(
+      shouldRecommendBulkHsnWarning(18, false, "", [{ id: 1, hsn_code: "21069099" }]),
+    ).toBe(false);
+    expect(
+      shouldRecommendBulkHsnWarning(18, false, "", products, { 2: { hsn_code: "09011111" } }),
+    ).toBe(false);
+    expect(
+      shouldRecommendBulkHsnWarning(18, true, "", products),
+    ).toBe(true);
+    expect(
+      shouldRecommendBulkHsnWarning(18, true, "21069099", products),
+    ).toBe(false);
+    expect(shouldRecommendBulkHsnWarning(0, false, "", products)).toBe(false);
   });
 
   it("builds changes for every selected product using only supplied fields", () => {
