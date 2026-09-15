@@ -124,8 +124,8 @@ export function displayLabelCss(widthMm: number, heightMm: number, isA4: boolean
 
   return `
     .label {
-      width: ${isA4 ? `${widthMm}mm` : '100%'};
-      height: ${isA4 ? `${heightMm}mm` : '100%'};
+      width: ${widthMm}mm;
+      height: ${heightMm}mm;
       box-sizing: border-box;
       overflow: hidden;
       padding: ${isA4 ? "2mm" : "3mm"};
@@ -295,7 +295,9 @@ export function buildDisplayLabelPrintDocument(context: DisplayLabelPrintContext
       ${pages.join("")}
     `;
   } else {
-    pageSizeRule = `${size.widthMm}mm ${size.heightMm}mm`;
+    // No explicit @page size for thermal rolls — Chrome treats
+    // `size: 75mm 25mm` as landscape and stretches the print.
+    pageSizeRule = "";
     const rows: string[] = [];
     for (let i = 0; i < labels.length; i++) {
       rows.push(`<div class="sheet-row">${labels[i]}</div>`);
@@ -303,8 +305,8 @@ export function buildDisplayLabelPrintDocument(context: DisplayLabelPrintContext
     bodyContent = `
       <style>
         .sheet-row {
-          width: 100vw;
-          height: 100vh;
+          width: ${size.widthMm}mm;
+          height: ${size.heightMm}mm;
           box-sizing: border-box;
           page-break-after: always;
           break-after: page;
@@ -321,7 +323,7 @@ export function buildDisplayLabelPrintDocument(context: DisplayLabelPrintContext
   <meta charset="utf-8" />
   <title>Print Display Labels</title>
   <style>
-    @page { size: ${pageSizeRule}; margin: 0; }
+    @page { ${pageSizeRule ? `size: ${pageSizeRule};` : ""} margin: 0; }
     html, body { margin: 0; padding: 0; background: #fff; }
     @media print {
       html, body {
