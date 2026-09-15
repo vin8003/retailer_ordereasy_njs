@@ -2,13 +2,18 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BulkUpload } from "@/components/products/BulkUpload";
+import { PhotoBulkImport } from "@/components/products/PhotoBulkImport";
 import { SessionList } from "@/components/products/SessionList";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useOrgContext } from "@/hooks/useOrgContext";
+import { canImportProductPhotos } from "@/lib/photoImport";
 
 export default function BulkProductsPage() {
     const router = useRouter();
+    const { permissions } = useOrgContext();
+    const canImportPhotos = canImportProductPhotos(permissions);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -19,15 +24,16 @@ export default function BulkProductsPage() {
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Bulk Add Products</h2>
                     <p className="text-muted-foreground">
-                        Upload Excel files or process scanner sessions from the mobile app.
+                        Upload Excel files, attach product photos, or process scanner sessions from the mobile app.
                     </p>
                 </div>
             </div>
 
             <Tabs defaultValue="sessions" className="w-full">
-                <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+                <TabsList className="grid w-full max-w-[560px] grid-cols-3">
                     <TabsTrigger value="sessions">Scanner Sessions</TabsTrigger>
                     <TabsTrigger value="upload">File Upload</TabsTrigger>
+                    <TabsTrigger value="photos">Photos</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="sessions" className="mt-6">
@@ -36,6 +42,10 @@ export default function BulkProductsPage() {
 
                 <TabsContent value="upload" className="mt-6">
                     <BulkUpload />
+                </TabsContent>
+
+                <TabsContent value="photos" className="mt-6">
+                    <PhotoBulkImport canImport={canImportPhotos} />
                 </TabsContent>
             </Tabs>
         </div>
