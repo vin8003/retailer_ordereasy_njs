@@ -286,6 +286,8 @@ function OrderDetailContent() {
                                 })),
                                 subtotal: order.subtotal,
                                 discount_amount: order.discount_amount || 0,
+                                delivery_fee: order.delivery_fee || 0,
+                                discount_from_points: order.discount_from_points || 0,
                                 taxable_amount: order.taxable_amount,
                                 tax_amount: order.tax_amount,
                                 total_amount: order.total_amount,

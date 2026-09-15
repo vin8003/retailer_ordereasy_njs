@@ -7,6 +7,10 @@ import {
     shouldPrintReceiptUpiQr,
     type PrintUpiQrScope,
 } from '@/lib/upiIntent';
+import {
+    calculateReceiptRoundOff,
+    shouldShowReceiptRoundOff,
+} from '@/lib/receiptRoundOff';
 
 interface OrderItem {
     product_name: string;
@@ -32,6 +36,8 @@ interface OrderData {
     items: OrderItem[];
     subtotal: number | string;
     discount_amount?: number | string;
+    delivery_fee?: number | string;
+    discount_from_points?: number | string;
     taxable_amount?: number | string;
     tax_amount?: number | string;
     total_amount: number | string;
@@ -84,12 +90,19 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
         return groups;
     }, new Map<string, { label: string; amount: number }>()).values());
 
-    // Taxable + GST are paisa-exact while TOTAL is rounded to the nearest rupee,
-    // so print the difference instead of leaving it unexplained on a tax document.
-    const roundOff = order.taxable_amount !== undefined
-        ? Number(order.total_amount) - (Number(order.taxable_amount) + Number(order.tax_amount || 0))
-        : 0;
-    const showRoundOff = Math.abs(roundOff) >= 0.005;
+    const deliveryFee = Number(order.delivery_fee) || 0;
+    const discountFromPoints = Number(order.discount_from_points) || 0;
+
+    // Taxable + GST are paisa-exact while TOTAL is rounded to the nearest rupee.
+    // Delivery and points are printed separately; round-off is only the rupee residue.
+    const roundOff = calculateReceiptRoundOff({
+        totalAmount: order.total_amount,
+        taxableAmount: order.taxable_amount,
+        taxAmount: order.tax_amount,
+        deliveryFee,
+        discountFromPoints,
+    });
+    const showRoundOff = shouldShowReceiptRoundOff(roundOff);
 
     const isCreditOrder = order.payment_mode && (
         order.payment_mode.toLowerCase() === 'credit' || 
@@ -288,6 +301,18 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                         <span>GST:</span>
                         <span>₹{Number(order.tax_amount).toFixed(2)}</span>
+                    </div>
+                )}
+                {deliveryFee > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Delivery:</span>
+                        <span>₹{deliveryFee.toFixed(2)}</span>
+                    </div>
+                )}
+                {discountFromPoints > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Points:</span>
+                        <span>-₹{discountFromPoints.toFixed(2)}</span>
                     </div>
                 )}
                 {showRoundOff && (
