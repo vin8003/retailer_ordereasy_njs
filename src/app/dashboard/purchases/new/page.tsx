@@ -15,6 +15,19 @@ import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { QuickAddModal } from '@/components/pos/QuickAddModal';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import {
+    GSTIN_FORMAT_MESSAGE,
+    PAYMENT_TERMS_WHITESPACE,
+    buildSupplierWritePayload,
+    canEditPaymentTerms,
+    isValidGstin,
+    isWhitespaceOnlyPaymentTerms,
+    purchaseInvoiceErrorMessage,
+    selectableSuppliersForNewPurchase,
+    supplierErrorMessage,
+} from '@/lib/suppliers';
 
 interface Product {
     id: number;
@@ -46,6 +59,8 @@ interface Supplier {
 
 export default function NewPurchasePage() {
     const router = useRouter();
+    const { permissions } = useOrgContext();
+    const canEditTerms = canEditPaymentTerms(permissions);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -66,36 +81,34 @@ export default function NewPurchasePage() {
     
     // Add Supplier Modal State
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newSupplier, setNewSupplier] = useState({
-        company_name: '',
-        contact_person: '',
-        phone_number: '',
-        email: '',
-        address: ''
-    });
+    const [newSupplier, setNewSupplier] = useState<SupplierFormValues>(EMPTY_SUPPLIER_FORM);
     
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const handleAddSupplier = async (e: React.FormEvent) => {
         e.preventDefault();
+        const details = buildSupplierWritePayload(newSupplier, { canEditTerms });
+        if (!details) {
+            toast.error(
+                isWhitespaceOnlyPaymentTerms(newSupplier.payment_terms)
+                    ? PAYMENT_TERMS_WHITESPACE
+                    : !isValidGstin(newSupplier.gst_number)
+                      ? GSTIN_FORMAT_MESSAGE
+                      : "Check supplier details"
+            );
+            return;
+        }
         try {
-            const res = await api.post('/products/erp/suppliers/', newSupplier);
+            const res = await api.post('/products/erp/suppliers/', details);
             toast.success("Supplier added successfully");
             setShowAddModal(false);
             
             const allSuppliers = await fetchAllPages('/products/erp/suppliers/', { is_active: true });
-            setSuppliers(allSuppliers);
+            setSuppliers(selectableSuppliersForNewPurchase(allSuppliers));
             setSelectedSupplier(res.data.id.toString());
-            
-            setNewSupplier({
-                company_name: '',
-                contact_person: '',
-                phone_number: '',
-                email: '',
-                address: ''
-            });
+            setNewSupplier(EMPTY_SUPPLIER_FORM);
         } catch (error) {
-            toast.error("Failed to add supplier");
+            toast.error(supplierErrorMessage(error as { response?: { status?: number; data?: unknown } }));
         }
     };
 
@@ -106,7 +119,7 @@ export default function NewPurchasePage() {
                 loadRetailerProducts(fetchAllPages),
             ]);
             if (suppliersResult.status === 'fulfilled') {
-                setSuppliers(suppliersResult.value);
+                setSuppliers(selectableSuppliersForNewPurchase(suppliersResult.value));
             } else {
                 toast.error("Failed to load suppliers");
             }
@@ -279,7 +292,7 @@ export default function NewPurchasePage() {
             toast.success("Purchase recorded and stock updated!");
             router.push('/dashboard/purchases');
         } catch (error: any) {
-            toast.error(error.response?.data?.error || "Failed to save purchase");
+            toast.error(purchaseInvoiceErrorMessage(error));
             console.error(error);
         } finally {
             setIsSubmitting(false);
@@ -613,91 +626,15 @@ export default function NewPurchasePage() {
 
             </div>
 
-            {/* Add Supplier Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl p-10 animate-in zoom-in-95 duration-200">
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">New Distributor</h2>
-                        <p className="text-gray-500 mb-8 font-medium">Create a record for your stock provider.</p>
-                        
-                        <form onSubmit={handleAddSupplier} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Company Name *</label>
-                                    <input 
-                                        required
-                                        type="text"
-                                        placeholder="e.g. ABC Foods Ltd"
-                                        value={newSupplier.company_name}
-                                        onChange={e => setNewSupplier({...newSupplier, company_name: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Contact Person</label>
-                                    <input 
-                                        type="text"
-                                        placeholder="John Doe"
-                                        value={newSupplier.contact_person}
-                                        onChange={e => setNewSupplier({...newSupplier, contact_person: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Phone Number (recommended)</label>
-                                    <input 
-                                        type="tel"
-                                        placeholder="10-digit mobile (optional)"
-                                        value={newSupplier.phone_number}
-                                        onChange={e => setNewSupplier({...newSupplier, phone_number: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Email Address</label>
-                                    <input 
-                                        type="email"
-                                        placeholder="distributor@mail.com"
-                                        value={newSupplier.email}
-                                        onChange={e => setNewSupplier({...newSupplier, email: e.target.value})}
-                                        className="w-full bg-gray-50 border-none rounded-xl py-3 px-4 focus:ring-2 focus:ring-primary/20"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-1">Office Address</label>
-                                <textarea 
-                                    rows={3}
-                                    placeholder="Full office or warehouse address..."
-                                    value={newSupplier.address}
-                                    onChange={e => setNewSupplier({...newSupplier, address: e.target.value})}
-                                    className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 focus:ring-2 focus:ring-primary/20 resize-none"
-                                />
-                            </div>
-
-                            <div className="flex gap-4 pt-6">
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowAddModal(false)}
-                                    className="flex-1 px-6 py-4 rounded-2xl font-bold bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    className="flex-[2] bg-primary text-white px-6 py-4 rounded-2xl font-bold hover:bg-primary/90 shadow-xl shadow-primary/20 transition-all"
-                                >
-                                    Register Distributor
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <SupplierFormModal
+                open={showAddModal}
+                mode="add"
+                values={newSupplier}
+                onChange={setNewSupplier}
+                onClose={() => { setShowAddModal(false); setNewSupplier(EMPTY_SUPPLIER_FORM); }}
+                onSubmit={handleAddSupplier}
+                canEditTerms={canEditTerms}
+            />
 
             {/* Unknown Barcode Modal */}
             <QuickAddModal 

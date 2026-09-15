@@ -11,6 +11,16 @@ import {
 import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import {
+    GSTIN_FORMAT_MESSAGE,
+    PAYMENT_TERMS_WHITESPACE,
+    buildSupplierWritePayload,
+    canEditPaymentTerms,
+    isValidGstin,
+    isWhitespaceOnlyPaymentTerms,
+    supplierErrorMessage,
+} from '@/lib/suppliers';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -47,6 +57,8 @@ interface Supplier {
     address?: string;
     balance_due: string | number;
     is_active?: boolean;
+    gst_number?: string | null;
+    payment_terms?: string | null;
 }
 
 interface LedgerEntry {
@@ -63,6 +75,8 @@ interface LedgerEntry {
 function SupplierLedgerDetails() {
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
+    const { permissions } = useOrgContext();
+    const canEditTerms = canEditPaymentTerms(permissions);
     
     const [supplier, setSupplier] = useState<Supplier | null>(null);
     const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -155,6 +169,9 @@ function SupplierLedgerDetails() {
             phone_number: supplier.phone_number || '',
             email: supplier.email || '',
             address: supplier.address || '',
+            gst_number: supplier.gst_number || '',
+            payment_terms: supplier.payment_terms || '',
+            is_active: supplier.is_active !== false,
         });
         setShowFormModal(true);
     };
@@ -162,19 +179,25 @@ function SupplierLedgerDetails() {
     const handleSaveSupplier = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!id) return;
+        const details = buildSupplierWritePayload(formValues, { canEditTerms });
+        if (!details) {
+            toast.error(
+                isWhitespaceOnlyPaymentTerms(formValues.payment_terms)
+                    ? PAYMENT_TERMS_WHITESPACE
+                    : !isValidGstin(formValues.gst_number)
+                      ? GSTIN_FORMAT_MESSAGE
+                      : "Check supplier details"
+            );
+            return;
+        }
         setIsSaving(true);
         try {
-            await api.patch(`/products/erp/suppliers/${id}/`, {
-                company_name: formValues.company_name,
-                contact_person: formValues.contact_person,
-                phone_number: formValues.phone_number,
-                address: formValues.address,
-            });
+            await api.patch(`/products/erp/suppliers/${id}/`, details);
             toast.success("Supplier updated");
             setShowFormModal(false);
             fetchData();
         } catch (error) {
-            toast.error("Failed to update supplier");
+            toast.error(supplierErrorMessage(error as { response?: { status?: number; data?: unknown } }));
         } finally {
             setIsSaving(false);
         }
@@ -230,6 +253,12 @@ function SupplierLedgerDetails() {
                         <History size={14} className="sm:hidden" />
                         <History size={16} className="hidden sm:block" /> Transaction History & Ledger
                     </p>
+                    {(supplier.gst_number || supplier.payment_terms) && (
+                        <p className="text-xs text-gray-400 mt-1 font-medium">
+                            {supplier.gst_number ? `GSTIN ${supplier.gst_number}` : "No GSTIN"}
+                            {supplier.payment_terms ? ` · ${supplier.payment_terms}` : ""}
+                        </p>
+                    )}
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                     <button
@@ -523,6 +552,7 @@ function SupplierLedgerDetails() {
                 onClose={() => setShowFormModal(false)}
                 onSubmit={handleSaveSupplier}
                 isSubmitting={isSaving}
+                canEditTerms={canEditTerms}
             />
         </div>
     );
