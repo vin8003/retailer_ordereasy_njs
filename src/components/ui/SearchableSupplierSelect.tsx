@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check, X } from 'lucide-react';
-import { selectableSuppliersForNewPurchase } from '@/lib/suppliers';
+import { visibleSuppliersForPicker } from '@/lib/suppliers';
 
 interface Supplier {
     id: number;
@@ -13,6 +13,8 @@ interface Supplier {
 interface SearchableSupplierSelectProps {
     suppliers: Supplier[];
     value: string;
+    /** Invoice / previous pick — stays visible after Add-New changes `value`. */
+    keepId?: string | number | null;
     onChange: (value: string) => void;
     placeholder?: string;
 }
@@ -20,6 +22,7 @@ interface SearchableSupplierSelectProps {
 export default function SearchableSupplierSelect({
     suppliers,
     value,
+    keepId,
     onChange,
     placeholder = 'Select Supplier',
 }: SearchableSupplierSelectProps) {
@@ -49,8 +52,8 @@ export default function SearchableSupplierSelect({
 
     const selectedSupplier = suppliers.find(s => s.id.toString() === value);
 
-    // New PI: hide inactive. Edit PI: keep the current supplier even if later deactivated.
-    const visibleSuppliers = selectableSuppliersForNewPurchase(suppliers, value);
+    // New PI: hide inactive. Edit PI: keepId (invoice supplier) stays after Add-New.
+    const visibleSuppliers = visibleSuppliersForPicker(suppliers, value, keepId);
 
     const filteredSuppliers = search.trim()
         ? visibleSuppliers.filter(s =>

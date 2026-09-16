@@ -18,6 +18,7 @@ import {
   mergeKeptSupplier,
   selectableSuppliersForNewPurchase,
   selectionAfterSupplierCreate,
+  visibleSuppliersForPicker,
   supplierErrorMessage,
 } from "./suppliers";
 
@@ -174,6 +175,29 @@ describe("keepIdAfterSupplierCreate", () => {
       mergeKeptSupplier([active, created], [active, inactive], selection.value).map(
         (s) => s.id
       )
+    ).toEqual([1, 9]);
+  });
+
+  it("keeps filter membership when the picker re-filters with the new selection", () => {
+    const previous = "2";
+    const selection = selectionAfterSupplierCreate(created, previous);
+    const keepId = keepIdAfterSupplierCreate(previous, selection.value);
+    const merged = mergeKeptSupplier([active, created], [active, inactive], keepId);
+    const inState = selectableSuppliersForNewPurchase(merged, keepId);
+    expect(inState.map((s) => s.id)).toEqual([2, 1, 9]);
+
+    // SearchableSupplierSelect used to pass only value (new id) → 2 of 2 active.
+    expect(selectableSuppliersForNewPurchase(inState, selection.value).map((s) => s.id)).toEqual(
+      [1, 9]
+    );
+    expect(
+      visibleSuppliersForPicker(inState, selection.value, keepId).map((s) => s.id)
+    ).toEqual([2, 1, 9]);
+  });
+
+  it("hides inactive on new PI when keepId is omitted (negative)", () => {
+    expect(
+      visibleSuppliersForPicker([active, created, inactive], "9").map((s) => s.id)
     ).toEqual([1, 9]);
   });
 });
