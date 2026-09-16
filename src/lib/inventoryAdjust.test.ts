@@ -14,6 +14,7 @@ import {
   quantityDiffers,
 } from "./inventoryAdjust";
 import * as batchExpiry from "./batchExpiry";
+import * as writeOff from "./writeOff";
 import { canWriteOffStock } from "./writeOff";
 import { PERMISSIONS } from "./org";
 
@@ -25,9 +26,10 @@ describe("canAdjustInventory", () => {
     expect(PERM_INVENTORY_ADJUST).toBe(PERMISSIONS.INVENTORY_ADJUST);
   });
 
-  it("is the only inventory.adjust gate (batch expiry keeps no parallel helper)", () => {
+  it("is the only inventory.adjust gate (no parallel helper, no re-export)", () => {
     expect("canAdjustInventory" in batchExpiry).toBe(false);
     expect("PERM_INVENTORY_ADJUST" in batchExpiry).toBe(false);
+    expect("PERM_INVENTORY_ADJUST" in writeOff).toBe(false);
   });
 
   it("backs write-off with the same gate", () => {
