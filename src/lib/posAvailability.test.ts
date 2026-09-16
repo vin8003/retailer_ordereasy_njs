@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { REASON_CREDIT_LIMIT, lockReasonsFromCheckoutError } from "./creditLock";
 import {
   INACTIVE_PRODUCT_ADD_MESSAGE,
   UNSELLABLE_PRODUCT_HINT,
   axiosUnsellableProduct,
   cartWithoutProduct,
   checkoutErrorText,
+  inactiveProductAddToast,
   isSellableProduct,
   parseUnsellableProductError,
   unsellableCartHit,
@@ -72,6 +74,14 @@ describe("checkoutErrorText", () => {
     expect(checkoutErrorText({})).toBe("");
     expect(checkoutErrorText({ error: [] })).toBe("");
   });
+
+  it("feeds detail-shaped credit locks into lockReasonsFromCheckoutError", () => {
+    const errMsg =
+      checkoutErrorText({ detail: "Credit limit exceeded for this customer" }) ||
+      "Checkout failed";
+    expect(lockReasonsFromCheckoutError(errMsg)).toEqual([REASON_CREDIT_LIMIT]);
+    expect(lockReasonsFromCheckoutError("Checkout failed")).toEqual([]);
+  });
 });
 
 describe("axiosUnsellableProduct", () => {
@@ -88,6 +98,15 @@ describe("axiosUnsellableProduct", () => {
       })
     ).toBeNull();
     expect(axiosUnsellableProduct({})).toBeNull();
+  });
+
+  it("does not parse the reject sentence on a non-400 (negative)", () => {
+    expect(
+      axiosUnsellableProduct({ response: { status: 500, data: { error: BE_REJECT } } })
+    ).toBeNull();
+    expect(
+      axiosUnsellableProduct({ response: { status: 403, data: { detail: BE_REJECT } } })
+    ).toBeNull();
   });
 });
 
@@ -130,5 +149,14 @@ describe("isSellableProduct", () => {
     expect(isSellableProduct({ is_active: false })).toBe(false);
     expect(isSellableProduct(null)).toBe(false);
     expect(INACTIVE_PRODUCT_ADD_MESSAGE).toContain("cannot be added");
+  });
+
+  it("does not read product.name on a nullish add (negative)", () => {
+    expect(inactiveProductAddToast(null)).toBe(INACTIVE_PRODUCT_ADD_MESSAGE);
+    expect(inactiveProductAddToast(undefined)).toBe(INACTIVE_PRODUCT_ADD_MESSAGE);
+    expect(inactiveProductAddToast({ name: "  " })).toBe(INACTIVE_PRODUCT_ADD_MESSAGE);
+    expect(inactiveProductAddToast({ name: "Atta 5kg" })).toBe(
+      `Atta 5kg: ${INACTIVE_PRODUCT_ADD_MESSAGE}`
+    );
   });
 });

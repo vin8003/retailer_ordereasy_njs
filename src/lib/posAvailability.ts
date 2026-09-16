@@ -61,7 +61,15 @@ export function checkoutErrorText(data: unknown): string {
 export function axiosUnsellableProduct(err: {
   response?: { status?: number; data?: unknown };
 }): UnsellableProduct | null {
-  return parseUnsellableProductError(checkoutErrorText(err.response?.data));
+  if (err.response?.status !== 400) return null;
+  return parseUnsellableProductError(checkoutErrorText(err.response.data));
+}
+
+export function inactiveProductAddToast(
+  product: { name?: string } | null | undefined
+): string {
+  const label = product?.name?.trim();
+  return label ? `${label}: ${INACTIVE_PRODUCT_ADD_MESSAGE}` : INACTIVE_PRODUCT_ADD_MESSAGE;
 }
 
 export function unsellableProductMessage(hit: UnsellableProduct): string {

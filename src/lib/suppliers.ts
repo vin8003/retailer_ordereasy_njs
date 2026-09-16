@@ -92,6 +92,22 @@ export function mergeKeptSupplier<T extends SupplierRecord>(
   return kept ? [kept, ...fetched] : fetched;
 }
 
+/**
+ * After Add-New, keep the previous pick — not the new selection.
+ * An active create auto-selects; keepId-on-selection would drop an inactive
+ * invoice supplier from the Edit PI picker.
+ */
+export function keepIdAfterSupplierCreate(
+  previousSelectedId: string | number | null | undefined,
+  selectionValue: string
+): string {
+  const previous =
+    previousSelectedId == null || previousSelectedId === ""
+      ? ""
+      : String(previousSelectedId);
+  return previous || selectionValue;
+}
+
 export function isSupplierSelectableForNewPurchase(
   supplier: Pick<SupplierRecord, "is_active"> | null | undefined
 ): boolean {

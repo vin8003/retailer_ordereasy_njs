@@ -23,6 +23,7 @@ import {
     canEditPaymentTerms,
     isValidGstin,
     isWhitespaceOnlyPaymentTerms,
+    keepIdAfterSupplierCreate,
     mergeKeptSupplier,
     purchaseInvoiceErrorMessage,
     selectableSuppliersForNewPurchase,
@@ -107,10 +108,12 @@ function EditPurchaseContent() {
             setShowAddModal(false);
             
             const allSuppliers = await fetchAllPages<Supplier>('/products/erp/suppliers/', { is_active: true });
-            const selection = selectionAfterSupplierCreate(res.data, selectedSupplier);
-            // The refetch is active-only, so an inactive invoice supplier must be carried over.
-            const withKept = mergeKeptSupplier(allSuppliers, suppliers, selection.value);
-            setSuppliers(selectableSuppliersForNewPurchase(withKept, selection.value));
+            const previousSelected = selectedSupplier;
+            const selection = selectionAfterSupplierCreate(res.data, previousSelected);
+            // keep the previous pick so an active Add-New does not drop an inactive invoice supplier.
+            const keepId = keepIdAfterSupplierCreate(previousSelected, selection.value);
+            const withKept = mergeKeptSupplier(allSuppliers, suppliers, keepId);
+            setSuppliers(selectableSuppliersForNewPurchase(withKept, keepId));
             setSelectedSupplier(selection.value);
             if (selection.warning) toast.error(selection.warning);
             setNewSupplier(EMPTY_SUPPLIER_FORM);

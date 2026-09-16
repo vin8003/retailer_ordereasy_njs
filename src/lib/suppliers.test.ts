@@ -14,6 +14,7 @@ import {
   isWhitespaceOnlyPaymentTerms,
   normalizeGstin,
   purchaseInvoiceErrorMessage,
+  keepIdAfterSupplierCreate,
   mergeKeptSupplier,
   selectableSuppliersForNewPurchase,
   selectionAfterSupplierCreate,
@@ -139,6 +140,41 @@ describe("mergeKeptSupplier", () => {
     expect(mergeKeptSupplier([active], [inactive], null)).toEqual([active]);
     expect(mergeKeptSupplier([active], [inactive], "")).toEqual([active]);
     expect(mergeKeptSupplier([active], [], 2)).toEqual([active]);
+  });
+});
+
+describe("keepIdAfterSupplierCreate", () => {
+  const active = { id: 1, company_name: "Active Co", is_active: true };
+  const inactive = { id: 2, company_name: "Quiet Co", is_active: false };
+  const created = { id: 9, company_name: "New Co", is_active: true };
+
+  it("keeps the invoice supplier when Add-New auto-selects a new active one", () => {
+    const previous = "2";
+    const selection = selectionAfterSupplierCreate(created, previous);
+    expect(selection.value).toBe("9");
+    const keepId = keepIdAfterSupplierCreate(previous, selection.value);
+    expect(keepId).toBe("2");
+    const merged = mergeKeptSupplier([active, created], [active, inactive], keepId);
+    expect(merged.map((s) => s.id)).toEqual([2, 1, 9]);
+    expect(selectableSuppliersForNewPurchase(merged, keepId).map((s) => s.id)).toEqual([
+      2, 1, 9,
+    ]);
+  });
+
+  it("falls back to the new selection when there was no previous pick", () => {
+    expect(keepIdAfterSupplierCreate("", "9")).toBe("9");
+    expect(keepIdAfterSupplierCreate(null, "9")).toBe("9");
+    expect(keepIdAfterSupplierCreate(undefined, "")).toBe("");
+  });
+
+  it("does not follow the new id when keepId is the previous pick (negative)", () => {
+    const selection = selectionAfterSupplierCreate(created, "2");
+    expect(keepIdAfterSupplierCreate("2", selection.value)).not.toBe(selection.value);
+    expect(
+      mergeKeptSupplier([active, created], [active, inactive], selection.value).map(
+        (s) => s.id
+      )
+    ).toEqual([1, 9]);
   });
 });
 
