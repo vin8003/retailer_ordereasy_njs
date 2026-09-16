@@ -74,7 +74,7 @@ export function prepareBatchesForSave<T extends Record<string, unknown>>(
   options: { canAdjust: boolean; originalById?: Record<number, string | null> }
 ): T[] {
   return batches.map((batch) => {
-    const copy = { ...batch };
+    const copy = { ...batch } as T & { expiry_date?: string | null };
     const id = typeof copy.id === "number" ? copy.id : undefined;
     if (!options.canAdjust) {
       if (id != null && options.originalById && id in options.originalById) {
@@ -84,9 +84,7 @@ export function prepareBatchesForSave<T extends Record<string, unknown>>(
       }
       return copy;
     }
-    copy.expiry_date = expiryDateForWrite(
-      copy.expiry_date as string | null | undefined
-    );
+    copy.expiry_date = expiryDateForWrite(copy.expiry_date);
     return copy;
   });
 }
