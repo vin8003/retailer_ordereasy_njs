@@ -1,9 +1,5 @@
 /** OE-136 / F-0030 — ProductBatch expiry display/edit (BE RCP #92+). No second FIFO engine. */
 
-import { hasPermission } from "@/lib/org";
-
-export const PERM_INVENTORY_ADJUST = "inventory.adjust";
-export const ERR_INVENTORY_ADJUST = "Inventory adjust permission required";
 export const EXPIRED_BATCH_SALE_MESSAGE = "Expired batches cannot be sold.";
 export const FIFO_PICK_HINT =
   "Sales pick the earliest expiry first (undated last). Expired lots cannot be sold.";
@@ -13,12 +9,6 @@ export interface ExpiryBatch {
   expiry_date?: string | null;
   quantity?: number | string;
   is_active?: boolean;
-}
-
-export function canAdjustInventory(
-  permissions: ReadonlySet<string> | string[]
-): boolean {
-  return hasPermission(permissions, PERM_INVENTORY_ADJUST);
 }
 
 export function todayIsoDate(now: Date = new Date()): string {
@@ -84,7 +74,7 @@ export function prepareBatchesForSave<T extends Record<string, unknown>>(
   options: { canAdjust: boolean; originalById?: Record<number, string | null> }
 ): T[] {
   return batches.map((batch) => {
-    const copy = { ...batch };
+    const copy = { ...batch } as T & { expiry_date?: string | null };
     const id = typeof copy.id === "number" ? copy.id : undefined;
     if (!options.canAdjust) {
       if (id != null && options.originalById && id in options.originalById) {
@@ -94,9 +84,7 @@ export function prepareBatchesForSave<T extends Record<string, unknown>>(
       }
       return copy;
     }
-    copy.expiry_date = expiryDateForWrite(
-      copy.expiry_date as string | null | undefined
-    );
+    copy.expiry_date = expiryDateForWrite(copy.expiry_date);
     return copy;
   });
 }

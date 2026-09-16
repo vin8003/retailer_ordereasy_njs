@@ -118,6 +118,17 @@ export function canOverrideCreditLock(
   return set.has(PERM_CREDIT_OVERRIDE);
 }
 
+/** One gate for both checkout paths: the Complete Bill button and Ctrl+Enter. */
+export function isCreditCheckoutBlocked(opts: {
+  creditAmount: number;
+  reasons: CreditLockReason[];
+  override: boolean;
+  canOverride: boolean;
+}): boolean {
+  if (opts.creditAmount <= 0 || opts.reasons.length === 0) return false;
+  return !(opts.override && opts.canOverride);
+}
+
 export function attachCreditOverride<T extends Record<string, unknown>>(
   payload: T,
   override: boolean

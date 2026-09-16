@@ -37,7 +37,6 @@ import { PERMISSIONS } from "@/lib/org";
 import {
     FIFO_PICK_HINT,
     axiosBatchExpiryError,
-    canAdjustInventory,
     expiryHint,
     prepareBatchesForSave,
 } from "@/lib/batchExpiry";
@@ -46,6 +45,7 @@ import {
     PACK_ADJUST_MESSAGE,
     QTY_ADJUST_MESSAGE,
     axiosInventoryAdjustError,
+    canAdjustInventory,
     isPositiveConversionFactor,
     packLinkDiffers,
     packLinkIsSet,

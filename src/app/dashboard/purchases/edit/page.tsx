@@ -25,6 +25,7 @@ import {
     isWhitespaceOnlyPaymentTerms,
     purchaseInvoiceErrorMessage,
     selectableSuppliersForNewPurchase,
+    selectionAfterSupplierCreate,
     supplierErrorMessage,
 } from '@/lib/suppliers';
 
@@ -105,8 +106,10 @@ function EditPurchaseContent() {
             setShowAddModal(false);
             
             const allSuppliers = await fetchAllPages('/products/erp/suppliers/', { is_active: true });
-            setSuppliers(selectableSuppliersForNewPurchase(allSuppliers, res.data.id));
-            setSelectedSupplier(res.data.id.toString());
+            const selection = selectionAfterSupplierCreate(res.data, selectedSupplier);
+            setSuppliers(selectableSuppliersForNewPurchase(allSuppliers, selection.value));
+            setSelectedSupplier(selection.value);
+            if (selection.warning) toast.error(selection.warning);
             setNewSupplier(EMPTY_SUPPLIER_FORM);
         } catch (error) {
             toast.error(supplierErrorMessage(error as { response?: { status?: number; data?: unknown } }));
@@ -663,6 +666,7 @@ function EditPurchaseContent() {
                 onClose={() => { setShowAddModal(false); setNewSupplier(EMPTY_SUPPLIER_FORM); }}
                 onSubmit={handleAddSupplier}
                 canEditTerms={canEditTerms}
+                allowInactive={false}
             />
         </div>
     );
