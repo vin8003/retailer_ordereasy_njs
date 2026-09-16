@@ -735,13 +735,15 @@ export default function POSPage() {
         override: creditOverride,
         canOverride: canOverrideCredit,
     });
+    const creditGateMessage = creditCheckoutBlocked
+        ? formatCreditLockMessage(khataMapping, creditLockReasons)
+        : '';
+
     // The keydown effect keeps an older handleCheckout, so read the gate from a ref.
-    creditGateRef.current = {
-        blocked: creditCheckoutBlocked,
-        message: creditCheckoutBlocked
-            ? formatCreditLockMessage(khataMapping, creditLockReasons)
-            : '',
-    };
+    // Committed in an effect: a ref must not be written while rendering.
+    useEffect(() => {
+        creditGateRef.current = { blocked: creditCheckoutBlocked, message: creditGateMessage };
+    }, [creditCheckoutBlocked, creditGateMessage]);
 
     const handleCheckout = async () => {
         if (activeSession.cart.length === 0) {
