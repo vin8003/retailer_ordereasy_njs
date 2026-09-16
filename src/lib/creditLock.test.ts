@@ -7,6 +7,7 @@ import {
   creditAmountForPos,
   creditSaleLockReasons,
   formatCreditLockMessage,
+  isCreditCheckoutBlocked,
   isCreditLockError,
   isCreditOverrideDenied,
   khataFromDetail,
@@ -131,5 +132,34 @@ describe("CRM helpers", () => {
 describe("formatCreditLockMessage", () => {
   it("includes available remaining on limit lock", () => {
     expect(formatCreditLockMessage(mapping, [REASON_CREDIT_LIMIT])).toContain("Available: ₹20");
+  });
+});
+
+describe("isCreditCheckoutBlocked", () => {
+  const blocked: Parameters<typeof isCreditCheckoutBlocked>[0] = {
+    creditAmount: 30,
+    reasons: [REASON_CREDIT_LIMIT],
+    override: false,
+    canOverride: false,
+  };
+
+  it("blocks a locked credit sale (button and Ctrl+Enter share this)", () => {
+    expect(isCreditCheckoutBlocked(blocked)).toBe(true);
+  });
+
+  it("lets a permitted override through", () => {
+    expect(
+      isCreditCheckoutBlocked({ ...blocked, override: true, canOverride: true })
+    ).toBe(false);
+  });
+
+  it("keeps blocking an override without orders.update (negative)", () => {
+    expect(isCreditCheckoutBlocked({ ...blocked, override: true })).toBe(true);
+    expect(isCreditCheckoutBlocked({ ...blocked, canOverride: true })).toBe(true);
+  });
+
+  it("does not block cash sales or unlocked credit", () => {
+    expect(isCreditCheckoutBlocked({ ...blocked, creditAmount: 0 })).toBe(false);
+    expect(isCreditCheckoutBlocked({ ...blocked, reasons: [] })).toBe(false);
   });
 });
