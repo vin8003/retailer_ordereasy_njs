@@ -75,6 +75,23 @@ export function selectableSuppliersForNewPurchase<T extends SupplierRecord>(
   );
 }
 
+/**
+ * The picker refetches with is_active=true, so keepId has nothing to keep once an
+ * inactive supplier drops out of the response. Carry the kept record over from the
+ * list already on screen, otherwise editing that invoice loses its own supplier.
+ */
+export function mergeKeptSupplier<T extends SupplierRecord>(
+  fetched: T[],
+  known: ReadonlyArray<T>,
+  keepId?: string | number | null
+): T[] {
+  const keep = keepId == null || keepId === "" ? null : String(keepId);
+  if (keep == null) return fetched;
+  if (fetched.some((s) => String(s.id) === keep)) return fetched;
+  const kept = known.find((s) => String(s.id) === keep);
+  return kept ? [kept, ...fetched] : fetched;
+}
+
 export function isSupplierSelectableForNewPurchase(
   supplier: Pick<SupplierRecord, "is_active"> | null | undefined
 ): boolean {
