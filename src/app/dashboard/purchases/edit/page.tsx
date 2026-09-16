@@ -23,6 +23,7 @@ import {
     canEditPaymentTerms,
     isValidGstin,
     isWhitespaceOnlyPaymentTerms,
+    keepIdAfterSupplierCreate,
     mergeKeptSupplier,
     purchaseInvoiceErrorMessage,
     selectableSuppliersForNewPurchase,
@@ -69,6 +70,7 @@ function EditPurchaseContent() {
     const [products, setProducts] = useState<Product[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState('');
+    const [keepSupplierId, setKeepSupplierId] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [rows, setRows] = useState<PurchaseRow[]>([]);
@@ -107,10 +109,16 @@ function EditPurchaseContent() {
             setShowAddModal(false);
             
             const allSuppliers = await fetchAllPages<Supplier>('/products/erp/suppliers/', { is_active: true });
-            const selection = selectionAfterSupplierCreate(res.data, selectedSupplier);
-            // The refetch is active-only, so an inactive invoice supplier must be carried over.
-            const withKept = mergeKeptSupplier(allSuppliers, suppliers, selection.value);
-            setSuppliers(selectableSuppliersForNewPurchase(withKept, selection.value));
+            const previousSelected = selectedSupplier;
+            const selection = selectionAfterSupplierCreate(res.data, previousSelected);
+            // keep the previous pick so an active Add-New does not drop an inactive invoice supplier.
+            const keepId = keepIdAfterSupplierCreate(
+                keepSupplierId || previousSelected,
+                selection.value
+            );
+            const withKept = mergeKeptSupplier(allSuppliers, suppliers, keepId);
+            setSuppliers(selectableSuppliersForNewPurchase(withKept, keepId));
+            setKeepSupplierId(keepId);
             setSelectedSupplier(selection.value);
             if (selection.warning) toast.error(selection.warning);
             setNewSupplier(EMPTY_SUPPLIER_FORM);
@@ -156,6 +164,7 @@ function EditPurchaseContent() {
                         }
                     }
                     setSuppliers(selectableSuppliersForNewPurchase(loadedSuppliers, currentSupplierId));
+                    setKeepSupplierId(currentSupplierId?.toString() || '');
                     setSelectedSupplier(currentSupplierId?.toString() || '');
                     setInvoiceNumber(inv.invoice_number);
                     setInvoiceDate(inv.invoice_date);
@@ -392,6 +401,7 @@ function EditPurchaseContent() {
                             <SearchableSupplierSelect
                                 suppliers={suppliers}
                                 value={selectedSupplier}
+                                keepId={keepSupplierId}
                                 onChange={setSelectedSupplier}
                                 placeholder="Select Supplier"
                             />

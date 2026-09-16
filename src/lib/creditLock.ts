@@ -129,6 +129,23 @@ export function isCreditCheckoutBlocked(opts: {
   return !(opts.override && opts.canOverride);
 }
 
+export type CheckoutSubmitBlock = "empty" | "in_flight" | "blocked";
+
+/**
+ * Shared early-exits for Complete Bill and Ctrl+Enter.
+ * inFlight must be read from a ref — the keydown listener keeps a stale handleCheckout.
+ */
+export function checkoutSubmitBlock(opts: {
+  cartLength: number;
+  inFlight: boolean;
+  blocked: boolean;
+}): CheckoutSubmitBlock | null {
+  if (opts.cartLength === 0) return "empty";
+  if (opts.inFlight) return "in_flight";
+  if (opts.blocked) return "blocked";
+  return null;
+}
+
 export function attachCreditOverride<T extends Record<string, unknown>>(
   payload: T,
   override: boolean
