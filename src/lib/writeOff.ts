@@ -1,8 +1,8 @@
 /** OE-141 / F-0032 — damage/expiry/spoilage write-off (BE POST products/:id/write-off/). */
 
-import { hasPermission } from "@/lib/org";
+import { PERM_INVENTORY_ADJUST, canAdjustInventory } from "@/lib/inventoryAdjust";
 
-export const PERM_INVENTORY_ADJUST = "inventory.adjust";
+export { PERM_INVENTORY_ADJUST };
 
 export const WRITE_OFF_REASONS = ["damage", "expiry", "spoilage"] as const;
 export type WriteOffReason = (typeof WRITE_OFF_REASONS)[number];
@@ -40,7 +40,7 @@ export type WriteOffErrorKind =
 export function canWriteOffStock(
   permissions: ReadonlySet<string> | string[]
 ): boolean {
-  return hasPermission(permissions, PERM_INVENTORY_ADJUST);
+  return canAdjustInventory(permissions);
 }
 
 export function isWriteOffReason(value: string): value is WriteOffReason {
