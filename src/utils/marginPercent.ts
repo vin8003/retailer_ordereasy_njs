@@ -1,6 +1,9 @@
 /** BE catalog/POS field used for optional margin display (OE-289 / OE-169 / OE-284). */
 export type MarginDisplayProduct = {
     margin_percent?: number | string | null;
+    /** Allowed on payloads / tests; never used to invent margin. */
+    purchase_price?: number | string | null;
+    price?: number | string | null;
 };
 
 /**
