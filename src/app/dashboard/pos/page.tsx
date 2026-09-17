@@ -17,6 +17,7 @@ import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
+import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
 
 interface Product {
     id: number;
@@ -26,6 +27,7 @@ interface Product {
     image: string;
     quantity: number; // Gross stock qty
     saleable_quantity?: number | string | null;
+    margin_percent?: number | string | null;
     category_name: string;
     barcode?: string;
     track_inventory?: boolean;
@@ -1077,7 +1079,10 @@ export default function POSPage() {
                                             </h3>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
-                                            <span className="text-lg font-bold text-gray-900">₹{price}</span>
+                                            <div className="flex flex-col items-start gap-1 min-w-0">
+                                                <span className="text-lg font-bold text-gray-900">₹{price}</span>
+                                                <MarginPercentBadge product={product} />
+                                            </div>
                                             <span className={`text-xs font-medium px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
                                                 {product.track_inventory === false ? 'Available' : `${getDisplayStockQuantity(product)} in stock`}
                                             </span>
