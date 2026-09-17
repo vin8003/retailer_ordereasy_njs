@@ -20,6 +20,7 @@ import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
+import { SeasonalBadge } from '@/components/products/SeasonalBadge';
 
 interface Product {
     id: number;
@@ -33,6 +34,7 @@ interface Product {
     category_name: string;
     brand_name?: string | null;
     barcode?: string | null;
+    is_seasonal?: boolean | null;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
@@ -1083,6 +1085,7 @@ export default function POSPage() {
                                                 </h3>
                                                 <BrandNameLabel product={product} />
                                                 <BarcodeLabel product={product} />
+                                                <SeasonalBadge product={product} className="mt-0.5" />
                                             </div>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
