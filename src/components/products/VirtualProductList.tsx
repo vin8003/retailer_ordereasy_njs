@@ -22,6 +22,7 @@ import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
 import { BarcodeLabel } from "@/components/products/BarcodeLabel";
 import { BrandNameLabel } from "@/components/products/BrandNameLabel";
 import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
+import { ProductGroupLabel } from "@/components/products/ProductGroupLabel";
 import { SeasonalBadge } from "@/components/products/SeasonalBadge";
 
 interface Product {
@@ -36,6 +37,7 @@ interface Product {
     margin_percent?: number | string | null;
     brand_name?: string | null;
     barcode?: string | null;
+    product_group?: string | null;
     is_seasonal?: boolean | null;
     track_inventory: boolean;
     image?: string;
@@ -401,6 +403,7 @@ function SwipeableRow({
                     <div className="font-medium overflow-hidden min-w-0">
                         <div className="truncate">{product.name}</div>
                         <BrandNameLabel product={product} />
+                        <ProductGroupLabel product={product} />
                         <BarcodeLabel product={product} />
                         <SeasonalBadge product={product} className="mt-1" />
                         {product.is_active === false && (
@@ -557,6 +560,7 @@ function SwipeableRow({
                                 )}
                             </span>
                             <BrandNameLabel product={product} />
+                            <ProductGroupLabel product={product} />
                             <BarcodeLabel product={product} />
                             <SeasonalBadge product={product} className="mt-0.5" />
                             <span className="text-[10px] text-muted-foreground truncate">{product.category_name || 'Uncategorized'}</span>
