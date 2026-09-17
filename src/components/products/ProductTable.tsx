@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Edit, Trash2, MoreHorizontal, ImageIcon, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
 
 import {
     Table,
@@ -31,6 +32,7 @@ interface Product {
     price: string | number;
     original_price?: string | number;
     quantity: number;
+    saleable_quantity?: number | string | null;
     image?: string;
     is_active: boolean;
     is_featured: boolean;
@@ -106,8 +108,8 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                     {product.category_name || 'Uncategorized'}
                                 </TableCell>
                                 <TableCell>
-                                    <div className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
-                                        {product.quantity} {product.unit}
+                                    <div className={getDisplayStockQuantity(product) < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
+                                        {getDisplayStockQuantity(product)} {product.unit}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -220,8 +222,8 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                             <div className="flex justify-between items-end mt-2 pt-2 border-t border-gray-50/80">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground font-semibold">Stock level</span>
-                                    <span className={cn("text-xs font-bold mt-0.5", product.quantity < 10 ? "text-red-500" : "text-green-600")}>
-                                        {product.quantity} {product.unit}
+                                    <span className={cn("text-xs font-bold mt-0.5", getDisplayStockQuantity(product) < 10 ? "text-red-500" : "text-green-600")}>
+                                        {getDisplayStockQuantity(product)} {product.unit}
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end">
