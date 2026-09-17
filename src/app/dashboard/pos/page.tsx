@@ -17,6 +17,8 @@ import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
+import { BarcodeLabel } from '@/components/products/BarcodeLabel';
+import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
 
 interface Product {
@@ -29,7 +31,8 @@ interface Product {
     saleable_quantity?: number | string | null;
     margin_percent?: number | string | null;
     category_name: string;
-    barcode?: string;
+    brand_name?: string | null;
+    barcode?: string | null;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
@@ -1074,9 +1077,13 @@ export default function POSPage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-xs font-medium text-gray-400 mb-1">{product.category_name || 'Uncategorized'}</p>
-                                            <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight mb-2">
-                                                {product.name}
-                                            </h3>
+                                            <div className="mb-2">
+                                                <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
+                                                    {product.name}
+                                                </h3>
+                                                <BrandNameLabel product={product} />
+                                                <BarcodeLabel product={product} />
+                                            </div>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
                                             <div className="flex flex-col items-start gap-1 min-w-0">

@@ -19,6 +19,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineNumpadSheet } from "@/components/products/InlineNumpadSheet";
 import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
+import { BarcodeLabel } from "@/components/products/BarcodeLabel";
+import { BrandNameLabel } from "@/components/products/BrandNameLabel";
 import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
 
 interface Product {
@@ -31,6 +33,8 @@ interface Product {
     quantity: number;
     saleable_quantity?: number | string | null;
     margin_percent?: number | string | null;
+    brand_name?: string | null;
+    barcode?: string | null;
     track_inventory: boolean;
     image?: string;
     is_active: boolean;
@@ -392,8 +396,10 @@ function SwipeableRow({
                         </div>
                     </div>
 
-                    <div className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+                    <div className="font-medium overflow-hidden min-w-0">
                         <div className="truncate">{product.name}</div>
+                        <BrandNameLabel product={product} />
+                        <BarcodeLabel product={product} />
                         {product.is_active === false && (
                             <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
                         )}
@@ -547,6 +553,8 @@ function SwipeableRow({
                                     <Badge variant="destructive" className="text-[8px] px-1 py-0 h-3 border-none shrink-0">Inactive</Badge>
                                 )}
                             </span>
+                            <BrandNameLabel product={product} />
+                            <BarcodeLabel product={product} />
                             <span className="text-[10px] text-muted-foreground truncate">{product.category_name || 'Uncategorized'}</span>
                             <div 
                                 className="mt-0.5 text-xs cursor-pointer inline-block"

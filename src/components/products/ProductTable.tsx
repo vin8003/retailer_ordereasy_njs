@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { Edit, Trash2, MoreHorizontal, ImageIcon, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
+import { BarcodeLabel } from "@/components/products/BarcodeLabel";
+import { BrandNameLabel } from "@/components/products/BrandNameLabel";
 import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
 
 import {
@@ -35,6 +37,8 @@ interface Product {
     quantity: number;
     saleable_quantity?: number | string | null;
     margin_percent?: number | string | null;
+    brand_name?: string | null;
+    barcode?: string | null;
     image?: string;
     is_active: boolean;
     is_featured: boolean;
@@ -102,6 +106,8 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                 </TableCell>
                                 <TableCell className="font-medium">
                                     <div>{product.name}</div>
+                                    <BrandNameLabel product={product} />
+                                    <BarcodeLabel product={product} />
                                     {product.is_active === false && (
                                         <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
                                     )}
@@ -204,7 +210,11 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                         <div className="flex-1 flex flex-col justify-between">
                             <div>
                                 <div className="flex justify-between items-start gap-1.5">
-                                    <span className="font-bold text-gray-800 text-sm line-clamp-1 leading-snug">{product.name}</span>
+                                    <div className="min-w-0">
+                                        <span className="font-bold text-gray-800 text-sm line-clamp-1 leading-snug">{product.name}</span>
+                                        <BrandNameLabel product={product} />
+                                        <BarcodeLabel product={product} />
+                                    </div>
                                     <Button
                                         variant="ghost"
                                         size="icon"
