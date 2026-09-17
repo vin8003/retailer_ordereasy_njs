@@ -21,7 +21,7 @@ describe("MarginPercentBadge", () => {
 
     it("does not invent a badge from purchase_price alone", () => {
         const markup = renderToStaticMarkup(
-            <MarginPercentBadge product={{ purchase_price: 80 } as { purchase_price: number }} />
+            <MarginPercentBadge product={{ purchase_price: 80 }} />
         );
         expect(markup).toBe("");
     });
