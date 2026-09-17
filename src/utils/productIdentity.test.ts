@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBarcodeLabel, getBrandNameLabel } from "./productIdentity";
+import { getBarcodeLabel, getBrandNameLabel, getProductGroupLabel } from "./productIdentity";
 
 describe("getBrandNameLabel", () => {
     it("returns the trimmed brand_name when BE sent a non-empty string", () => {
@@ -35,5 +35,24 @@ describe("getBarcodeLabel", () => {
         expect(getBarcodeLabel({ barcode: null })).toBeNull();
         expect(getBarcodeLabel({ barcode: "" })).toBeNull();
         expect(getBarcodeLabel({ barcode: "   " })).toBeNull();
+    });
+});
+
+describe("getProductGroupLabel", () => {
+    it("returns the trimmed product_group when BE sent a non-empty string", () => {
+        expect(getProductGroupLabel({ product_group: "Dairy" })).toBe("Dairy");
+        expect(getProductGroupLabel({ product_group: "  Snacks  " })).toBe("Snacks");
+    });
+
+    it("returns null when product_group is omitted, null, or blank", () => {
+        expect(getProductGroupLabel({})).toBeNull();
+        expect(getProductGroupLabel({ product_group: undefined })).toBeNull();
+        expect(getProductGroupLabel({ product_group: null })).toBeNull();
+        expect(getProductGroupLabel({ product_group: "" })).toBeNull();
+        expect(getProductGroupLabel({ product_group: "   " })).toBeNull();
+    });
+
+    it("does not invent product_group from other fields", () => {
+        expect(getProductGroupLabel({ brand_name: "Amul", barcode: "8901234567890" })).toBeNull();
     });
 });

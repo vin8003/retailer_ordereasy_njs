@@ -7,6 +7,7 @@ import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
 import { BarcodeLabel } from "@/components/products/BarcodeLabel";
 import { BrandNameLabel } from "@/components/products/BrandNameLabel";
 import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
+import { ProductGroupLabel } from "@/components/products/ProductGroupLabel";
 import { SeasonalBadge } from "@/components/products/SeasonalBadge";
 
 import {
@@ -40,6 +41,7 @@ interface Product {
     margin_percent?: number | string | null;
     brand_name?: string | null;
     barcode?: string | null;
+    product_group?: string | null;
     is_seasonal?: boolean | null;
     image?: string;
     is_active: boolean;
@@ -109,6 +111,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                 <TableCell className="font-medium">
                                     <div>{product.name}</div>
                                     <BrandNameLabel product={product} />
+                                    <ProductGroupLabel product={product} />
                                     <BarcodeLabel product={product} />
                                     <SeasonalBadge product={product} className="mt-1" />
                                     {product.is_active === false && (
@@ -216,6 +219,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                     <div className="min-w-0">
                                         <span className="font-bold text-gray-800 text-sm line-clamp-1 leading-snug">{product.name}</span>
                                         <BrandNameLabel product={product} />
+                                        <ProductGroupLabel product={product} />
                                         <BarcodeLabel product={product} />
                                         <SeasonalBadge product={product} className="mt-0.5" />
                                     </div>
