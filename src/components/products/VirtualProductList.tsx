@@ -19,6 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineNumpadSheet } from "@/components/products/InlineNumpadSheet";
 import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
+import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
 
 interface Product {
     id: number;
@@ -29,6 +30,7 @@ interface Product {
     original_price?: string | number;
     quantity: number;
     saleable_quantity?: number | string | null;
+    margin_percent?: number | string | null;
     track_inventory: boolean;
     image?: string;
     is_active: boolean;
@@ -432,6 +434,7 @@ function SwipeableRow({
                                     ₹{Number(product.original_price).toFixed(2)}
                                 </div>
                             )}
+                            <MarginPercentBadge product={product} className="mt-1 ml-auto" />
                         </div>
                     </div>
 
@@ -576,6 +579,7 @@ function SwipeableRow({
                                     ₹{Number(product.original_price).toFixed(2)}
                                 </div>
                             )}
+                            <MarginPercentBadge product={product} className="mt-0.5 ml-auto" />
                         </div>
                         <Button
                             variant="ghost"

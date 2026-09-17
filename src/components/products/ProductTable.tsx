@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Edit, Trash2, MoreHorizontal, ImageIcon, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
+import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
 
 import {
     Table,
@@ -33,6 +34,7 @@ interface Product {
     original_price?: string | number;
     quantity: number;
     saleable_quantity?: number | string | null;
+    margin_percent?: number | string | null;
     image?: string;
     is_active: boolean;
     is_featured: boolean;
@@ -119,6 +121,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                             ₹{Number(product.original_price).toFixed(2)}
                                         </div>
                                     )}
+                                    <MarginPercentBadge product={product} className="mt-1 ml-auto" />
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <Button
@@ -234,6 +237,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                             <span className="text-[10px] text-muted-foreground line-through">₹{Number(product.original_price).toFixed(0)}</span>
                                         )}
                                     </div>
+                                    <MarginPercentBadge product={product} className="mt-0.5" />
                                 </div>
                             </div>
                         </div>
