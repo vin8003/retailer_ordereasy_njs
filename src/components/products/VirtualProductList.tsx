@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineNumpadSheet } from "@/components/products/InlineNumpadSheet";
+import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
 
 interface Product {
     id: number;
@@ -27,6 +28,7 @@ interface Product {
     price: string | number;
     original_price?: string | number;
     quantity: number;
+    saleable_quantity?: number | string | null;
     track_inventory: boolean;
     image?: string;
     is_active: boolean;
@@ -409,8 +411,8 @@ function SwipeableRow({
                         }}
                     >
                         {product.track_inventory ? (
-                            <span className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
-                                {product.quantity} {product.unit}
+                            <span className={getDisplayStockQuantity(product) < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
+                                {getDisplayStockQuantity(product)} {product.unit}
                             </span>
                         ) : (
                             <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">
@@ -553,8 +555,8 @@ function SwipeableRow({
                                 }}
                             >
                                 {product.track_inventory ? (
-                                    <span className={product.quantity < 10 ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
-                                        Stock: {product.quantity} {product.unit}
+                                    <span className={getDisplayStockQuantity(product) < 10 ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
+                                        Stock: {getDisplayStockQuantity(product)} {product.unit}
                                     </span>
                                 ) : (
                                     <span className="text-blue-500 font-semibold">Stock: ∞</span>

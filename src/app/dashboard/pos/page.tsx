@@ -16,6 +16,7 @@ import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
+import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 
 interface Product {
     id: number;
@@ -23,7 +24,8 @@ interface Product {
     price: number | string;
     discounted_price: number | string;
     image: string;
-    quantity: number; // Stock qty
+    quantity: number; // Gross stock qty
+    saleable_quantity?: number | string | null;
     category_name: string;
     barcode?: string;
     track_inventory?: boolean;
@@ -487,7 +489,7 @@ export default function POSPage() {
         const shouldTrack = product.track_inventory !== false;
         
         // POS allows negative stock, so we don't block here
-        if (shouldTrack && !product.has_batches && product.quantity <= 0) {
+        if (shouldTrack && !product.has_batches && getDisplayStockQuantity(product) <= 0) {
             console.log(`${product.name} is out of stock in system, but allowing sale.`);
         }
 
@@ -540,7 +542,7 @@ export default function POSPage() {
                     : (product.price || 0)
                   )
               );
-        const quantity = batch ? batch.quantity : product.quantity;
+        const quantity = batch ? batch.quantity : getDisplayStockQuantity(product);
         
         // POS allows negative stock, so we don't block even if quantity is <= 0
         if (shouldTrack && quantity <= 0) {
@@ -1038,7 +1040,7 @@ export default function POSPage() {
                         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 pb-20">
                             {displayedProducts.map((product, gridIdx) => {
                                 const price = product.discounted_price || product.price;
-                                const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
+                                const isOutOfStock = product.track_inventory !== false ? getDisplayStockQuantity(product) <= 0 : false;
                                 const isGridActive = gridIdx === activeGridIndex;
                                 
                                 return (
@@ -1077,7 +1079,7 @@ export default function POSPage() {
                                         <div className="flex justify-between items-end mt-2 w-full">
                                             <span className="text-lg font-bold text-gray-900">₹{price}</span>
                                             <span className={`text-xs font-medium px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                {product.track_inventory === false ? 'Available' : `${product.quantity} in stock`}
+                                                {product.track_inventory === false ? 'Available' : `${getDisplayStockQuantity(product)} in stock`}
                                             </span>
                                         </div>
                                     </button>
