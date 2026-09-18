@@ -7,6 +7,7 @@ import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
 import { BarcodeLabel } from "@/components/products/BarcodeLabel";
 import { BrandNameLabel } from "@/components/products/BrandNameLabel";
 import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
+import { AvailabilityBadges } from "@/components/products/AvailabilityBadges";
 import { ProductGroupLabel } from "@/components/products/ProductGroupLabel";
 import { SeasonalBadge } from "@/components/products/SeasonalBadge";
 
@@ -43,6 +44,8 @@ interface Product {
     barcode?: string | null;
     product_group?: string | null;
     is_seasonal?: boolean | null;
+    is_available?: boolean | null;
+    is_in_stock?: boolean | null;
     image?: string;
     is_active: boolean;
     is_featured: boolean;
@@ -114,6 +117,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                     <ProductGroupLabel product={product} />
                                     <BarcodeLabel product={product} />
                                     <SeasonalBadge product={product} className="mt-1" />
+                                    <AvailabilityBadges product={product} className="mt-1" />
                                     {product.is_active === false && (
                                         <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
                                     )}
@@ -222,6 +226,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                         <ProductGroupLabel product={product} />
                                         <BarcodeLabel product={product} />
                                         <SeasonalBadge product={product} className="mt-0.5" />
+                                        <AvailabilityBadges product={product} className="mt-0.5" />
                                     </div>
                                     <Button
                                         variant="ghost"
