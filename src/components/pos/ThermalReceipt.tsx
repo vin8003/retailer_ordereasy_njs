@@ -7,6 +7,7 @@ import {
     shouldPrintReceiptUpiQr,
     type PrintUpiQrScope,
 } from '@/lib/upiIntent';
+import { UpiRefLabel } from '@/components/pos/UpiRefLabel';
 
 interface OrderItem {
     product_name: string;
@@ -30,6 +31,7 @@ interface OrderData {
     discount_amount?: number | string;
     total_amount: number | string;
     payment_mode: string;
+    upi_ref?: string | number | null;
     retailer_gst_number?: string;
     retailer_receipt_footer?: string;
     retailer_show_gst?: boolean;
@@ -289,6 +291,10 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                         PAYMENT: {String(order.payment_mode).toUpperCase()} 
                         {order.payment_status ? ` (${order.payment_status})` : ''}
                     </div>
+                    <UpiRefLabel
+                        payment={order}
+                        style={{ marginTop: '4px', wordBreak: 'break-all' }}
+                    />
 
                     {receiptQr.status === 'ready' && (
                         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
