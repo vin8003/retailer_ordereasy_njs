@@ -15,6 +15,12 @@ import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { QuickAddModal } from '@/components/pos/QuickAddModal';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { LastSupplierCostHint } from '@/components/purchases/LastSupplierCostHint';
+import {
+    lastSupplierCostsFromHttp,
+    lastSupplierCostsPath,
+    type LastSupplierCostsPayload,
+} from '@/utils/lastSupplierCost';
 
 interface Product {
     id: number;
@@ -59,6 +65,10 @@ export default function NewPurchasePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [billImageFile, setBillImageFile] = useState<File | null>(null);
     const [billImagePreview, setBillImagePreview] = useState<string | null>(null);
+    const [lastCostsByProductId, setLastCostsByProductId] = useState<
+        Record<number, LastSupplierCostsPayload>
+    >({});
+    const lastCostTried = useRef<Set<number>>(new Set());
     
     // Quick Add Modal State
     const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -147,6 +157,23 @@ export default function NewPurchasePage() {
         return () => clearTimeout(t);
     }, [searchTerm]);
 
+    const loadLastSupplierCosts = async (productId: number) => {
+        if (lastCostTried.current.has(productId)) return;
+        lastCostTried.current.add(productId);
+        try {
+            const res = await api.get(lastSupplierCostsPath(productId), {
+                validateStatus: (status) => status === 200 || status === 403 || status === 404,
+            });
+            const parsed = lastSupplierCostsFromHttp(res.status, res.data);
+            if (!parsed) return;
+            setLastCostsByProductId((prev) => (
+                prev[productId] ? prev : { ...prev, [productId]: parsed }
+            ));
+        } catch {
+            // omit — never invent last-cost from catalog purchase_price
+        }
+    };
+
     const addProductToRows = (product: Product) => {
         const existingIdx = rows.findIndex(r => r.product.id === product.id);
         if (existingIdx > -1) {
@@ -166,6 +193,7 @@ export default function NewPurchasePage() {
         }
         setSearchTerm('');
         toast.success(`Added ${product.name}`, { icon: '📦', duration: 1500 });
+        void loadLastSupplierCosts(product.id);
     };
 
     const handleSearchKeyDown = async (e: React.KeyboardEvent) => {
@@ -491,6 +519,11 @@ export default function NewPurchasePage() {
                                                             className="w-full bg-blue-50/30 border border-blue-100 rounded-lg py-2 pl-6 pr-3 text-center font-bold focus:ring-2 focus:ring-blue-100"
                                                         />
                                                     </div>
+                                                    <LastSupplierCostHint
+                                                        payload={lastCostsByProductId[row.product.id]}
+                                                        supplierId={selectedSupplier}
+                                                        className="mt-1 text-center"
+                                                    />
                                                 </td>
                                                 <td className="p-4 w-40">
                                                     <div className="relative">
