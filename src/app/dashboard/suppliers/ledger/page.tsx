@@ -11,6 +11,7 @@ import {
 import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { SupplierDetailFssai } from '@/components/suppliers/SupplierDetailFssai';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -45,6 +46,7 @@ interface Supplier {
     phone_number: string;
     email?: string;
     address?: string;
+    fssai_number?: number | string | null;
     balance_due: string | number;
     is_active?: boolean;
 }
@@ -323,6 +325,7 @@ function SupplierLedgerDetails() {
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Mobile Number</p>
                             <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.phone_number}</p>
                         </div>
+                        <SupplierDetailFssai supplier={supplier} />
                     </div>
                 </div>
             </div>
