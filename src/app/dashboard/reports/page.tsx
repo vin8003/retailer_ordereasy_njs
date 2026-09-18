@@ -8,6 +8,7 @@ import {
     ArrowUpRight, ArrowDownRight, Printer, RefreshCcw
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import { ExpiringBatchesPanel } from '@/components/reports/ExpiringBatchesPanel';
 
 interface DailySummary {
     date: string;
@@ -173,6 +174,9 @@ export default function ReportsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Independent of daily summary: 401/403 hide this card only. */}
+            <ExpiringBatchesPanel />
 
             {/* Printer Button */}
             <div className="flex justify-center">
