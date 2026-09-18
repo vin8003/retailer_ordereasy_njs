@@ -4,7 +4,7 @@ import {
     type WriteOffDetailCostCenterDisplay,
 } from "@/utils/writeOffDetailCostCenter";
 
-/** Write-off-detail cost center line. Renders nothing when BE omitted or blanked `cost_center`. */
+/** Muted write-off cost center line. Renders nothing when BE omitted or blanked `cost_center`. */
 export function WriteOffDetailCostCenter({
     writeOff,
     className,

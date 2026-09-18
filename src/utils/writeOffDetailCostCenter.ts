@@ -24,9 +24,10 @@ function optionalTrimmedText(raw: string | null | undefined): string | null {
 }
 
 /**
- * Cost center from top-level `cost_center` only (write-off detail GET).
+ * Cost center from top-level `cost_center` only.
  * Absent / undefined / null / blank / non-finite → do not show.
  * Never derived from aliases, nested objects, reason, or ids.
+ * Ready to mount on a real write-off detail row when one exists.
  */
 export function getWriteOffDetailCostCenter(
     writeOff: WriteOffDetailCostCenterDisplay
@@ -40,33 +41,4 @@ export function getWriteOffDetailCostCenter(
         return optionalTrimmedText(raw);
     }
     return null;
-}
-
-function ledgerRowsFromPayload(payload: unknown): unknown[] {
-    if (Array.isArray(payload)) return payload;
-    if (payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results)) {
-        return (payload as { results: unknown[] }).results;
-    }
-    return [];
-}
-
-/**
- * Find a write-off / ledger row by `id` in the existing inventory-ledger GET payload.
- * Missing id, empty payload, or no matching row → null. Never invents a row or cost_center.
- */
-export function pickWriteOffDetailFromLedgerPayload(
-    payload: unknown,
-    id: string | number | null | undefined
-): WriteOffDetailCostCenterDisplay | null {
-    if (id === undefined || id === null) return null;
-    const wanted = String(id).trim();
-    if (wanted === "") return null;
-    const match = ledgerRowsFromPayload(payload).find((row) => {
-        if (!row || typeof row !== "object") return false;
-        const rowId = (row as { id?: unknown }).id;
-        return rowId !== undefined && rowId !== null && String(rowId) === wanted;
-    });
-    return match && typeof match === "object"
-        ? (match as WriteOffDetailCostCenterDisplay)
-        : null;
 }
