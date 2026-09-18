@@ -12,6 +12,7 @@ import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrig
 import { PurchaseInvoiceNotes } from '@/components/purchases/PurchaseInvoiceNotes';
 import { dateFromOptionalString } from '@/utils/dateFromOptionalString';
 import { PurchaseListSupplierName } from '@/components/purchases/PurchaseListSupplierName';
+import { PurchaseInvoiceDate } from '@/components/purchases/PurchaseInvoiceDate';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -313,6 +314,7 @@ export default function PurchasesPage() {
                                                             )}
                                                         </div>
                                                         <PurchaseInvoiceNotes invoice={item} className="mt-0.5 font-normal" />
+                                                        <PurchaseInvoiceDate invoice={item} className="mt-0.5 font-normal" />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-gray-600">
@@ -458,6 +460,9 @@ export default function PurchasesPage() {
                                         )}
                                         {item.type === 'invoice' && (
                                             <PurchaseInvoiceNotes invoice={item} className="text-[10px] mt-0.5 font-normal normal-case tracking-normal" />
+                                        )}
+                                        {item.type === 'invoice' && (
+                                            <PurchaseInvoiceDate invoice={item} className="text-[10px] mt-0.5 font-normal normal-case tracking-normal" />
                                         )}
                                         <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
                                             {dateFromOptionalString(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
