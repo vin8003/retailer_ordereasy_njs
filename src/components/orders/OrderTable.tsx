@@ -23,6 +23,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PriorityFlagBadge } from "@/components/orders/PriorityFlagBadge";
 
 interface Order {
     id: number;
@@ -43,6 +44,7 @@ interface Order {
     refund_amount: number;
     net_amount: number;
     is_returned: boolean;
+    priority_flag?: boolean | null;
 }
 
 interface OrderTableProps {
@@ -109,6 +111,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     <div className="flex flex-col items-start leading-tight">
                                         <span>{order.order_number}</span>
                                         {getSourceBadge(order.source)}
+                                        <PriorityFlagBadge order={order} className="mt-1.5" />
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -217,8 +220,9 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                         <div className="flex justify-between items-start">
                             <div className="flex flex-col gap-1">
                                 <span className="font-bold text-gray-800 text-[15px]">{order.order_number}</span>
-                                <div className="flex gap-1.5 items-center">
+                                <div className="flex gap-1.5 items-center flex-wrap">
                                     {getSourceBadge(order.source)}
+                                    <PriorityFlagBadge order={order} />
                                     <span className="text-[10px] text-muted-foreground font-semibold">
                                         {format(new Date(order.created_at), "MMM d, h:mm a")}
                                     </span>
