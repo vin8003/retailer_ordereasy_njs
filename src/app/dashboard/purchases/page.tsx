@@ -7,8 +7,27 @@ import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, A
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { PurchaseInvoiceNotes } from '@/components/purchases/PurchaseInvoiceNotes';
+import { dateFromOptionalString } from '@/utils/dateFromOptionalString';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
+
+type PurchaseListItem = {
+    id: number;
+    type: 'invoice' | 'return';
+    notes?: string | null;
+    invoice_number?: string;
+    return_number?: string;
+    invoice_date?: string;
+    return_date?: string;
+    created_at?: string;
+    supplier_name?: string;
+    items?: unknown[];
+    total_amount?: number | string;
+    paid_amount?: number | string;
+    payment_status?: string;
+    bill_image?: string | null;
+};
 
 function getDateRange(filter: FilterType): { start: string; end: string } | null {
     const today = new Date();
@@ -30,7 +49,7 @@ function getDateRange(filter: FilterType): { start: string; end: string } | null
 }
 
 export default function PurchasesPage() {
-    const [invoices, setInvoices] = useState<any[]>([]);
+    const [invoices, setInvoices] = useState<PurchaseListItem[]>([]);
     const [dashboardStats, setDashboardStats] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
@@ -68,10 +87,18 @@ export default function PurchasesPage() {
                 isAppend ? Promise.resolve(null) : api.get('/products/erp/dashboard/summary/')
             ]);
             
-            const invData = (invRes.data.results ?? invRes.data).map((item: any) => ({...item, type: 'invoice'}));
-            const retData = (retRes.data.results ?? retRes.data).map((item: any) => ({...item, type: 'return'}));
+            const invData = (invRes.data.results ?? invRes.data).map((item: any) => ({
+                ...item,
+                type: 'invoice' as const,
+                notes: item.notes,
+            }));
+            const retData = (retRes.data.results ?? retRes.data).map((item: any) => ({
+                ...item,
+                type: 'return' as const,
+                notes: item.notes,
+            }));
             
-            const merged = [...invData, ...retData].sort((a: any, b: any) => {
+            const merged = [...invData, ...retData].sort((a, b) => {
                 const dateA = new Date(a.created_at).getTime();
                 const dateB = new Date(b.created_at).getTime();
                 return dateB - dateA;
@@ -266,26 +293,29 @@ export default function PurchasesPage() {
                                         return (
                                             <tr key={`inv-${item.id}`} className="hover:bg-gray-50/50 transition-colors group">
                                                 <td className="p-4 pl-6 font-bold text-gray-900">
-                                                    <div className="flex items-center gap-2">
-                                                        <span>{item.invoice_number || `INV-${item.id}`}</span>
-                                                        {item.bill_image && (
-                                                            <a
-                                                                href={item.bill_image}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                title="View bill photo"
-                                                                className="shrink-0"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <img src={item.bill_image} alt="Bill" className="size-8 rounded-lg object-cover border border-gray-100" />
-                                                            </a>
-                                                        )}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{item.invoice_number || `INV-${item.id}`}</span>
+                                                            {item.bill_image && (
+                                                                <a
+                                                                    href={item.bill_image}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    title="View bill photo"
+                                                                    className="shrink-0"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <img src={item.bill_image} alt="Bill" className="size-8 rounded-lg object-cover border border-gray-100" />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                        <PurchaseInvoiceNotes invoice={item} className="mt-0.5 font-normal" />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={14} className="text-gray-400" />
-                                                        {new Date(item.invoice_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        {dateFromOptionalString(item.invoice_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
                                                 </td>
                                                 <td className="p-4 font-medium text-gray-900">
@@ -342,7 +372,7 @@ export default function PurchasesPage() {
                                                 <td className="p-4 text-red-600">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={14} className="text-red-400" />
-                                                        {new Date(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        {dateFromOptionalString(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
                                                 </td>
                                                 <td className="p-4 font-medium text-red-900">
@@ -414,8 +444,11 @@ export default function PurchasesPage() {
                                         {item.type === 'return' && (
                                             <span className="text-[10px] text-red-400 font-semibold mt-0.5">Against {item.invoice_number}</span>
                                         )}
+                                        {item.type === 'invoice' && (
+                                            <PurchaseInvoiceNotes invoice={item} className="text-[10px] mt-0.5 font-normal normal-case tracking-normal" />
+                                        )}
                                         <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
-                                            {new Date(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {dateFromOptionalString(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </span>
                                     </div>
                                     <div className="flex flex-col items-end gap-1.5">
