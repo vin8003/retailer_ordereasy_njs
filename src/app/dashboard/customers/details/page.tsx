@@ -54,12 +54,14 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { toast } from 'sonner';
+import { CustomerSezFlagBadge } from '@/components/customers/CustomerSezFlagBadge';
 
 interface CustomerDetail {
     customerId: number;
     customerName: string;
     phoneNumber?: string;
     email?: string;
+    sez_flag?: boolean | null;
     profileImage?: string;
     totalOrders: number;
     totalSpent: number;
@@ -155,6 +157,7 @@ function CustomerDetailContent() {
                     customerName: data.customer_name,
                     phoneNumber: data.phone_number,
                     email: data.email,
+                    sez_flag: data.sez_flag,
                     profileImage: data.profile_image,
                     totalOrders: data.total_orders,
                     totalSpent: data.total_spent ? parseFloat(data.total_spent) : 0,
@@ -337,7 +340,10 @@ function CustomerDetailContent() {
                         </Avatar>
 
                         <div className="flex-1 text-center md:text-left space-y-2">
-                            <h1 className="text-3xl font-bold">{customer.customerName}</h1>
+                            <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                                <h1 className="text-3xl font-bold">{customer.customerName}</h1>
+                                <CustomerSezFlagBadge customer={customer} />
+                            </div>
                             <p className="text-muted-foreground">{customer.phoneNumber || customer.email || 'No contact info'}</p>
                         </div>
 
