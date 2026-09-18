@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
+import { OrderDetailPromoCode } from "@/components/orders/OrderDetailPromoCode";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 
 import { orderService, customerService } from "@/services/api";
@@ -228,6 +229,7 @@ function OrderDetailContent() {
                             </Badge>
                         )}
                     </div>
+                    <OrderDetailPromoCode order={order} />
                     <p className="text-muted-foreground">
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
                     </p>
