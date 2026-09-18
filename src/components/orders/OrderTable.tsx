@@ -23,12 +23,15 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OrderSalesmanCode } from "@/components/orders/OrderSalesmanCode";
 
 interface Order {
     id: number;
     order_number: string;
     customer_name?: string; // Mapped from customer object if needed
     customer?: { first_name: string; last_name: string; username: string };
+    /** Optional BE list scalar. Display-only; never invent from name or nested salesman. */
+    salesman_code?: number | string | null;
     total_amount: number;
     status: string;
     created_at: string;
@@ -109,6 +112,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     <div className="flex flex-col items-start leading-tight">
                                         <span>{order.order_number}</span>
                                         {getSourceBadge(order.source)}
+                                        <OrderSalesmanCode order={order} className="mt-1" />
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -223,6 +227,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         {format(new Date(order.created_at), "MMM d, h:mm a")}
                                     </span>
                                 </div>
+                                <OrderSalesmanCode order={order} className="text-[10px]" />
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className={cn("font-extrabold text-base text-gray-900", order.is_returned && "text-gray-400 line-through text-xs font-semibold decoration-red-400")}>
