@@ -14,6 +14,8 @@ import {
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { PurchaseDetailTransporterGstin } from '@/components/purchases/PurchaseDetailTransporterGstin';
+import type { PurchaseDetailTransporterGstinDisplay } from '@/utils/purchaseDetailTransporterGstin';
 
 interface Product {
     id: number;
@@ -57,6 +59,7 @@ function EditPurchaseContent() {
     const [rows, setRows] = useState<PurchaseRow[]>([]);
     const [paidAmount, setPaidAmount] = useState<number>(0);
     const [notes, setNotes] = useState('');
+    const [invoiceFromBe, setInvoiceFromBe] = useState<PurchaseDetailTransporterGstinDisplay | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [hasReturns, setHasReturns] = useState(false);
@@ -142,6 +145,16 @@ function EditPurchaseContent() {
                     setInvoiceDate(inv.invoice_date);
                     setPaidAmount(Number(inv.paid_amount));
                     setNotes(inv.notes || '');
+                    setInvoiceFromBe({
+                        transporter_gstin: inv.transporter_gstin,
+                        invoice_number: inv.invoice_number,
+                        notes: inv.notes,
+                        supplier_name: inv.supplier_name,
+                        gst_number: inv.gst_number,
+                        vehicle_number: inv.vehicle_number,
+                        transporter_name: inv.transporter_name,
+                        transporter_id: inv.transporter_id,
+                    });
                     setHasReturns(inv.is_returned);
                     setRefundAmount(Number(inv.refund_amount));
                     setExistingBillImage(inv.bill_image || null);
@@ -436,6 +449,10 @@ function EditPurchaseContent() {
                                 <p className="text-[11px] text-gray-400 font-medium">Current bill photo is attached. Choose a file to replace it.</p>
                             )}
                         </div>
+                        <PurchaseDetailTransporterGstin
+                            invoice={invoiceFromBe ?? {}}
+                            className="md:col-span-3"
+                        />
                     </div>
 
                     {/* Product Search & Table */}
