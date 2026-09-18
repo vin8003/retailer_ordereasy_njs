@@ -20,6 +20,7 @@ import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
+import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
 import { ProductGroupLabel } from '@/components/products/ProductGroupLabel';
 import { SeasonalBadge } from '@/components/products/SeasonalBadge';
 
@@ -37,6 +38,8 @@ interface Product {
     barcode?: string | null;
     product_group?: string | null;
     is_seasonal?: boolean | null;
+    is_available?: boolean | null;
+    is_in_stock?: boolean | null;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
@@ -1089,6 +1092,7 @@ export default function POSPage() {
                                                 <ProductGroupLabel product={product} />
                                                 <BarcodeLabel product={product} />
                                                 <SeasonalBadge product={product} className="mt-0.5" />
+                                                <AvailabilityBadges product={product} className="mt-0.5" />
                                             </div>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
