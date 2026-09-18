@@ -4,6 +4,7 @@ export type WriteOffDetailCostCenterDisplay = {
     /** Allowed on payloads / tests; never used to invent cost_center. */
     id?: number | string | null;
     product_id?: number | string | null;
+    product_name?: string | null;
     reason?: string | null;
     department?: string | null;
     cost_centre?: string | number | null;
