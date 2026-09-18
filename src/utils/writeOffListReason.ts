@@ -56,7 +56,10 @@ export function getWriteOffListReason(row: WriteOffListReasonDisplay): string | 
 
 /** Pass-through list row. Copies `reason` and `product_id` only from the payload. */
 export function mapWriteOffListItem(
-    raw: WriteOffListItem & { id?: number; product_id?: number | string | null }
+    raw: Omit<WriteOffListItem, "product_id"> & {
+        id?: number;
+        product_id?: number | string | null;
+    }
 ): WriteOffListItem {
     return {
         id: Number(raw.id),
