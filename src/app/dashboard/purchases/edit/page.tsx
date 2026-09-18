@@ -14,6 +14,8 @@ import {
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { PurchaseDetailNotes } from '@/components/purchases/PurchaseDetailNotes';
+import type { PurchaseDetailNotesDisplay } from '@/utils/purchaseDetailNotes';
 
 interface Product {
     id: number;
@@ -57,6 +59,7 @@ function EditPurchaseContent() {
     const [rows, setRows] = useState<PurchaseRow[]>([]);
     const [paidAmount, setPaidAmount] = useState<number>(0);
     const [notes, setNotes] = useState('');
+    const [invoiceFromBe, setInvoiceFromBe] = useState<PurchaseDetailNotesDisplay | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [hasReturns, setHasReturns] = useState(false);
@@ -142,6 +145,12 @@ function EditPurchaseContent() {
                     setInvoiceDate(inv.invoice_date);
                     setPaidAmount(Number(inv.paid_amount));
                     setNotes(inv.notes || '');
+                    setInvoiceFromBe({
+                        notes: inv.notes,
+                        invoice_number: inv.invoice_number,
+                        payment_status: inv.payment_status,
+                        supplier_name: inv.supplier_name,
+                    });
                     setHasReturns(inv.is_returned);
                     setRefundAmount(Number(inv.refund_amount));
                     setExistingBillImage(inv.bill_image || null);
@@ -436,6 +445,10 @@ function EditPurchaseContent() {
                                 <p className="text-[11px] text-gray-400 font-medium">Current bill photo is attached. Choose a file to replace it.</p>
                             )}
                         </div>
+                        <PurchaseDetailNotes
+                            invoice={invoiceFromBe ?? {}}
+                            className="md:col-span-3"
+                        />
                     </div>
 
                     {/* Product Search & Table */}
