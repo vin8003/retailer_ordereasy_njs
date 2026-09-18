@@ -285,6 +285,7 @@ function OrderDetailContent() {
                                 total_amount: order.total_amount,
                                 payment_mode: order.payment_mode || 'COD',
                                 payment_status: order.payment_status === 'paid' ? 'PAID' : 'COD/UNPAID',
+                                cheque_number: order.cheque_number,
                                 customer_name: order.customer_name || order.user?.name || order.guest_name,
                                 customer_phone: order.user?.phone || order.customer_mobile || order.guest_mobile,
                                 retailer_name: retailerProfile?.shop_name || order.retailer_name,
