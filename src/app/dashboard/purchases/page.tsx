@@ -7,6 +7,7 @@ import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, A
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { PurchaseInvoiceDate } from '@/components/purchases/PurchaseInvoiceDate';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -266,20 +267,23 @@ export default function PurchasesPage() {
                                         return (
                                             <tr key={`inv-${item.id}`} className="hover:bg-gray-50/50 transition-colors group">
                                                 <td className="p-4 pl-6 font-bold text-gray-900">
-                                                    <div className="flex items-center gap-2">
-                                                        <span>{item.invoice_number || `INV-${item.id}`}</span>
-                                                        {item.bill_image && (
-                                                            <a
-                                                                href={item.bill_image}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                title="View bill photo"
-                                                                className="shrink-0"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <img src={item.bill_image} alt="Bill" className="size-8 rounded-lg object-cover border border-gray-100" />
-                                                            </a>
-                                                        )}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{item.invoice_number || `INV-${item.id}`}</span>
+                                                            {item.bill_image && (
+                                                                <a
+                                                                    href={item.bill_image}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    title="View bill photo"
+                                                                    className="shrink-0"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <img src={item.bill_image} alt="Bill" className="size-8 rounded-lg object-cover border border-gray-100" />
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                        <PurchaseInvoiceDate invoice={item} className="mt-0.5 font-normal" />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-gray-600">
@@ -413,6 +417,9 @@ export default function PurchasesPage() {
                                         </span>
                                         {item.type === 'return' && (
                                             <span className="text-[10px] text-red-400 font-semibold mt-0.5">Against {item.invoice_number}</span>
+                                        )}
+                                        {item.type === 'invoice' && (
+                                            <PurchaseInvoiceDate invoice={item} className="text-[10px] mt-0.5 font-normal normal-case tracking-normal" />
                                         )}
                                         <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
                                             {new Date(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
