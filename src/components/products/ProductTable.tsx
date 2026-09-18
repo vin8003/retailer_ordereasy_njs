@@ -3,6 +3,12 @@
 import { useRouter } from "next/navigation";
 import { Edit, Trash2, MoreHorizontal, ImageIcon, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
+import { BarcodeLabel } from "@/components/products/BarcodeLabel";
+import { BrandNameLabel } from "@/components/products/BrandNameLabel";
+import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
+import { ProductGroupLabel } from "@/components/products/ProductGroupLabel";
+import { SeasonalBadge } from "@/components/products/SeasonalBadge";
 
 import {
     Table,
@@ -31,6 +37,12 @@ interface Product {
     price: string | number;
     original_price?: string | number;
     quantity: number;
+    saleable_quantity?: number | string | null;
+    margin_percent?: number | string | null;
+    brand_name?: string | null;
+    barcode?: string | null;
+    product_group?: string | null;
+    is_seasonal?: boolean | null;
     image?: string;
     is_active: boolean;
     is_featured: boolean;
@@ -98,6 +110,10 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                 </TableCell>
                                 <TableCell className="font-medium">
                                     <div>{product.name}</div>
+                                    <BrandNameLabel product={product} />
+                                    <ProductGroupLabel product={product} />
+                                    <BarcodeLabel product={product} />
+                                    <SeasonalBadge product={product} className="mt-1" />
                                     {product.is_active === false && (
                                         <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
                                     )}
@@ -106,8 +122,8 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                     {product.category_name || 'Uncategorized'}
                                 </TableCell>
                                 <TableCell>
-                                    <div className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
-                                        {product.quantity} {product.unit}
+                                    <div className={getDisplayStockQuantity(product) < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
+                                        {getDisplayStockQuantity(product)} {product.unit}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -117,6 +133,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                             ₹{Number(product.original_price).toFixed(2)}
                                         </div>
                                     )}
+                                    <MarginPercentBadge product={product} className="mt-1 ml-auto" />
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <Button
@@ -199,7 +216,13 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                         <div className="flex-1 flex flex-col justify-between">
                             <div>
                                 <div className="flex justify-between items-start gap-1.5">
-                                    <span className="font-bold text-gray-800 text-sm line-clamp-1 leading-snug">{product.name}</span>
+                                    <div className="min-w-0">
+                                        <span className="font-bold text-gray-800 text-sm line-clamp-1 leading-snug">{product.name}</span>
+                                        <BrandNameLabel product={product} />
+                                        <ProductGroupLabel product={product} />
+                                        <BarcodeLabel product={product} />
+                                        <SeasonalBadge product={product} className="mt-0.5" />
+                                    </div>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -220,8 +243,8 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                             <div className="flex justify-between items-end mt-2 pt-2 border-t border-gray-50/80">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-muted-foreground font-semibold">Stock level</span>
-                                    <span className={cn("text-xs font-bold mt-0.5", product.quantity < 10 ? "text-red-500" : "text-green-600")}>
-                                        {product.quantity} {product.unit}
+                                    <span className={cn("text-xs font-bold mt-0.5", getDisplayStockQuantity(product) < 10 ? "text-red-500" : "text-green-600")}>
+                                        {getDisplayStockQuantity(product)} {product.unit}
                                     </span>
                                 </div>
                                 <div className="flex flex-col items-end">
@@ -232,6 +255,7 @@ export function ProductTable({ products, isLoading, onDelete, onToggleFeatured, 
                                             <span className="text-[10px] text-muted-foreground line-through">₹{Number(product.original_price).toFixed(0)}</span>
                                         )}
                                     </div>
+                                    <MarginPercentBadge product={product} className="mt-0.5" />
                                 </div>
                             </div>
                         </div>
