@@ -11,6 +11,7 @@ import {
 import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { SupplierDetailContact } from '@/components/suppliers/SupplierDetailContact';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -319,10 +320,7 @@ function SupplierLedgerDetails() {
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Contact Person</p>
                             <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.contact_person || 'N/A'}</p>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Mobile Number</p>
-                            <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.phone_number}</p>
-                        </div>
+                        <SupplierDetailContact supplier={supplier} />
                     </div>
                 </div>
             </div>
