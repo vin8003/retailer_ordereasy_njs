@@ -5,19 +5,20 @@ import api from '@/services/api';
 import { 
     BookOpen, Search, User, Phone, 
     ArrowRight, CreditCard, Loader2,
-    UserPlus, Mail, Pencil, Ban, RotateCcw, X
+    UserPlus, Pencil, Ban, RotateCcw, X
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { SupplierListEmail } from '@/components/suppliers/SupplierListEmail';
 
 interface Supplier {
     id: number;
     company_name: string;
     contact_person: string;
     phone_number: string;
-    email: string;
+    email?: string | null;
     address: string;
     balance_due: string | number;
     is_active?: boolean;
@@ -346,10 +347,7 @@ export default function SuppliersPage() {
                                                     <Phone size={14} className="text-gray-300" />
                                                     {supplier.phone_number}
                                                 </div>
-                                                <div className="flex items-center gap-2 text-gray-400">
-                                                    <Mail size={14} className="text-gray-300" />
-                                                    {supplier.email || 'No email'}
-                                                </div>
+                                                <SupplierListEmail supplier={supplier} />
                                             </div>
                                         </td>
                                         <td className="p-6 text-right">
@@ -424,12 +422,11 @@ export default function SuppliersPage() {
                                             <Phone size={12} className="text-gray-400 flex-shrink-0" />
                                             <span>{supplier.phone_number}</span>
                                         </div>
-                                        {supplier.email && (
-                                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-                                                <Mail size={11} className="text-gray-400 flex-shrink-0" />
-                                                <span className="truncate max-w-[160px]">{supplier.email}</span>
-                                            </div>
-                                        )}
+                                        <SupplierListEmail
+                                            supplier={supplier}
+                                            className="text-[11px] gap-1.5"
+                                            iconSize={11}
+                                        />
                                     </div>
                                     {renderActions(supplier, true)}
                                 </div>
