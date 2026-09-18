@@ -16,6 +16,12 @@ import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
+import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
+import { BarcodeLabel } from '@/components/products/BarcodeLabel';
+import { BrandNameLabel } from '@/components/products/BrandNameLabel';
+import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
+import { ProductGroupLabel } from '@/components/products/ProductGroupLabel';
+import { SeasonalBadge } from '@/components/products/SeasonalBadge';
 
 interface Product {
     id: number;
@@ -23,9 +29,14 @@ interface Product {
     price: number | string;
     discounted_price: number | string;
     image: string;
-    quantity: number; // Stock qty
+    quantity: number; // Gross stock qty
+    saleable_quantity?: number | string | null;
+    margin_percent?: number | string | null;
     category_name: string;
-    barcode?: string;
+    brand_name?: string | null;
+    barcode?: string | null;
+    product_group?: string | null;
+    is_seasonal?: boolean | null;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
@@ -487,7 +498,7 @@ export default function POSPage() {
         const shouldTrack = product.track_inventory !== false;
         
         // POS allows negative stock, so we don't block here
-        if (shouldTrack && !product.has_batches && product.quantity <= 0) {
+        if (shouldTrack && !product.has_batches && getDisplayStockQuantity(product) <= 0) {
             console.log(`${product.name} is out of stock in system, but allowing sale.`);
         }
 
@@ -540,7 +551,7 @@ export default function POSPage() {
                     : (product.price || 0)
                   )
               );
-        const quantity = batch ? batch.quantity : product.quantity;
+        const quantity = batch ? batch.quantity : getDisplayStockQuantity(product);
         
         // POS allows negative stock, so we don't block even if quantity is <= 0
         if (shouldTrack && quantity <= 0) {
@@ -1038,7 +1049,7 @@ export default function POSPage() {
                         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 pb-20">
                             {displayedProducts.map((product, gridIdx) => {
                                 const price = product.discounted_price || product.price;
-                                const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
+                                const isOutOfStock = product.track_inventory !== false ? getDisplayStockQuantity(product) <= 0 : false;
                                 const isGridActive = gridIdx === activeGridIndex;
                                 
                                 return (
@@ -1070,14 +1081,23 @@ export default function POSPage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-xs font-medium text-gray-400 mb-1">{product.category_name || 'Uncategorized'}</p>
-                                            <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight mb-2">
-                                                {product.name}
-                                            </h3>
+                                            <div className="mb-2">
+                                                <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
+                                                    {product.name}
+                                                </h3>
+                                                <BrandNameLabel product={product} />
+                                                <ProductGroupLabel product={product} />
+                                                <BarcodeLabel product={product} />
+                                                <SeasonalBadge product={product} className="mt-0.5" />
+                                            </div>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
-                                            <span className="text-lg font-bold text-gray-900">₹{price}</span>
+                                            <div className="flex flex-col items-start gap-1 min-w-0">
+                                                <span className="text-lg font-bold text-gray-900">₹{price}</span>
+                                                <MarginPercentBadge product={product} />
+                                            </div>
                                             <span className={`text-xs font-medium px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                {product.track_inventory === false ? 'Available' : `${product.quantity} in stock`}
+                                                {product.track_inventory === false ? 'Available' : `${getDisplayStockQuantity(product)} in stock`}
                                             </span>
                                         </div>
                                     </button>
