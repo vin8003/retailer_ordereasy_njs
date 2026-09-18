@@ -14,6 +14,14 @@ describe("OfdDistanceKmLabel", () => {
         expect(markup).toContain("Distance 2.4 km");
     });
 
+    it("shows 0 km on an OFD row when BE sent distance_km 0", () => {
+        const markup = renderToStaticMarkup(
+            <OfdDistanceKmLabel row={{ status: "out_for_delivery", distance_km: 0 }} />
+        );
+        expect(markup).toContain("0 km");
+        expect(markup).toContain("Distance 0 km");
+    });
+
     it("renders nothing on an OFD row when the field is omitted, null, or blank", () => {
         expect(
             renderToStaticMarkup(<OfdDistanceKmLabel row={{ status: "out_for_delivery" }} />)
