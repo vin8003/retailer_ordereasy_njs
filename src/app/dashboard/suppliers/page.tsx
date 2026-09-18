@@ -11,6 +11,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { SupplierListScalars } from '@/components/suppliers/SupplierListScalars';
 
 interface Supplier {
     id: number;
@@ -21,6 +22,8 @@ interface Supplier {
     address: string;
     balance_due: string | number;
     is_active?: boolean;
+    gst_number?: string | null;
+    payment_terms?: string | null;
 }
 
 const DEACTIVATE_CONFIRM = (name: string) =>
@@ -331,6 +334,7 @@ export default function SuppliersPage() {
                                                     {supplier.is_active === false && (
                                                         <span className="inline-block mt-1 text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-2 py-0.5 rounded-md">Inactive</span>
                                                     )}
+                                                    <SupplierListScalars supplier={supplier} className="mt-1 normal-case tracking-normal" />
                                                 </div>
                                             </div>
                                         </td>
@@ -407,6 +411,7 @@ export default function SuppliersPage() {
                                                 <User size={10} className="text-gray-400 flex-shrink-0" />
                                                 <span className="truncate max-w-[100px]">{supplier.contact_person || 'N/A'}</span>
                                             </div>
+                                            <SupplierListScalars supplier={supplier} className="text-[10px] mt-0.5 normal-case tracking-normal" />
                                         </div>
                                     </div>
                                     <div className="text-right flex-shrink-0">
