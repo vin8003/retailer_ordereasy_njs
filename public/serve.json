@@ -3,10 +3,6 @@
   "directoryListing": false,
   "rewrites": [
     {
-      "source": "/dashboard/orders/return-detail",
-      "destination": "/dashboard/orders/return-detail/index.html"
-    },
-    {
       "source": "/dashboard/purchases/return-detail",
       "destination": "/dashboard/purchases/return-detail/index.html"
     },

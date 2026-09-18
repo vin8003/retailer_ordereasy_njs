@@ -5,7 +5,7 @@ import {
     type SalesReturnTransporterDisplay,
 } from "@/utils/salesReturnTransporter";
 
-/** Sales-return-detail transporter. Renders nothing when BE omitted `transporter_name`. */
+/** Optional sales-return transporter. Renders nothing when BE omitted `transporter_name`. */
 export function SalesReturnTransporterName({
     salesReturn,
     className,

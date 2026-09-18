@@ -1,4 +1,4 @@
-/** Optional BE sales-return detail field. Isolated from OE-327 notes. */
+/** Optional BE sales-return field. Isolated from OE-327 notes. */
 export type SalesReturnTransporterDisplay = {
     transporter_name?: string | null;
     /** Allowed on payloads / tests; never used to invent transporter_name. */
@@ -21,10 +21,10 @@ function optionalTrimmedText(raw: string | null | undefined): string | null {
 }
 
 /**
- * Compact transporter line from top-level `transporter_name` only
- * (sales-return detail GET).
+ * Compact transporter line from top-level `transporter_name` only.
  * Absent / undefined / null / blank → do not show.
  * Never derived from nested transporter, driver, courier, notes, or reason.
+ * Ready for an existing sales-return surface; do not invent a detail route.
  */
 export function getSalesReturnTransporterName(
     salesReturn: SalesReturnTransporterDisplay
