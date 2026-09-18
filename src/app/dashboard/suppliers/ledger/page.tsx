@@ -11,6 +11,7 @@ import {
 import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { SupplierDetailPan } from '@/components/suppliers/SupplierDetailPan';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -47,6 +48,7 @@ interface Supplier {
     address?: string;
     balance_due: string | number;
     is_active?: boolean;
+    pan_number?: string | null;
 }
 
 interface LedgerEntry {
@@ -323,6 +325,7 @@ function SupplierLedgerDetails() {
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Mobile Number</p>
                             <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.phone_number}</p>
                         </div>
+                        <SupplierDetailPan supplier={supplier} />
                     </div>
                 </div>
             </div>
