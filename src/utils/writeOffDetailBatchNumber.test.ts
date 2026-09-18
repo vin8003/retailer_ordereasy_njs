@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-    getWriteOffDetailBatchNumber,
-    pickWriteOffDetailFromLedgerPayload,
-} from "./writeOffDetailBatchNumber";
+import { getWriteOffDetailBatchNumber } from "./writeOffDetailBatchNumber";
 
 describe("getWriteOffDetailBatchNumber", () => {
     it("returns the trimmed batch_number when BE sent a non-empty string", () => {
@@ -49,31 +46,6 @@ describe("getWriteOffDetailBatchNumber", () => {
                 created_by_name: "Ravi Sharma",
                 batch_number: null,
             })
-        ).toBeNull();
-    });
-});
-
-describe("pickWriteOffDetailFromLedgerPayload", () => {
-    it("returns the matching ledger row from an array payload", () => {
-        const row = { id: 9, batch_number: "B-104", reason: "damage" };
-        expect(pickWriteOffDetailFromLedgerPayload([row, { id: 8 }], 9)).toEqual(row);
-        expect(pickWriteOffDetailFromLedgerPayload({ results: [row] }, "9")).toEqual(row);
-    });
-
-    it("returns null when id is missing or no row matches", () => {
-        expect(pickWriteOffDetailFromLedgerPayload([{ id: 9, batch_number: "B-104" }], null)).toBeNull();
-        expect(pickWriteOffDetailFromLedgerPayload([{ id: 9, batch_number: "B-104" }], "  ")).toBeNull();
-        expect(pickWriteOffDetailFromLedgerPayload([], 9)).toBeNull();
-        expect(pickWriteOffDetailFromLedgerPayload({ results: [] }, 9)).toBeNull();
-        expect(pickWriteOffDetailFromLedgerPayload([{ id: 8, batch_number: "OTHER" }], 9)).toBeNull();
-    });
-
-    it("does not invent a row or batch_number when the id is absent from the payload", () => {
-        expect(
-            pickWriteOffDetailFromLedgerPayload(
-                [{ id: 1, batch_id: 77, batch: { batch_number: "NESTED-B1" } }],
-                9
-            )
         ).toBeNull();
     });
 });

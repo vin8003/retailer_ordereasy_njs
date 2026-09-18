@@ -23,6 +23,21 @@ describe("WriteOffDetailBatchNumber", () => {
         ).toBe("");
     });
 
+    it("shows batch_number on an existing ledger-shaped write-off row when BE sent it", () => {
+        const markup = renderToStaticMarkup(
+            <WriteOffDetailBatchNumber
+                writeOff={{
+                    reason: "damage",
+                    created_by: "Ravi",
+                    batch_number: "B-104",
+                }}
+            />
+        );
+        expect(markup).toContain("Batch B-104");
+        expect(markup).not.toContain("damage");
+        expect(markup).not.toContain("Ravi");
+    });
+
     it("does not invent batch_number from batch_id, nested batch, reason, or created-by", () => {
         const markup = renderToStaticMarkup(
             <WriteOffDetailBatchNumber

@@ -4,7 +4,7 @@ import {
     type WriteOffDetailBatchNumberDisplay,
 } from "@/utils/writeOffDetailBatchNumber";
 
-/** Write-off-detail batch line. Renders nothing when BE omitted or blanked `batch_number`. */
+/** Optional batch line on an existing write-off / ledger row. Renders nothing when BE omitted or blanked `batch_number`. */
 export function WriteOffDetailBatchNumber({
     writeOff,
     className,
