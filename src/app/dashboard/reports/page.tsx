@@ -8,6 +8,7 @@ import {
     ArrowUpRight, ArrowDownRight, Printer, RefreshCcw
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
+import { ReportsLowStockCountLabel } from '@/components/reports/ReportsLowStockCountLabel';
 
 interface DailySummary {
     date: string;
@@ -20,6 +21,7 @@ interface DailySummary {
     cash_refunds: number;
     upi_refunds: number;
     shop_name: string;
+    low_stock_count?: number | string | null;
 }
 
 export default function ReportsPage() {
@@ -64,6 +66,7 @@ export default function ReportsPage() {
                         <BarChart3 size={36} className="text-primary hidden sm:block" /> Daily Sales Report
                     </h1>
                     <p className="text-gray-500 mt-1 text-xs sm:text-base font-medium italic">Closing summary for {new Date(summary.date).toLocaleDateString('en-IN', { dateStyle: 'full' })}</p>
+                    <ReportsLowStockCountLabel summary={summary} className="mt-1" />
                 </div>
                 <button 
                     onClick={fetchSummary}
