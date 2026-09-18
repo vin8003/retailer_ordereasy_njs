@@ -5,12 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/services/api';
 import { 
     History, ChevronLeft, Loader2, Package, 
-    PlusCircle, MinusCircle, ShoppingCart, 
-    AlertCircle, FileText, User
+    PlusCircle, MinusCircle, User
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
-import { orderDetailsHref, parseOrderNumberFromText } from '@/lib/orderLinks';
+import { InventoryAdjustReasonNote } from '@/components/products/InventoryAdjustReasonNote';
 
 interface LogEntry {
     id: number;
@@ -18,7 +17,8 @@ interface LogEntry {
     quantity_change: number;
     previous_quantity: number;
     new_quantity: number;
-    reason: string;
+    reason?: string | null;
+    note?: string | null;
     created_at: string;
     created_by: string;
 }
@@ -162,23 +162,7 @@ function LedgerContent() {
                                             </td>
                                             <td className="p-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-2 font-bold text-gray-900">
-                                                        <FileText size={12} className="text-gray-400" />
-                                                        {(() => {
-                                                            const orderNumber = parseOrderNumberFromText(log.reason);
-                                                            const href = orderDetailsHref({ orderNumber });
-                                                            if (!href) return log.reason || 'N/A';
-                                                            return (
-                                                                <Link
-                                                                    href={href}
-                                                                    className="text-primary hover:underline"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    {log.reason}
-                                                                </Link>
-                                                            );
-                                                        })()}
-                                                    </div>
+                                                    <InventoryAdjustReasonNote row={log} />
                                                     <div className="flex items-center gap-2 font-bold text-gray-400 italic">
                                                         <User size={10} /> {log.created_by}
                                                     </div>
