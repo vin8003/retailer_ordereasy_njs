@@ -39,6 +39,12 @@ describe("getOfdGatePassLabel", () => {
         expect(getOfdGatePassLabel({ gate_pass: Number.NaN })).toBeNull();
         expect(getOfdGatePassLabel({ gate_pass: Number.POSITIVE_INFINITY })).toBeNull();
     });
+
+    it("returns null for non-scalar gate_pass values", () => {
+        expect(getOfdGatePassLabel({ gate_pass: true as unknown as string })).toBeNull();
+        expect(getOfdGatePassLabel({ gate_pass: {} as unknown as string })).toBeNull();
+        expect(getOfdGatePassLabel({ gate_pass: [] as unknown as string })).toBeNull();
+    });
 });
 
 describe("isOutForDeliveryRow", () => {
