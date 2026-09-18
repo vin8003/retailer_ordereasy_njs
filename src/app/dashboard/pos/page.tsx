@@ -15,8 +15,10 @@ import POSReturnModal from '@/components/pos/POSReturnModal';
 import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
+import { POSCartLineSchemeDetails } from '@/components/pos/POSCartLineSchemeDetails';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
+import { pickPosCartLineSchemeName } from '@/utils/posCartLineScheme';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
@@ -37,6 +39,7 @@ interface Product {
     barcode?: string | null;
     product_group?: string | null;
     is_seasonal?: boolean | null;
+    scheme_name?: string | null;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
@@ -54,6 +57,7 @@ interface CartItem {
     original_price?: number;
     barcode?: string;
     image?: string;
+    scheme_name?: string | null;
 }
 
 interface CustomerSuggestion {
@@ -582,7 +586,8 @@ export default function POSPage() {
                 batch_id: batch?.id || null,
                 batch_name: batch?.batch_number || null,
                 barcode: batch?.barcode || product.barcode,
-                image: product.image
+                image: product.image,
+                scheme_name: pickPosCartLineSchemeName(product),
             }];
         }
 
@@ -1262,12 +1267,7 @@ export default function POSPage() {
                                             className={`group transition-all ${isCartActive ? 'bg-primary/5' : 'bg-white hover:bg-gray-50/50'}`}
                                         >
                                             <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-gray-800 line-clamp-1">{item.name}</span>
-                                                    {item.batch_name && (
-                                                        <span className="text-[10px] text-primary font-bold uppercase mt-0.5 tracking-tighter">Batch: {item.batch_name}</span>
-                                                    )}
-                                                </div>
+                                                <POSCartLineSchemeDetails item={item} />
                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center justify-center bg-gray-100 rounded-lg p-0.5 w-fit mx-auto border border-gray-200/50">
