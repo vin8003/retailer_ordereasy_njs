@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
+import { OfdSignedByLabel } from "@/components/orders/OfdSignedByLabel";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 
 import { orderService, customerService } from "@/services/api";
@@ -388,6 +389,7 @@ function OrderDetailContent() {
                                     deliveryMode={order.delivery_mode}
                                     onStatusUpdate={fetchOrderDetails}
                                 />
+                                <OfdSignedByLabel order={order} className="mt-3" />
                             </div>
 
                             {/* Update ETA Button */}
