@@ -23,6 +23,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OfdDriverNameLabel } from "@/components/orders/OfdDriverNameLabel";
 
 interface Order {
     id: number;
@@ -43,6 +44,8 @@ interface Order {
     refund_amount: number;
     net_amount: number;
     is_returned: boolean;
+    /** Optional BE OFD list scalar. Display only — never invent. */
+    driver_name?: string | null;
 }
 
 interface OrderTableProps {
@@ -153,6 +156,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                                 PARTIAL RETURN ↩️
                                             </Badge>
                                         )}
+                                        <OfdDriverNameLabel row={order} />
                                         {order.feedback && (
                                             <div className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
                                                 <span>{order.feedback.overall_rating}</span>
@@ -260,6 +264,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         RETURN ↩️
                                     </Badge>
                                 )}
+                                <OfdDriverNameLabel row={order} />
                             </div>
                         </div>
                     </div>
