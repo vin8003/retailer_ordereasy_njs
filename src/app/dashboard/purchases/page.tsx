@@ -7,6 +7,7 @@ import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, A
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { PurchaseReturnListIdentity } from '@/components/purchases/PurchaseReturnListIdentity';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -334,10 +335,7 @@ export default function PurchasesPage() {
                                         return (
                                             <tr key={`ret-${item.id}`} className="hover:bg-red-50/50 transition-colors group bg-red-50/20 border-l-4 border-l-red-500">
                                                 <td className="p-4 pl-5 font-bold text-red-700">
-                                                    <div className="flex flex-col">
-                                                        <span>{item.return_number || `RET-${item.id}`}</span>
-                                                        <span className="text-[10px] text-red-400 font-medium mt-0.5">Against {item.invoice_number}</span>
-                                                    </div>
+                                                    <PurchaseReturnListIdentity item={item} />
                                                 </td>
                                                 <td className="p-4 text-red-600">
                                                     <div className="flex items-center gap-2">
@@ -397,22 +395,26 @@ export default function PurchasesPage() {
                             <div key={`${item.type}-${item.id}`} className={`p-4 active:bg-gray-50 transition-colors flex flex-col gap-3 ${item.type === 'return' ? 'bg-red-50/10 border-l-4 border-l-red-500' : ''}`}>
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
-                                        <span className={`font-bold text-sm ${item.type === 'return' ? 'text-red-700' : 'text-gray-800'} flex items-center gap-2`}>
-                                            {item.type === 'invoice' ? (item.invoice_number || `INV-${item.id}`) : (item.return_number || `RET-${item.id}`)}
-                                            {item.type === 'invoice' && item.bill_image && (
-                                                <a
-                                                    href={item.bill_image}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    title="View bill photo"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <ImageIcon size={14} className="text-primary" />
-                                                </a>
-                                            )}
-                                        </span>
-                                        {item.type === 'return' && (
-                                            <span className="text-[10px] text-red-400 font-semibold mt-0.5">Against {item.invoice_number}</span>
+                                        {item.type === 'return' ? (
+                                            <PurchaseReturnListIdentity
+                                                item={item}
+                                                className="font-bold text-sm text-red-700"
+                                            />
+                                        ) : (
+                                            <span className="font-bold text-sm text-gray-800 flex items-center gap-2">
+                                                {item.invoice_number || `INV-${item.id}`}
+                                                {item.bill_image && (
+                                                    <a
+                                                        href={item.bill_image}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="View bill photo"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <ImageIcon size={14} className="text-primary" />
+                                                    </a>
+                                                )}
+                                            </span>
                                         )}
                                         <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
                                             {new Date(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
