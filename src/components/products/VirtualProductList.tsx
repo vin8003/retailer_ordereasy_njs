@@ -18,6 +18,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineNumpadSheet } from "@/components/products/InlineNumpadSheet";
+import { getDisplayStockQuantity } from "@/utils/saleableQuantity";
+import { BarcodeLabel } from "@/components/products/BarcodeLabel";
+import { BrandNameLabel } from "@/components/products/BrandNameLabel";
+import { MarginPercentBadge } from "@/components/products/MarginPercentBadge";
+import { ProductGroupLabel } from "@/components/products/ProductGroupLabel";
+import { SeasonalBadge } from "@/components/products/SeasonalBadge";
 
 interface Product {
     id: number;
@@ -27,6 +33,12 @@ interface Product {
     price: string | number;
     original_price?: string | number;
     quantity: number;
+    saleable_quantity?: number | string | null;
+    margin_percent?: number | string | null;
+    brand_name?: string | null;
+    barcode?: string | null;
+    product_group?: string | null;
+    is_seasonal?: boolean | null;
     track_inventory: boolean;
     image?: string;
     is_active: boolean;
@@ -388,8 +400,12 @@ function SwipeableRow({
                         </div>
                     </div>
 
-                    <div className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">
+                    <div className="font-medium overflow-hidden min-w-0">
                         <div className="truncate">{product.name}</div>
+                        <BrandNameLabel product={product} />
+                        <ProductGroupLabel product={product} />
+                        <BarcodeLabel product={product} />
+                        <SeasonalBadge product={product} className="mt-1" />
                         {product.is_active === false && (
                             <Badge variant="destructive" className="mt-1 text-[10px] px-1 py-0 h-4">Inactive</Badge>
                         )}
@@ -409,8 +425,8 @@ function SwipeableRow({
                         }}
                     >
                         {product.track_inventory ? (
-                            <span className={product.quantity < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
-                                {product.quantity} {product.unit}
+                            <span className={getDisplayStockQuantity(product) < 10 ? "text-red-500 font-medium" : "text-green-600 font-medium"}>
+                                {getDisplayStockQuantity(product)} {product.unit}
                             </span>
                         ) : (
                             <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800">
@@ -430,6 +446,7 @@ function SwipeableRow({
                                     ₹{Number(product.original_price).toFixed(2)}
                                 </div>
                             )}
+                            <MarginPercentBadge product={product} className="mt-1 ml-auto" />
                         </div>
                     </div>
 
@@ -542,6 +559,10 @@ function SwipeableRow({
                                     <Badge variant="destructive" className="text-[8px] px-1 py-0 h-3 border-none shrink-0">Inactive</Badge>
                                 )}
                             </span>
+                            <BrandNameLabel product={product} />
+                            <ProductGroupLabel product={product} />
+                            <BarcodeLabel product={product} />
+                            <SeasonalBadge product={product} className="mt-0.5" />
                             <span className="text-[10px] text-muted-foreground truncate">{product.category_name || 'Uncategorized'}</span>
                             <div 
                                 className="mt-0.5 text-xs cursor-pointer inline-block"
@@ -553,8 +574,8 @@ function SwipeableRow({
                                 }}
                             >
                                 {product.track_inventory ? (
-                                    <span className={product.quantity < 10 ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
-                                        Stock: {product.quantity} {product.unit}
+                                    <span className={getDisplayStockQuantity(product) < 10 ? "text-red-500 font-bold" : "text-green-600 font-bold"}>
+                                        Stock: {getDisplayStockQuantity(product)} {product.unit}
                                     </span>
                                 ) : (
                                     <span className="text-blue-500 font-semibold">Stock: ∞</span>
@@ -574,6 +595,7 @@ function SwipeableRow({
                                     ₹{Number(product.original_price).toFixed(2)}
                                 </div>
                             )}
+                            <MarginPercentBadge product={product} className="mt-0.5 ml-auto" />
                         </div>
                         <Button
                             variant="ghost"
