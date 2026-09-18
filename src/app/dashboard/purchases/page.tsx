@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, ArrowRight, Pencil, ChevronDown, RotateCcw, Loader2, ImageIcon } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
+import { PurchaseReturnInvoiceLabel } from '@/components/purchases/PurchaseReturnInvoiceLabel';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { PurchaseInvoiceNotes } from '@/components/purchases/PurchaseInvoiceNotes';
 import { dateFromOptionalString } from '@/utils/dateFromOptionalString';
@@ -366,7 +367,7 @@ export default function PurchasesPage() {
                                                 <td className="p-4 pl-5 font-bold text-red-700">
                                                     <div className="flex flex-col">
                                                         <span>{item.return_number || `RET-${item.id}`}</span>
-                                                        <span className="text-[10px] text-red-400 font-medium mt-0.5">Against {item.invoice_number}</span>
+                                                        <PurchaseReturnInvoiceLabel purchaseReturn={item} />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-red-600">
@@ -442,7 +443,10 @@ export default function PurchasesPage() {
                                             )}
                                         </span>
                                         {item.type === 'return' && (
-                                            <span className="text-[10px] text-red-400 font-semibold mt-0.5">Against {item.invoice_number}</span>
+                                            <PurchaseReturnInvoiceLabel
+                                                purchaseReturn={item}
+                                                className="font-semibold"
+                                            />
                                         )}
                                         {item.type === 'invoice' && (
                                             <PurchaseInvoiceNotes invoice={item} className="text-[10px] mt-0.5 font-normal normal-case tracking-normal" />
