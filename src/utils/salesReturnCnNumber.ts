@@ -1,4 +1,4 @@
-/** Optional BE sales-return list field. List notes stay on OE-336. */
+/** Optional BE sales-return list field. Ready to mount on a real list row. List notes stay on OE-336. */
 export type SalesReturnCnNumberDisplay = {
     cn_number?: number | string | null;
     /** Allowed on payloads / tests; never used to invent cn_number. */

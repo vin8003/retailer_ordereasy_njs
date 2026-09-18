@@ -4,7 +4,7 @@ import {
     type SalesReturnCnNumberDisplay,
 } from "@/utils/salesReturnCnNumber";
 
-/** Muted sales-return-list credit-note line. Renders nothing when BE omitted `cn_number`. */
+/** Muted sales-return-list credit-note line. Renders nothing when BE omitted `cn_number`. Ready to mount on a real list row. */
 export function SalesReturnCnNumberLabel({
     salesReturn,
     className,
