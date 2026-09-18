@@ -27,10 +27,6 @@
       "destination": "/dashboard/products/ledger/index.html"
     },
     {
-      "source": "/dashboard/products/write-off-detail",
-      "destination": "/dashboard/products/write-off-detail/index.html"
-    },
-    {
       "source": "/dashboard/orders/details",
       "destination": "/dashboard/orders/details/index.html"
     },
