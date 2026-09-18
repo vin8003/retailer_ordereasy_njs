@@ -25,6 +25,7 @@ import { useReactToPrint } from "react-to-print";
 import { useRef } from "react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { authService } from "@/services/api";
+import { OrderDetailChannelLabel } from "@/components/orders/OrderDetailChannelLabel";
 
 
 /** Typed /details?id= survives Next hydrate wipe via window.__OE_SEARCH
@@ -222,6 +223,7 @@ function OrderDetailContent() {
                         <Badge variant="outline" className={cn("font-bold border shadow-none", order.source === 'pos' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-primary/10 text-primary border-primary/20')}>
                             {order.source === 'pos' ? 'STORE ORDER' : 'ONLINE ORDER'}
                         </Badge>
+                        <OrderDetailChannelLabel order={order} />
                         {order.status.toLowerCase() === 'cancelled' && order.cancelled_by && (
                             <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
                                 By {order.cancelled_by.charAt(0).toUpperCase() + order.cancelled_by.slice(1)}
