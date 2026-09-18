@@ -10,6 +10,7 @@ import { PurchaseReturnInvoiceLabel } from '@/components/purchases/PurchaseRetur
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { PurchaseInvoiceNotes } from '@/components/purchases/PurchaseInvoiceNotes';
 import { dateFromOptionalString } from '@/utils/dateFromOptionalString';
+import { PurchaseListSupplierName } from '@/components/purchases/PurchaseListSupplierName';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -322,7 +323,7 @@ export default function PurchasesPage() {
                                                 <td className="p-4 font-medium text-gray-900">
                                                     <div className="flex items-center gap-2">
                                                         <Truck size={14} className="text-gray-400" />
-                                                        {item.supplier_name || 'Unknown Distributor'}
+                                                        <PurchaseListSupplierName invoice={item} />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-right font-medium text-gray-600">{item.items?.length || 0}</td>
@@ -379,7 +380,7 @@ export default function PurchasesPage() {
                                                 <td className="p-4 font-medium text-red-900">
                                                     <div className="flex items-center gap-2">
                                                         <Truck size={14} className="text-red-400" />
-                                                        {item.supplier_name || 'Unknown Distributor'}
+                                                        <PurchaseListSupplierName invoice={item} />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-right font-medium text-red-600">{item.items?.length || 0}</td>
@@ -472,7 +473,7 @@ export default function PurchasesPage() {
                                 <div className="flex justify-between items-center pt-2 border-t border-gray-50 text-xs font-semibold text-gray-600">
                                     <div className="flex items-center gap-1.5 truncate max-w-[70%]">
                                         <Truck size={12} className="text-gray-400 shrink-0" />
-                                        <span className="truncate">{item.supplier_name || 'Unknown Distributor'}</span>
+                                        <PurchaseListSupplierName invoice={item} className="truncate" />
                                     </div>
                                     <div className="flex gap-3 items-center shrink-0">
                                         <span>{item.items?.length || 0} items</span>
