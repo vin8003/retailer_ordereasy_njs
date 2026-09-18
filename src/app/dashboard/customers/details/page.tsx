@@ -54,6 +54,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { toast } from 'sonner';
+import { CustomerTerritoryLabel } from '@/components/customers/CustomerTerritoryLabel';
 
 interface CustomerDetail {
     customerId: number;
@@ -69,6 +70,7 @@ interface CustomerDetail {
     isBlacklisted: boolean;
     creditLimit: number;
     currentBalance: number;
+    territory?: string | null;
     recentOrders: any[];
     rewardHistory: any[];
 }
@@ -164,6 +166,7 @@ function CustomerDetailContent() {
                     isBlacklisted: data.is_blacklisted,
                     creditLimit: data.credit_limit ? parseFloat(data.credit_limit) : 0,
                     currentBalance: data.current_balance ? parseFloat(data.current_balance) : 0,
+                    territory: data.territory,
                     recentOrders: data.recent_orders || [],
                     rewardHistory: data.reward_history || [],
                 });
@@ -339,6 +342,7 @@ function CustomerDetailContent() {
                         <div className="flex-1 text-center md:text-left space-y-2">
                             <h1 className="text-3xl font-bold">{customer.customerName}</h1>
                             <p className="text-muted-foreground">{customer.phoneNumber || customer.email || 'No contact info'}</p>
+                            <CustomerTerritoryLabel customer={customer} />
                         </div>
 
                         <div className="flex flex-col items-end gap-2">
