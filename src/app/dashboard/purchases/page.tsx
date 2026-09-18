@@ -7,6 +7,7 @@ import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, A
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { PurchaseListDueDateLabel } from '@/components/purchases/PurchaseListDueDateLabel';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -301,13 +302,16 @@ export default function PurchasesPage() {
                                                     </span>
                                                 </td>
                                                 <td className="p-4 text-center">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                                                        item.payment_status === 'PAID' ? 'bg-green-100 text-green-700' :
-                                                        item.payment_status === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
-                                                        'bg-red-100 text-red-700'
-                                                    }`}>
-                                                        {item.payment_status || 'UNPAID'}
-                                                    </span>
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                                                            item.payment_status === 'PAID' ? 'bg-green-100 text-green-700' :
+                                                            item.payment_status === 'PARTIAL' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {item.payment_status || 'UNPAID'}
+                                                        </span>
+                                                        <PurchaseListDueDateLabel row={item} />
+                                                    </div>
                                                 </td>
                                                 <td className="p-4 pr-6 text-right">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -430,6 +434,7 @@ export default function PurchasesPage() {
                                         }`}>
                                             {item.type === 'return' ? 'RETURN' : (item.payment_status || 'UNPAID')}
                                         </span>
+                                        {item.type === 'invoice' ? <PurchaseListDueDateLabel row={item} /> : null}
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center pt-2 border-t border-gray-50 text-xs font-semibold text-gray-600">
