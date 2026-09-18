@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -104,11 +105,19 @@ export default function OrdersPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
-                <p className="text-muted-foreground">
-                    Manage and track your customer orders here.
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
+                    <p className="text-muted-foreground">
+                        Manage and track your customer orders here.
+                    </p>
+                </div>
+                <Link
+                    href="/dashboard/orders/returns"
+                    className="text-sm font-semibold text-red-600 hover:underline"
+                >
+                    Sales returns
+                </Link>
             </div>
 
             <div className="flex flex-col gap-4">
