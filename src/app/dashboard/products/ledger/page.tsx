@@ -11,6 +11,7 @@ import {
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { orderDetailsHref, parseOrderNumberFromText } from '@/lib/orderLinks';
+import { InventoryLedgerCreatedByName } from '@/components/products/InventoryLedgerCreatedByName';
 
 interface LogEntry {
     id: number;
@@ -21,6 +22,7 @@ interface LogEntry {
     reason: string;
     created_at: string;
     created_by: string;
+    created_by_name?: string | null;
 }
 
 interface Product {
@@ -182,6 +184,7 @@ function LedgerContent() {
                                                     <div className="flex items-center gap-2 font-bold text-gray-400 italic">
                                                         <User size={10} /> {log.created_by}
                                                     </div>
+                                                    <InventoryLedgerCreatedByName row={log} />
                                                 </div>
                                             </td>
                                         </tr>
