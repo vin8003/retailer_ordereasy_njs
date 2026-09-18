@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { OfdSealNumber } from "@/components/orders/OfdSealNumber";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
@@ -611,6 +612,7 @@ function OrderDetailContent() {
                                 <br />
                                 {order.delivery_address_map?.city}, {order.delivery_address_map?.state} - {order.delivery_address_map?.pincode}
                             </p>
+                            <OfdSealNumber order={order} className="mb-4" />
 
                             {/* Map & Navigation */}
                             {order.delivery_latitude && order.delivery_longitude && (
