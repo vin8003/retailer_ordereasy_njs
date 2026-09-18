@@ -23,6 +23,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OrderFeeDiscountLines } from "@/components/orders/OrderFeeDiscountLines";
 
 interface Order {
     id: number;
@@ -43,6 +44,9 @@ interface Order {
     refund_amount: number;
     net_amount: number;
     is_returned: boolean;
+    /** Optional BE list scalars (OE-307 / OE-301). Display-only; never invent. */
+    delivery_fee?: number | string | null;
+    discount_amount?: number | string | null;
 }
 
 interface OrderTableProps {
@@ -171,6 +175,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                                 ₹{Number(order.net_amount).toLocaleString('en-IN')}
                                             </span>
                                         )}
+                                        <OrderFeeDiscountLines order={order} />
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -233,6 +238,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         ₹{Number(order.net_amount).toLocaleString('en-IN')}
                                     </span>
                                 )}
+                                <OrderFeeDiscountLines order={order} />
                             </div>
                         </div>
 
