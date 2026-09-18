@@ -6,11 +6,17 @@ import api from '@/services/api';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { WriteOffList } from '@/components/products/WriteOffList';
-import { mapWriteOffListItem, type WriteOffListItem } from '@/utils/writeOffListReason';
+import { collectWriteOffListRows, type WriteOffListItem } from '@/utils/writeOffListReason';
+import {
+    buildWriteOffListLedgerQueries,
+    parseWriteOffListProductId,
+    parseWriteOffListReason,
+} from '@/utils/writeOffListQuery';
 
 function WriteOffsContent() {
     const searchParams = useSearchParams();
-    const productId = searchParams.get('product_id') || searchParams.get('id');
+    const productId = parseWriteOffListProductId(searchParams.get('product_id'));
+    const reason = parseWriteOffListReason(searchParams.get('reason'));
 
     const [items, setItems] = useState<WriteOffListItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -20,11 +26,11 @@ function WriteOffsContent() {
         setIsLoading(true);
         setError(null);
         try {
-            const params: Record<string, string | number> = {};
-            if (productId) params.product_id = productId;
-            const res = await api.get('/products/erp/inventory-ledger/', { params });
-            const rows = Array.isArray(res.data) ? res.data : res.data?.results ?? [];
-            setItems(rows.map(mapWriteOffListItem));
+            const queries = buildWriteOffListLedgerQueries({ productId, reason });
+            const responses = await Promise.all(
+                queries.map((params) => api.get('/products/erp/inventory-ledger/', { params }))
+            );
+            setItems(collectWriteOffListRows(responses.map((res) => res.data)));
         } catch (err: unknown) {
             const status = (err as { response?: { status?: number } })?.response?.status;
             setItems([]);
@@ -37,7 +43,7 @@ function WriteOffsContent() {
         } finally {
             setIsLoading(false);
         }
-    }, [productId]);
+    }, [productId, reason]);
 
     useEffect(() => {
         fetchList();
