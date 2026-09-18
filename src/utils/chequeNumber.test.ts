@@ -40,6 +40,17 @@ describe("getChequeNumberLabel", () => {
                 cheque_number: null,
             })
         ).toBeNull();
+        expect(
+            getChequeNumberLabel({
+                cheque: { number: "NESTED-99" },
+                cheque_no: "ALIAS-88",
+                check_number: "US-SPELLING",
+                payment_reference_id: "HIDDENREF0001",
+                notes: "Cheque ALIAS-88",
+                payment_mode: "cheque",
+                cheque_number: "CHQ-90210",
+            })
+        ).toBe("CHQ-90210");
     });
 
     it("returns null for non-finite numeric cheque_number", () => {

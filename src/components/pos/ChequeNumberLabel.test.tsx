@@ -38,4 +38,24 @@ describe("ChequeNumberLabel", () => {
         );
         expect(markup).toBe("");
     });
+
+    it("shows only top-level cheque_number when aliases are also present", () => {
+        const markup = renderToStaticMarkup(
+            <ChequeNumberLabel
+                payment={{
+                    cheque_number: "CHQ-90210",
+                    cheque: { number: "NESTED-99" },
+                    cheque_no: "ALIAS-88",
+                    check_number: "US-SPELLING",
+                    payment_reference_id: "HIDDENREF0001",
+                    notes: "Cheque ALIAS-88",
+                }}
+            />
+        );
+        expect(markup).toContain("CHEQUE NO: CHQ-90210");
+        expect(markup).not.toContain("NESTED-99");
+        expect(markup).not.toContain("ALIAS-88");
+        expect(markup).not.toContain("US-SPELLING");
+        expect(markup).not.toContain("HIDDENREF0001");
+    });
 });
