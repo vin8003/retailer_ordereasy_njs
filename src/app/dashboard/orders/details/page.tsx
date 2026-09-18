@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { OfdVehicleNumberLabel } from "@/components/orders/OfdVehicleNumberLabel";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
@@ -380,6 +381,7 @@ function OrderDetailContent() {
                             <CardTitle className="text-lg">Manage Order</CardTitle>
                         </CardHeader>
                         <CardContent>
+                            <OfdVehicleNumberLabel order={order} className="mb-3 text-xs" />
                             <div className="mb-4">
                                 <p className="text-sm text-muted-foreground mb-2">Update Status:</p>
                                 <OrderStatusUpdate
