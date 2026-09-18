@@ -8,6 +8,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { PurchaseInvoiceNotes } from '@/components/purchases/PurchaseInvoiceNotes';
+import { dateFromOptionalString } from '@/utils/dateFromOptionalString';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -314,7 +315,7 @@ export default function PurchasesPage() {
                                                 <td className="p-4 text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={14} className="text-gray-400" />
-                                                        {new Date(item.invoice_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        {dateFromOptionalString(item.invoice_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
                                                 </td>
                                                 <td className="p-4 font-medium text-gray-900">
@@ -371,7 +372,7 @@ export default function PurchasesPage() {
                                                 <td className="p-4 text-red-600">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={14} className="text-red-400" />
-                                                        {new Date(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        {dateFromOptionalString(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
                                                 </td>
                                                 <td className="p-4 font-medium text-red-900">
@@ -447,7 +448,7 @@ export default function PurchasesPage() {
                                             <PurchaseInvoiceNotes invoice={item} className="text-[10px] mt-0.5 font-normal normal-case tracking-normal" />
                                         )}
                                         <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
-                                            {new Date(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {dateFromOptionalString(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </span>
                                     </div>
                                     <div className="flex flex-col items-end gap-1.5">
