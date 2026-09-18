@@ -4,7 +4,7 @@ import {
     type StockTransferGodownDisplay,
 } from "@/utils/stockTransferGodown";
 
-/** Muted stock-transfer godown line. Renders nothing when BE omitted `godown_name`. */
+/** Muted stock-transfer godown line. Renders nothing when BE omitted `godown_name`. Ready to mount on a real stock-transfer list row when one exists. */
 export function StockTransferGodownLabel({
     row,
     className,

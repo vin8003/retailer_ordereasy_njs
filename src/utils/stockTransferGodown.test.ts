@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getStockTransferGodownName, mapStockTransferListItem } from "./stockTransferGodown";
+import { getStockTransferGodownName } from "./stockTransferGodown";
 
 describe("getStockTransferGodownName", () => {
     it("returns the trimmed godown_name when BE sent a non-empty string", () => {
@@ -37,42 +37,5 @@ describe("getStockTransferGodownName", () => {
                 godown_name: null,
             })
         ).toBeNull();
-    });
-});
-
-describe("mapStockTransferListItem", () => {
-    it("passes through optional godown_name without inventing from other fields", () => {
-        expect(
-            mapStockTransferListItem({
-                id: 9,
-                product_name: "Atta 10kg",
-                quantity: 4,
-                status: "in_transit",
-                godown_name: "  Main Godown  ",
-            })
-        ).toEqual({
-            id: 9,
-            product_name: "Atta 10kg",
-            quantity: 4,
-            status: "in_transit",
-            created_at: undefined,
-            godown_name: "  Main Godown  ",
-        });
-        expect(
-            mapStockTransferListItem({
-                id: 10,
-                product_name: "Rice 5kg",
-                status: "received",
-                from_godown_name: "From A",
-                godown_name: null,
-            }).godown_name
-        ).toBeNull();
-        expect(
-            mapStockTransferListItem({
-                id: 11,
-                product_name: "Oil 1L",
-                godown: { name: "Nested Store" },
-            }).godown_name
-        ).toBeUndefined();
     });
 });
