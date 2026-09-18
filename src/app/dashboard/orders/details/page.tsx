@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
+import { EInvoicePanel } from "@/components/orders/EInvoicePanel";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 
 import { orderService, customerService } from "@/services/api";
@@ -495,6 +496,8 @@ function OrderDetailContent() {
                             </CardContent>
                         </Card>
                     )}
+
+                    <EInvoicePanel invoice={order} />
 
                     {/* Customer Details */}
                     <Card>
