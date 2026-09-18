@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { PurchaseReturnCollectionCenter } from '@/components/purchases/PurchaseReturnCollectionCenter';
 
 function ReturnDetailContent() {
     const router = useRouter();
@@ -105,6 +106,7 @@ function ReturnDetailContent() {
                                 {new Date(returnData.return_date || returnData.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </div>
                         </div>
+                        <PurchaseReturnCollectionCenter returnRecord={returnData} />
                     </div>
 
                     {/* Returned Items Table */}
