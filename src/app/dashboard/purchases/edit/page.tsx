@@ -14,6 +14,8 @@ import {
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { PurchaseDetailTdsAmount } from '@/components/purchases/PurchaseDetailTdsAmount';
+import type { PurchaseDetailTdsDisplay } from '@/utils/purchaseDetailTds';
 
 interface Product {
     id: number;
@@ -57,6 +59,7 @@ function EditPurchaseContent() {
     const [rows, setRows] = useState<PurchaseRow[]>([]);
     const [paidAmount, setPaidAmount] = useState<number>(0);
     const [notes, setNotes] = useState('');
+    const [invoiceFromBe, setInvoiceFromBe] = useState<PurchaseDetailTdsDisplay | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [hasReturns, setHasReturns] = useState(false);
@@ -142,6 +145,15 @@ function EditPurchaseContent() {
                     setInvoiceDate(inv.invoice_date);
                     setPaidAmount(Number(inv.paid_amount));
                     setNotes(inv.notes || '');
+                    setInvoiceFromBe({
+                        tds_amount: inv.tds_amount,
+                        total_amount: inv.total_amount,
+                        paid_amount: inv.paid_amount,
+                        tax_amount: inv.tax_amount,
+                        gst_amount: inv.gst_amount,
+                        tds: inv.tds,
+                        tds_percent: inv.tds_percent,
+                    });
                     setHasReturns(inv.is_returned);
                     setRefundAmount(Number(inv.refund_amount));
                     setExistingBillImage(inv.bill_image || null);
@@ -436,6 +448,10 @@ function EditPurchaseContent() {
                                 <p className="text-[11px] text-gray-400 font-medium">Current bill photo is attached. Choose a file to replace it.</p>
                             )}
                         </div>
+                        <PurchaseDetailTdsAmount
+                            invoice={invoiceFromBe ?? {}}
+                            className="md:col-span-3"
+                        />
                     </div>
 
                     {/* Product Search & Table */}
