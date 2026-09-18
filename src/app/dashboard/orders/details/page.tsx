@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { EInvoicePanel } from "@/components/orders/EInvoicePanel";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
@@ -495,6 +496,8 @@ function OrderDetailContent() {
                             </CardContent>
                         </Card>
                     )}
+
+                    <EInvoicePanel invoice={order} />
 
                     {/* Customer Details */}
                     <Card>
