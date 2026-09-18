@@ -12,6 +12,7 @@ import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
 import { SupplierDetailScalars } from '@/components/suppliers/SupplierDetailScalars';
+import { SupplierDetailContact } from '@/components/suppliers/SupplierDetailContact';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -327,6 +328,7 @@ function SupplierLedgerDetails() {
                             <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.phone_number}</p>
                         </div>
                         <SupplierDetailScalars supplier={supplier} />
+                        <SupplierDetailContact supplier={supplier} />
                     </div>
                 </div>
             </div>
