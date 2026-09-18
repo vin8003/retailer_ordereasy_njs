@@ -7,6 +7,7 @@ import { Package, Plus, IndianRupee, TrendingUp, AlertCircle, Calendar, Truck, A
 import { toast, Toaster } from 'react-hot-toast';
 import PurchaseReturnModal from '@/components/dashboard/PurchaseReturnModal';
 import { PurchaseReturnInvoiceLabel } from '@/components/purchases/PurchaseReturnInvoiceLabel';
+import { PurchaseReturnCreatedAtTimeLabel } from '@/components/purchases/PurchaseReturnCreatedAtTimeLabel';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { PurchaseInvoiceNotes } from '@/components/purchases/PurchaseInvoiceNotes';
 import { dateFromOptionalString } from '@/utils/dateFromOptionalString';
@@ -375,6 +376,12 @@ export default function PurchasesPage() {
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={14} className="text-red-400" />
                                                         {dateFromOptionalString(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <Calendar size={14} className="text-red-400" />
+                                                            {new Date(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                        <PurchaseReturnCreatedAtTimeLabel item={item} />
                                                     </div>
                                                 </td>
                                                 <td className="p-4 font-medium text-red-900">
@@ -455,6 +462,9 @@ export default function PurchasesPage() {
                                         <span className="text-[10px] text-gray-400 font-bold mt-1 uppercase">
                                             {dateFromOptionalString(item.invoice_date || item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </span>
+                                        {item.type === 'return' ? (
+                                            <PurchaseReturnCreatedAtTimeLabel item={item} className="text-[10px] normal-case" />
+                                        ) : null}
                                     </div>
                                     <div className="flex flex-col items-end gap-1.5">
                                         <span className={`font-extrabold text-base ${item.type === 'return' ? 'text-red-600' : 'text-gray-900'}`}>
