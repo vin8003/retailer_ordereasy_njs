@@ -31,10 +31,6 @@
       "destination": "/dashboard/orders/details/index.html"
     },
     {
-      "source": "/dashboard/orders/returns",
-      "destination": "/dashboard/orders/returns/index.html"
-    },
-    {
       "source": "/dashboard/purchases/edit",
       "destination": "/dashboard/purchases/edit/index.html"
     },
