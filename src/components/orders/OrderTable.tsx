@@ -23,12 +23,15 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OrderCustomerCode } from "@/components/orders/OrderCustomerCode";
 
 interface Order {
     id: number;
     order_number: string;
     customer_name?: string; // Mapped from customer object if needed
     customer?: { first_name: string; last_name: string; username: string };
+    /** Optional BE list scalar. Display-only; never invent from name or nested customer. */
+    customer_code?: string | null;
     total_amount: number;
     status: string;
     created_at: string;
@@ -129,6 +132,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                             ? `${order.customer.first_name} ${order.customer.last_name || ''}` 
                                             : 'Customer')}
                                     </div>
+                                    <OrderCustomerCode order={order} />
                                     {order.customer_average_rating !== undefined && order.customer_average_rating > 0 ? (
                                         <div className={cn(
                                             "flex items-center gap-1 text-xs font-semibold mt-1",
@@ -244,6 +248,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         ? `${order.customer.first_name} ${order.customer.last_name || ''}` 
                                         : 'Customer')}
                                 </span>
+                                <OrderCustomerCode order={order} className="text-[10px]" />
                                 {order.customer_average_rating !== undefined && order.customer_average_rating > 0 && (
                                     <div className="flex items-center gap-1 text-[10px] font-bold text-yellow-600 mt-0.5">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" className="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
