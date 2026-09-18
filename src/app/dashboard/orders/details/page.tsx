@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
+import { OrderRoundOffRow } from "@/components/orders/OrderRoundOffRow";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 
 import { orderService, customerService } from "@/services/api";
@@ -353,6 +354,8 @@ function OrderDetailContent() {
                                     <span>- ₹{Number(order.discount_amount).toFixed(2)}</span>
                                 </div>
                             )}
+
+                            <OrderRoundOffRow order={order} />
 
                             {/* Points Earned Info */}
                             {Number(order.points_earned || 0) > 0 && (
