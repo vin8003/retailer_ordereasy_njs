@@ -57,4 +57,47 @@ describe("InventoryLedgerHistory", () => {
         expect(markup).not.toContain("LOT-A");
         expect(markup).not.toContain("55");
     });
+
+    it("shows optional inspector_name on table and card surfaces when BE sent it", () => {
+        const markup = renderToStaticMarkup(
+            <InventoryLedgerHistory logs={[{ ...baseLog, inspector_name: "Meera" }]} />
+        );
+        expect((markup.match(/Inspector Meera/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("omits inspector text when inspector_name is missing, null, or blank", () => {
+        expect(renderToStaticMarkup(<InventoryLedgerHistory logs={[baseLog]} />)).not.toContain(
+            "Inspector"
+        );
+        expect(
+            renderToStaticMarkup(
+                <InventoryLedgerHistory logs={[{ ...baseLog, inspector_name: "   " }]} />
+            )
+        ).not.toContain("Inspector");
+        expect(
+            renderToStaticMarkup(
+                <InventoryLedgerHistory logs={[{ ...baseLog, inspector_name: null }]} />
+            )
+        ).not.toContain("Inspector");
+    });
+
+    it("does not invent inspector_name from nested inspector, created-by, batch, or reason", () => {
+        const markup = renderToStaticMarkup(
+            <InventoryLedgerHistory
+                logs={[
+                    {
+                        ...baseLog,
+                        inspector: { name: "Hidden Inspector" },
+                        inspector_id: 12,
+                        created_by_name: "Ravi Sharma",
+                        batch_number: "B-104",
+                    } as typeof baseLog,
+                ]}
+            />
+        );
+        expect(markup).not.toContain("Inspector");
+        expect(markup).not.toContain("Hidden Inspector");
+        expect(markup).not.toContain("Ravi Sharma");
+        expect(markup).not.toContain("B-104");
+    });
 });

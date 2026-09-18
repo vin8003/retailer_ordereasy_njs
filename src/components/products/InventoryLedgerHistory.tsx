@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FileText, MinusCircle, PlusCircle, User } from "lucide-react";
+import { WriteOffDetailInspectorName } from "@/components/inventory/WriteOffDetailInspectorName";
 import { orderDetailsHref, parseOrderNumberFromText } from "@/lib/orderLinks";
 import { InventoryLedgerBatchLabel } from "@/components/products/InventoryLedgerBatchLabel";
 
@@ -13,6 +14,7 @@ export type InventoryLedgerLog = {
     created_at: string;
     created_by: string;
     batch_id?: number | string | null;
+    inspector_name?: string | null;
 };
 
 function ledgerTypeClass(logType: string) {
@@ -80,6 +82,7 @@ export function InventoryLedgerHistory({ logs }: { logs: InventoryLedgerLog[] })
                                                     {log.log_type}
                                                 </span>
                                                 <InventoryLedgerBatchLabel row={log} />
+                                                <WriteOffDetailInspectorName writeOff={log} />
                                             </div>
                                         </td>
                                         <td className="p-6">
@@ -139,6 +142,7 @@ export function InventoryLedgerHistory({ logs }: { logs: InventoryLedgerLog[] })
                                             {log.log_type}
                                         </span>
                                         <InventoryLedgerBatchLabel row={log} />
+                                        <WriteOffDetailInspectorName writeOff={log} />
                                     </div>
                                     <div
                                         className={`flex items-center gap-1 text-base font-black ${isPositive ? "text-green-600" : "text-red-500"}`}
