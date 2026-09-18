@@ -36,6 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
+import { CustomerListAreaName } from '@/components/customers/CustomerListAreaName';
 import { CustomerListScalars } from '@/components/customers/CustomerListScalars';
 
 interface RetailerCustomer {
@@ -56,6 +57,7 @@ interface RetailerCustomer {
     currentBalance: number;
     credit_limit?: number | string | null;
     credit_due_days?: number | string | null;
+    area_name?: string | null;
 }
 
 export default function CustomersPage() {
@@ -138,6 +140,7 @@ export default function CustomersPage() {
                 currentBalance: item.current_balance ? parseFloat(item.current_balance) : 0,
                 credit_limit: item.credit_limit,
                 credit_due_days: item.credit_due_days,
+                area_name: item.area_name,
             }));
 
             if (isAppend) {
@@ -358,6 +361,7 @@ export default function CustomersPage() {
                                                             </Badge>
                                                         </div>
                                                         <span className="text-xs text-muted-foreground">ID: {customer.customerId} • {customer.phoneNumber}</span>
+                                                        <CustomerListAreaName customer={customer} />
                                                         <CustomerListScalars customer={customer} />
                                                     </div>
                                                 </div>
@@ -433,6 +437,7 @@ export default function CustomersPage() {
                                             </Badge>
                                         </div>
                                         <span className="text-[10px] text-muted-foreground truncate">ID: {customer.customerId} • {customer.phoneNumber}</span>
+                                        <CustomerListAreaName customer={customer} className="text-[10px]" />
                                         <CustomerListScalars customer={customer} className="text-[10px]" />
                                     </div>
                                 </div>
