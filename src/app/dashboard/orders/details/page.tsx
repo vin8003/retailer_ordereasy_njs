@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote } from "lucide-react";
+import { ArrowLeft, MapPin, User, FileText, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderDetailNotes } from "@/components/orders/OrderDetailNotes";
+import { OrderCustomerPhone } from "@/components/orders/OrderCustomerPhone";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 import { PaymentModeLabel } from "@/components/orders/PaymentModeLabel";
 import { getPaymentModeLabel } from "@/utils/orderPaymentMode";
@@ -552,12 +553,7 @@ function OrderDetailContent() {
                             </div>
                             <Separator />
                             <div className="space-y-2 text-sm">
-                                {order.customer_phone && (
-                                    <div className="flex items-center gap-2">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <span>{order.customer_phone}</span>
-                                    </div>
-                                )}
+                                <OrderCustomerPhone order={order} />
                                 {order.customer_email && (
                                     <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-muted-foreground" />
