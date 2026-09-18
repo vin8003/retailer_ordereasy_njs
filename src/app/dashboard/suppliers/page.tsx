@@ -11,6 +11,7 @@ import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrigger';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
+import { SupplierListCreditDays } from '@/components/suppliers/SupplierListCreditDays';
 
 interface Supplier {
     id: number;
@@ -21,6 +22,7 @@ interface Supplier {
     address: string;
     balance_due: string | number;
     is_active?: boolean;
+    credit_days?: number | string | null;
 }
 
 const DEACTIVATE_CONFIRM = (name: string) =>
@@ -331,6 +333,7 @@ export default function SuppliersPage() {
                                                     {supplier.is_active === false && (
                                                         <span className="inline-block mt-1 text-[10px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-2 py-0.5 rounded-md">Inactive</span>
                                                     )}
+                                                    <SupplierListCreditDays supplier={supplier} />
                                                 </div>
                                             </div>
                                         </td>
@@ -403,6 +406,7 @@ export default function SuppliersPage() {
                                             {supplier.is_active === false && (
                                                 <span className="inline-block mt-0.5 text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 px-1.5 py-0.5 rounded">Inactive</span>
                                             )}
+                                            <SupplierListCreditDays supplier={supplier} />
                                             <div className="flex items-center gap-1 text-[11px] text-gray-500 mt-0.5">
                                                 <User size={10} className="text-gray-400 flex-shrink-0" />
                                                 <span className="truncate max-w-[100px]">{supplier.contact_person || 'N/A'}</span>
