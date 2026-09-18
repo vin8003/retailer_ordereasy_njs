@@ -7,6 +7,25 @@ import { History, ChevronLeft, Loader2, Package } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InventoryLedgerHistory, type InventoryLedgerLog } from '@/components/products/InventoryLedgerHistory';
+import { 
+    History, ChevronLeft, Loader2, Package, 
+    PlusCircle, MinusCircle, User
+} from 'lucide-react';
+import { toast, Toaster } from 'react-hot-toast';
+import Link from 'next/link';
+import { InventoryAdjustReasonNote } from '@/components/products/InventoryAdjustReasonNote';
+
+interface LogEntry {
+    id: number;
+    log_type: string;
+    quantity_change: number;
+    previous_quantity: number;
+    new_quantity: number;
+    reason?: string | null;
+    note?: string | null;
+    created_at: string;
+    created_by: string;
+}
 
 interface Product {
     id: number;
@@ -95,6 +114,71 @@ function LedgerContent() {
                     <h3 className="text-xl font-black text-gray-900">Transition History</h3>
                 </div>
                 <InventoryLedgerHistory logs={logs} />
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="text-[10px] uppercase tracking-widest text-gray-400 font-black border-b border-gray-50">
+                                <th className="p-6">Date & Time</th>
+                                <th className="p-6">Type</th>
+                                <th className="p-6">Movement</th>
+                                <th className="p-6">Balance</th>
+                                <th className="p-6">Reason / By</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 uppercase text-[11px]">
+                            {logs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-20 text-center text-gray-400 italic">No history recorded for this product.</td>
+                                </tr>
+                            ) : (
+                                logs.map(log => {
+                                    const isPositive = log.quantity_change > 0;
+                                    const logTypeColor = 
+                                        log.log_type === 'added' ? 'text-green-600 bg-green-50' :
+                                        log.log_type === 'sold' ? 'text-blue-600 bg-blue-50' :
+                                        log.log_type === 'removed' ? 'text-red-600 bg-red-50' :
+                                        'text-gray-600 bg-gray-50';
+
+                                    return (
+                                        <tr key={log.id} className="hover:bg-gray-50/30 transition-colors">
+                                            <td className="p-6">
+                                                <div className="font-bold text-gray-900 whitespace-nowrap">
+                                                    {new Date(log.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <span className={`px-2 py-1 rounded-md font-black tracking-widest text-[9px] ${logTypeColor}`}>
+                                                    {log.log_type}
+                                                </span>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className={`flex items-center gap-2 text-base font-black ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
+                                                    {isPositive ? <PlusCircle size={14} /> : <MinusCircle size={14} />}
+                                                    {Math.abs(log.quantity_change)}
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] text-gray-400 font-bold">New Balance</span>
+                                                    <span className="text-sm font-black text-gray-900">{log.new_quantity}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex flex-col gap-1">
+                                                    <InventoryAdjustReasonNote row={log} />
+                                                    <div className="flex items-center gap-2 font-bold text-gray-400 italic">
+                                                        <User size={10} /> {log.created_by}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
