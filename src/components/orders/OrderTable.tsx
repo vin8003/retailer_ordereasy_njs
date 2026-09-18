@@ -23,6 +23,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OfdGatePassLabel } from "@/components/orders/OfdGatePassLabel";
 
 interface Order {
     id: number;
@@ -43,6 +44,8 @@ interface Order {
     refund_amount: number;
     net_amount: number;
     is_returned: boolean;
+    /** Optional BE OFD list scalar. Display only — never invent. */
+    gate_pass?: number | string | null;
 }
 
 interface OrderTableProps {
@@ -153,6 +156,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                                 PARTIAL RETURN ↩️
                                             </Badge>
                                         )}
+                                        <OfdGatePassLabel row={order} />
                                         {order.feedback && (
                                             <div className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
                                                 <span>{order.feedback.overall_rating}</span>
@@ -260,6 +264,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         RETURN ↩️
                                     </Badge>
                                 )}
+                                <OfdGatePassLabel row={order} />
                             </div>
                         </div>
                     </div>
