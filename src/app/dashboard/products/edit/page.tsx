@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductForm } from "@/components/products/ProductForm";
+import { ProductDetailExternalSku } from "@/components/products/ProductDetailExternalSku";
 import { productService } from "@/services/api";
 
 function EditProductContent() {
@@ -62,6 +63,7 @@ function EditProductContent() {
                     <p className="text-muted-foreground">
                         Update product details for {product.name}.
                     </p>
+                    <ProductDetailExternalSku product={product} className="mt-1" />
                 </div>
             </div>
 
