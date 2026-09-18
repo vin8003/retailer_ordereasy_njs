@@ -14,6 +14,8 @@ import {
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { InventoryAdjustReasonNote } from '@/components/products/InventoryAdjustReasonNote';
+import { orderDetailsHref, parseOrderNumberFromText } from '@/lib/orderLinks';
+import { WriteOffDetailBatchNumber } from '@/components/inventory/WriteOffDetailBatchNumber';
 
 interface LogEntry {
     id: number;
@@ -25,6 +27,7 @@ interface LogEntry {
     note?: string | null;
     created_at: string;
     created_by: string;
+    batch_number?: string | number | null;
 }
 
 interface Product {
@@ -170,6 +173,7 @@ function LedgerContent() {
                                                     <div className="flex items-center gap-2 font-bold text-gray-400 italic">
                                                         <User size={10} /> {log.created_by}
                                                     </div>
+                                                    <WriteOffDetailBatchNumber writeOff={log} />
                                                 </div>
                                             </td>
                                         </tr>
