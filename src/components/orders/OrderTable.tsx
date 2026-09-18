@@ -23,6 +23,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OfdVehicleNumberLabel } from "@/components/orders/OfdVehicleNumberLabel";
 
 interface Order {
     id: number;
@@ -43,6 +44,7 @@ interface Order {
     refund_amount: number;
     net_amount: number;
     is_returned: boolean;
+    vehicle_number?: string | null;
 }
 
 interface OrderTableProps {
@@ -159,6 +161,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#facc15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                                             </div>
                                         )}
+                                        <OfdVehicleNumberLabel order={order} />
                                     </div>
                                 </TableCell>
                                  <TableCell className="text-right">
@@ -260,6 +263,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         RETURN ↩️
                                     </Badge>
                                 )}
+                                <OfdVehicleNumberLabel order={order} />
                             </div>
                         </div>
                     </div>
