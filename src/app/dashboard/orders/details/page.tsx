@@ -12,6 +12,8 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { PaymentModeLabel } from "@/components/orders/PaymentModeLabel";
+import { getPaymentModeLabel } from "@/utils/orderPaymentMode";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
@@ -193,6 +195,9 @@ function OrderDetailContent() {
 
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
     if (error || !order) return <div className="p-8 text-center text-red-500">{error || "Order not found"}</div>;
+
+    const paymentModeLabel = getPaymentModeLabel(order);
+    const showUpiPaymentExtras = order.payment_mode === 'upi';
 
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
@@ -411,86 +416,87 @@ function OrderDetailContent() {
                         </CardContent>
                     </Card>
 
-                    {/* Payment Details */}
-                    {order.payment_mode === 'upi' && (
-                        <Card className="border-primary/20 bg-primary/5 shadow-none">
+                    {/* Payment Details — optional payment_mode from payload; UPI extras unchanged */}
+                    {(paymentModeLabel || showUpiPaymentExtras) && (
+                        <Card className={cn(showUpiPaymentExtras && "border-primary/20 bg-primary/5 shadow-none")}>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                                <CardTitle className={cn("text-lg flex items-center gap-2", showUpiPaymentExtras && "text-primary")}>
                                     <FileText className="h-5 w-5" /> Payment info
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-muted-foreground">Method:</span>
-                                        <Badge variant="outline" className="font-bold border-primary/30 text-primary">UPI</Badge>
-                                    </div>
+                                    <PaymentModeLabel order={order} />
 
-                                    {order.payment_edit_count > 1 && (
-                                        <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded w-fit animate-pulse">
-                                            CUSTOMER UPDATED TRANSACTION ID
-                                        </div>
+                                    {showUpiPaymentExtras && (
+                                        <>
+                                            {order.payment_edit_count > 1 && (
+                                                <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded w-fit animate-pulse">
+                                                    CUSTOMER UPDATED TRANSACTION ID
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-sm text-muted-foreground">Transaction ID:</span>
+                                                {order.payment_reference_id ? (
+                                                    <div className="flex items-center justify-between p-2 bg-white rounded border border-primary/20">
+                                                        <code className="text-sm font-bold text-primary break-all">{order.payment_reference_id}</code>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[10px] shrink-0"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(order.payment_reference_id);
+                                                                toast.success("Transaction ID copied!");
+                                                            }}
+                                                        >
+                                                            Copy
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm font-medium text-amber-600 italic bg-amber-50 p-2 rounded border border-amber-100">
+                                                        Pending Submission
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-2 flex flex-col gap-2">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs text-muted-foreground font-bold uppercase">Status:</span>
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-[10px] font-bold",
+                                                        order.payment_status === 'verified' ? "bg-green-50 text-green-700 border-green-200" :
+                                                        order.payment_status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
+                                                        "bg-blue-50 text-blue-700 border-blue-200"
+                                                    )}>
+                                                        {(order.payment_status || 'pending').replace('_', ' ').toUpperCase()}
+                                                    </Badge>
+                                                </div>
+
+                                                {order.payment_status === 'pending_verification' && (
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
+                                                            onClick={() => handleVerifyPayment('verify')}
+                                                            disabled={isVerifyingPayment}
+                                                        >
+                                                            {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verify"}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="h-8 text-xs"
+                                                            onClick={() => handleVerifyPayment('fail')}
+                                                            disabled={isVerifyingPayment}
+                                                        >
+                                                            {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Fail"}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
                                     )}
-
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-sm text-muted-foreground">Transaction ID:</span>
-                                        {order.payment_reference_id ? (
-                                            <div className="flex items-center justify-between p-2 bg-white rounded border border-primary/20">
-                                                <code className="text-sm font-bold text-primary break-all">{order.payment_reference_id}</code>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="h-6 px-2 text-[10px] shrink-0"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(order.payment_reference_id);
-                                                        toast.success("Transaction ID copied!");
-                                                    }}
-                                                >
-                                                    Copy
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm font-medium text-amber-600 italic bg-amber-50 p-2 rounded border border-amber-100">
-                                                Pending Submission
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="pt-2 flex flex-col gap-2">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs text-muted-foreground font-bold uppercase">Status:</span>
-                                            <Badge variant="outline" className={cn(
-                                                "text-[10px] font-bold",
-                                                order.payment_status === 'verified' ? "bg-green-50 text-green-700 border-green-200" :
-                                                order.payment_status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
-                                                "bg-blue-50 text-blue-700 border-blue-200"
-                                            )}>
-                                                {(order.payment_status || 'pending').replace('_', ' ').toUpperCase()}
-                                            </Badge>
-                                        </div>
-
-                                        {order.payment_status === 'pending_verification' && (
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
-                                                    onClick={() => handleVerifyPayment('verify')}
-                                                    disabled={isVerifyingPayment}
-                                                >
-                                                    {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verify"}
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="destructive" 
-                                                    className="h-8 text-xs"
-                                                    onClick={() => handleVerifyPayment('fail')}
-                                                    disabled={isVerifyingPayment}
-                                                >
-                                                    {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Fail"}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
