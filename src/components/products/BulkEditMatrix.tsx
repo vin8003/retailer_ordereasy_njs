@@ -6,6 +6,19 @@ import { X, Save, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    GST_RATE_OPTIONS,
+    buildBulkTaxChanges,
+    shouldRecommendBulkHsnWarning,
+    type GstRate,
+} from "@/lib/productTax";
 
 interface Product {
     id: number;
@@ -17,6 +30,8 @@ interface Product {
     is_active?: boolean;
     is_seasonal?: boolean;
     image?: string;
+    hsn_code?: string;
+    gst_rate?: string | number;
 }
 
 interface BulkEditMatrixProps {
@@ -35,14 +50,24 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
         original_price?: string,
         barcode?: string,
         is_active?: boolean,
-        is_seasonal?: boolean
+        is_seasonal?: boolean,
+        hsn_code?: string,
+        gst_rate?: string | number
     }>>({});
     const [isSaving, setIsSaving] = useState(false);
+    const [applyHsn, setApplyHsn] = useState(false);
+    const [bulkHsnCode, setBulkHsnCode] = useState("");
+    const [applyGst, setApplyGst] = useState(false);
+    const [bulkGstRate, setBulkGstRate] = useState("0");
 
     // Reset changes when opening
     useEffect(() => {
         if (open) {
             setChanges({});
+            setApplyHsn(false);
+            setBulkHsnCode("");
+            setApplyGst(false);
+            setBulkGstRate("0");
         }
     }, [open]);
 
@@ -91,6 +116,12 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
             if (changeData.is_seasonal !== undefined) {
                 payloadItem.is_seasonal = changeData.is_seasonal;
             }
+            if (changeData.hsn_code !== undefined) {
+                payloadItem.hsn_code = changeData.hsn_code.trim();
+            }
+            if (changeData.gst_rate !== undefined) {
+                payloadItem.gst_rate = Number(changeData.gst_rate);
+            }
             return payloadItem;
         }).filter(item => Object.keys(item).length > 1);
 
@@ -112,6 +143,28 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
 
     const changesCount = Object.keys(changes).length;
 
+    const handleApplyTaxToAll = () => {
+        if (!applyHsn && !applyGst) return;
+
+        setChanges((previous) => {
+            const next = { ...previous };
+            const taxChanges = buildBulkTaxChanges(
+                products.map((product) => product.id),
+                {
+                    hsnCode: applyHsn ? bulkHsnCode : undefined,
+                    gstRate: applyGst ? Number(bulkGstRate) as GstRate : undefined,
+                },
+            );
+            taxChanges.forEach(({ id, ...taxFields }) => {
+                next[id] = {
+                    ...next[id],
+                    ...taxFields,
+                };
+            });
+            return next;
+        });
+    };
+
     return (
         <div className="fixed inset-0 z-[100] bg-background flex flex-col animate-in slide-in-from-bottom-4 duration-300">
             {/* Header */}
@@ -130,14 +183,58 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                 </Button>
             </div>
 
+            <div className="flex flex-wrap items-end gap-4 border-b bg-muted/20 p-4 md:px-6">
+                <div className="flex items-center gap-2">
+                    <Switch checked={applyHsn} onCheckedChange={setApplyHsn} aria-label="Update HSN for all selected products" />
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium" htmlFor="bulkHsnCode">Set HSN for all</label>
+                        <Input
+                            id="bulkHsnCode"
+                            className="h-9 w-44 bg-background"
+                            value={bulkHsnCode}
+                            maxLength={8}
+                            onChange={(event) => setBulkHsnCode(event.target.value)}
+                            disabled={!applyHsn}
+                            placeholder="HSN code"
+                        />
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Switch checked={applyGst} onCheckedChange={setApplyGst} aria-label="Update GST for all selected products" />
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium" htmlFor="bulkGstRate">Set GST for all</label>
+                        <Select value={bulkGstRate} onValueChange={setBulkGstRate} disabled={!applyGst}>
+                            <SelectTrigger id="bulkGstRate" className="h-9 w-32 bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {GST_RATE_OPTIONS.map((rate) => (
+                                    <SelectItem key={rate} value={String(rate)}>{rate}%</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <Button type="button" variant="outline" onClick={handleApplyTaxToAll} disabled={!applyHsn && !applyGst}>
+                    Apply to selected
+                </Button>
+                {applyGst && shouldRecommendBulkHsnWarning(bulkGstRate, applyHsn, bulkHsnCode, products, changes) && (
+                    <p className="text-xs font-medium text-amber-600">
+                        HSN recommended when GST is not 0%
+                    </p>
+                )}
+            </div>
+
             {/* Matrix Header Columns */}
             <div className="overflow-x-auto w-full">
-                <div className="grid grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px] gap-2 p-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground sticky top-0 md:px-6">
+                <div className="grid grid-cols-[200px_100px_100px_100px_150px_130px_100px_80px_100px] min-w-[1080px] gap-2 p-3 border-b bg-muted/30 text-xs font-medium text-muted-foreground sticky top-0 md:px-6">
                     <div>Product Name</div>
                     <div className="text-right">Original Price (₹)</div>
                     <div className="text-right">Sell Price (₹)</div>
                     <div className="text-right">Stock</div>
                     <div>Barcode</div>
+                    <div>HSN Code</div>
+                    <div>GST Rate</div>
                     <div className="text-center">Active</div>
                     <div className="text-center">Seasonal Pick</div>
                 </div>
@@ -163,6 +260,8 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                             const currentPrice = productChanges?.price !== undefined ? productChanges.price : product.price;
                             const currentQuantity = productChanges?.quantity !== undefined ? productChanges.quantity : product.quantity;
                             const currentBarcode = productChanges?.barcode !== undefined ? productChanges.barcode : (product.barcode || "");
+                            const currentHsnCode = productChanges?.hsn_code !== undefined ? productChanges.hsn_code : (product.hsn_code || "");
+                            const currentGstRate = productChanges?.gst_rate !== undefined ? productChanges.gst_rate : String(Number(product.gst_rate) || 0);
                             const currentIsActive = productChanges?.is_active !== undefined ? productChanges.is_active : (product.is_active !== false);
                             const currentIsSeasonal = productChanges?.is_seasonal !== undefined ? productChanges.is_seasonal : (product.is_seasonal === true);
 
@@ -176,11 +275,11 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                         top: 0,
                                         left: 0,
                                         width: '100%',
-                                        minWidth: '730px',
+                                        minWidth: '1080px',
                                         transform: `translateY(${virtualRow.start}px)`,
                                     }}
                                     className={`
-                                    grid grid-cols-[200px_100px_100px_100px_150px_80px_100px] min-w-[830px] gap-2 items-center 
+                                    grid grid-cols-[200px_100px_100px_100px_150px_130px_100px_80px_100px] min-w-[1080px] gap-2 items-center
                                     p-2 border-b bg-background
                                     ${isEdited ? 'border-l-2 border-l-blue-500 bg-blue-50/20' : ''}
                                 `}
@@ -230,6 +329,30 @@ export function BulkEditMatrix({ open, products, onClose, onSave }: BulkEditMatr
                                             onChange={(e) => handleInputChange(product.id, 'barcode', e.target.value)}
                                             placeholder="Barcode"
                                         />
+                                    </div>
+                                    <div>
+                                        <Input
+                                            className="h-9 w-full bg-white text-xs dark:bg-black"
+                                            value={currentHsnCode}
+                                            maxLength={8}
+                                            onChange={(e) => handleInputChange(product.id, 'hsn_code', e.target.value)}
+                                            placeholder="HSN code"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Select
+                                            value={String(currentGstRate)}
+                                            onValueChange={(value) => handleInputChange(product.id, 'gst_rate', value)}
+                                        >
+                                            <SelectTrigger className="h-9 w-full bg-white dark:bg-black">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {GST_RATE_OPTIONS.map((rate) => (
+                                                    <SelectItem key={rate} value={String(rate)}>{rate}%</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="flex justify-center">
                                         <Switch

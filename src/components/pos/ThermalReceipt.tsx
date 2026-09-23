@@ -7,12 +7,20 @@ import {
     shouldPrintReceiptUpiQr,
     type PrintUpiQrScope,
 } from '@/lib/upiIntent';
+import {
+    calculateReceiptRoundOff,
+    shouldShowReceiptRoundOff,
+} from '@/lib/receiptRoundOff';
 
 interface OrderItem {
     product_name: string;
     quantity: number;
     unit_price: number | string;
     total_price: number | string;
+    hsn_code?: string;
+    gst_rate?: number | string;
+    tax_amount?: number | string;
+    tax_type?: 'GST' | 'IGST';
     mrp?: number | string | null;
     product_price?: number | string | null;
 }
@@ -28,6 +36,10 @@ interface OrderData {
     items: OrderItem[];
     subtotal: number | string;
     discount_amount?: number | string;
+    delivery_fee?: number | string;
+    discount_from_points?: number | string;
+    taxable_amount?: number | string;
+    tax_amount?: number | string;
     total_amount: number | string;
     payment_mode: string;
     retailer_gst_number?: string;
@@ -65,6 +77,32 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
 
     const calculatedSavings = totalOriginalValue - Number(order.total_amount);
     const totalSavings = calculatedSavings > 0.01 ? calculatedSavings : 0;
+    const taxGroups = Array.from(order.items.reduce((groups, item) => {
+        const amount = Number(item.tax_amount) || 0;
+        if (amount <= 0) return groups;
+        const type = item.tax_type || 'GST';
+        const rate = Number(item.gst_rate) || 0;
+        const key = `${type}-${rate}`;
+        groups.set(key, {
+            label: `${type} ${rate}%`,
+            amount: (groups.get(key)?.amount || 0) + amount,
+        });
+        return groups;
+    }, new Map<string, { label: string; amount: number }>()).values());
+
+    const deliveryFee = Number(order.delivery_fee) || 0;
+    const discountFromPoints = Number(order.discount_from_points) || 0;
+
+    // Taxable + GST are paisa-exact while TOTAL is rounded to the nearest rupee.
+    // Delivery and points are printed separately; round-off is only the rupee residue.
+    const roundOff = calculateReceiptRoundOff({
+        totalAmount: order.total_amount,
+        taxableAmount: order.taxable_amount,
+        taxAmount: order.tax_amount,
+        deliveryFee,
+        discountFromPoints,
+    });
+    const showRoundOff = shouldShowReceiptRoundOff(roundOff);
 
     const isCreditOrder = order.payment_mode && (
         order.payment_mode.toLowerCase() === 'credit' || 
@@ -166,6 +204,9 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                             return (
                                 <div key={idx} style={{ padding: '3px 0', borderBottom: '1px dashed #eee' }}>
                                     <div style={{ fontWeight: 'bold' }}>{item.product_name}</div>
+                                    {item.hsn_code && (
+                                        <div style={{ fontSize: '8px', opacity: 0.75 }}>HSN: {item.hsn_code}</div>
+                                    )}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px' }}>
                                         <div>
                                             {qty} x ₹{unitPrice.toFixed(2)}
@@ -213,6 +254,9 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                                     <tr key={idx} style={{ verticalAlign: 'top' }}>
                                         <td>
                                             <div>{item.product_name}</div>
+                                            {item.hsn_code && (
+                                                <div style={{ fontSize: '9px', opacity: 0.75 }}>HSN: {item.hsn_code}</div>
+                                            )}
                                             {hasSavings && (
                                                 <div style={{ fontSize: '9px', fontStyle: 'italic', opacity: 0.8 }}>
                                                     {mrp > 0 ? `MRP: ₹${mrp.toFixed(2)} ` : ''}(Saved: ₹{itemSavings.toFixed(2)})
@@ -239,6 +283,42 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                         <span>Discount:</span>
                         <span>-₹{Number(order.discount_amount).toFixed(2)}</span>
+                    </div>
+                )}
+                {order.taxable_amount !== undefined && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Taxable:</span>
+                        <span>₹{Number(order.taxable_amount).toFixed(2)}</span>
+                    </div>
+                )}
+                {taxGroups.map(group => (
+                    <div key={group.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>{group.label}:</span>
+                        <span>₹{group.amount.toFixed(2)}</span>
+                    </div>
+                ))}
+                {taxGroups.length === 0 && Number(order.tax_amount) > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>GST:</span>
+                        <span>₹{Number(order.tax_amount).toFixed(2)}</span>
+                    </div>
+                )}
+                {deliveryFee > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Delivery:</span>
+                        <span>₹{deliveryFee.toFixed(2)}</span>
+                    </div>
+                )}
+                {discountFromPoints > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Points:</span>
+                        <span>-₹{discountFromPoints.toFixed(2)}</span>
+                    </div>
+                )}
+                {showRoundOff && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <span>Round Off:</span>
+                        <span>{roundOff < 0 ? '-' : '+'}₹{Math.abs(roundOff).toFixed(2)}</span>
                     </div>
                 )}
                 
@@ -312,7 +392,7 @@ export const ThermalReceipt = forwardRef<HTMLDivElement, ThermalReceiptProps>(({
                             borderRadius: '2px',
                             fontWeight: 'bold'
                         }}>
-                            Order Online Anytime – Get "Order Easy" on Play Store
+                            Order Online Anytime – Get &quot;Order Easy&quot; on Play Store
                         </div>
                     )}
 
