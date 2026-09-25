@@ -5,7 +5,7 @@ import {
     FCM_ORDER_UPDATE_EVENT,
     LOCAL_ORDER_STATS_REFRESH_EVENT,
     subscribeOrderStatsRefresh,
-} from './orderStatsRefresh.ts';
+} from './orderStatsRefresh';
 
 afterEach(() => {
     mock.restoreAll();

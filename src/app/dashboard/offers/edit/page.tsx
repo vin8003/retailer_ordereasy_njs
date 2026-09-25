@@ -42,7 +42,11 @@ function EditOfferContent() {
         priority: 0,
         usage_limit_total: null,
         usage_limit_per_user: null,
-        bxgy_strategy: 'mixed'
+        bxgy_strategy: 'mixed',
+        is_coupon: false,
+        coupon_code: '',
+        is_public: true,
+        target_audience: 'all'
     });
 
     // Targets state
@@ -91,7 +95,11 @@ function EditOfferContent() {
                     priority: offer.priority,
                     usage_limit_total: offer.usage_limit_total,
                     usage_limit_per_user: offer.usage_limit_per_user,
-                    bxgy_strategy: offer.bxgy_strategy || 'mixed'
+                    bxgy_strategy: offer.bxgy_strategy || 'mixed',
+                    is_coupon: !!offer.coupon_code,
+                    coupon_code: offer.coupon_code || '',
+                    is_public: offer.is_public !== undefined ? offer.is_public : true,
+                    target_audience: offer.target_audience || 'all'
                 });
 
                 // Populate Targets logic
@@ -217,9 +225,13 @@ function EditOfferContent() {
 
             const payload = {
                 ...formData,
+                coupon_code: formData.is_coupon && formData.coupon_code.trim() ? formData.coupon_code.trim().toUpperCase() : null,
+                is_public: formData.is_coupon ? formData.is_public : true,
+                target_audience: formData.is_coupon ? formData.target_audience : 'all',
                 value: formData.value === '' || formData.value === null ? 0 : formData.value,
                 targets: finalTargets
             };
+            delete (payload as any).is_coupon;
 
             await offerService.updateOffer(offerId, payload);
             router.push('/dashboard/offers');
@@ -311,6 +323,81 @@ function EditOfferContent() {
                             </div>
                         </div>
                     </CardContent>
+                </Card>
+
+                {/* Coupon Code Configuration */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-base">Coupon Code Settings</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Turn this on if you want customers to enter a coupon code at checkout to claim this offer.
+                                </p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Label htmlFor="is_coupon" className="text-sm font-medium">
+                                    {formData.is_coupon ? 'Coupon Enabled' : 'Automatic Offer'}
+                                </Label>
+                                <Switch
+                                    id="is_coupon"
+                                    checked={formData.is_coupon}
+                                    onCheckedChange={(checked) => handleSwitchChange('is_coupon', checked)}
+                                />
+                            </div>
+                        </div>
+                    </CardHeader>
+                    {formData.is_coupon && (
+                        <CardContent className="space-y-4 pt-0">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="coupon_code">Coupon Code *</Label>
+                                    <Input
+                                        id="coupon_code"
+                                        name="coupon_code"
+                                        placeholder="e.g. SAVE50, WELCOME100"
+                                        required={formData.is_coupon}
+                                        value={formData.coupon_code}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, coupon_code: e.target.value.toUpperCase().replace(/\s+/g, '') }))}
+                                        className="font-mono uppercase tracking-wider font-semibold"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Only letters and numbers, e.g. FESTIVE20</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="target_audience">Target Audience</Label>
+                                    <Select
+                                        value={formData.target_audience}
+                                        onValueChange={(val) => handleSelectChange('target_audience', val)}
+                                    >
+                                        <SelectTrigger id="target_audience">
+                                            <SelectValue placeholder="Who can use this coupon?" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Customers</SelectItem>
+                                            <SelectItem value="first_time">First Order Only (New Customers)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">Restrict usage by customer type</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-3 border-t">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="is_public">Show in Customer App (Public Coupon)</Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        {formData.is_public 
+                                            ? 'Visible in the customer app "Available Coupons" sheet.' 
+                                            : 'Hidden / Secret coupon. Customers must manually type this code.'}
+                                    </p>
+                                </div>
+                                <Switch
+                                    id="is_public"
+                                    checked={formData.is_public}
+                                    onCheckedChange={(checked) => handleSwitchChange('is_public', checked)}
+                                />
+                            </div>
+                        </CardContent>
+                    )}
                 </Card>
 
                 {/* Offer Logic Configuration - Dynamic based on Type */}
