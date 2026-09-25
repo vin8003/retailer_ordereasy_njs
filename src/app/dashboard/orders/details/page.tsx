@@ -344,11 +344,22 @@ function OrderDetailContent() {
                                 <div className="space-y-1 py-1">
                                     {order.applied_offers.map((offer: any, idx: number) => (
                                         <div key={idx} className="flex justify-between text-sm text-green-600">
-                                            <span className="flex items-center gap-1">
-                                                <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 border-green-200 text-green-700 bg-green-50">OFFER</Badge>
-                                                {offer.name}
+                                            <span className="flex items-center gap-1.5">
+                                                <Badge variant="outline" className={`text-[10px] h-4 px-1 py-0 ${offer.is_coupon ? 'border-purple-200 text-purple-700 bg-purple-50' : 'border-green-200 text-green-700 bg-green-50'}`}>
+                                                    {offer.is_coupon ? 'COUPON' : 'OFFER'}
+                                                </Badge>
+                                                <span>{offer.name}</span>
+                                                {offer.coupon_code && (
+                                                    <span className="font-mono text-xs font-semibold text-purple-700">({offer.coupon_code})</span>
+                                                )}
                                             </span>
-                                            <span>- ₹{Number(offer.discount).toFixed(2)}</span>
+                                            {Number(offer.discount || 0) > 0 ? (
+                                                <span>- ₹{Number(offer.discount).toFixed(2)}</span>
+                                            ) : Number(offer.points_earned || 0) > 0 ? (
+                                                <span className="text-blue-600 font-medium">+{Number(offer.points_earned)} pts</span>
+                                            ) : (
+                                                <span>- ₹0.00</span>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

@@ -439,6 +439,20 @@ export default function NewOfferPage() {
                                         </Select>
                                     </div>
                                 </div>
+                                {formData.value_type === 'percent' && (
+                                    <div className="space-y-2 sm:col-span-2">
+                                        <Label>
+                                            {formData.benefit_type === 'credit_points' ? 'Max Cashback Points Cap (Optional)' : 'Max Discount Cap (Optional)'}
+                                        </Label>
+                                        <Input
+                                            type="number"
+                                            name="max_discount_amount"
+                                            placeholder="No Limit (e.g. 100)"
+                                            value={formData.max_discount_amount || ''}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </CardContent>
