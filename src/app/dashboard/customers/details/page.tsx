@@ -535,10 +535,10 @@ function CustomerDetailContent() {
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell className={`text-right font-medium ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
-                                                                    {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
+                                                                    {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-bold">
-                                                                    {formatCurrency(entry.balance_after)}
+                                                                    {formatCurrency(Number(entry.balance_after))}
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
@@ -569,7 +569,7 @@ function CustomerDetailContent() {
                                                                 </span>
                                                             </div>
                                                             <span className={`text-sm font-extrabold ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
-                                                                {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
+                                                                {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                                                             </span>
                                                         </div>
                                                         <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-50">
@@ -593,7 +593,7 @@ function CustomerDetailContent() {
                                                             </div>
                                                             <div className="flex flex-col items-end shrink-0">
                                                                 <span className="text-[9px] text-muted-foreground uppercase font-bold">Balance</span>
-                                                                <span className="font-extrabold text-gray-900">{formatCurrency(entry.balance_after)}</span>
+                                                                <span className="font-extrabold text-gray-900">{formatCurrency(Number(entry.balance_after))}</span>
                                                             </div>
                                                         </div>
                                                     </div>

@@ -40,7 +40,7 @@ describe("InventoryLedgerHistory", () => {
         expect(nulled).not.toContain("Batch");
     });
 
-    it("does not invent batch_id from other row fields", () => {
+    it("does not invent batch_id from a nested batch object (batch_number is shown separately)", () => {
         const markup = renderToStaticMarkup(
             <InventoryLedgerHistory
                 logs={[
@@ -53,8 +53,8 @@ describe("InventoryLedgerHistory", () => {
                 ]}
             />
         );
-        expect(markup).not.toContain("Batch");
-        expect(markup).not.toContain("LOT-A");
-        expect(markup).not.toContain("55");
+        // batch_number renders via WriteOffDetailBatchNumber; the nested batch.id must not become a batch_id label.
+        expect(markup).toContain("Batch LOT-A");
+        expect(markup).not.toContain("Batch 55");
     });
 });

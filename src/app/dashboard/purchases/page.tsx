@@ -375,13 +375,10 @@ export default function PurchasesPage() {
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-red-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar size={14} className="text-red-400" />
-                                                        {dateFromOptionalString(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     <div className="flex flex-col">
                                                         <div className="flex items-center gap-2">
                                                             <Calendar size={14} className="text-red-400" />
-                                                            {new Date(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                            {dateFromOptionalString(item.return_date || item.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                         </div>
                                                         <PurchaseReturnCreatedAtTimeLabel item={item} />
                                                     </div>

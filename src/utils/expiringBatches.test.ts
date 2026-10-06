@@ -66,7 +66,7 @@ describe("getExpiredBadgeLabel", () => {
         expect(getExpiredBadgeLabel({})).toBeNull();
         expect(getExpiredBadgeLabel({ is_expired: false })).toBeNull();
         expect(getExpiredBadgeLabel({ is_expired: null })).toBeNull();
-        expect(getExpiredBadgeLabel({ expiry_date: "2000-01-01", quantity: 4 })).toBeNull();
+        expect(getExpiredBadgeLabel({ expiry_date: "2000-01-01", quantity: 4 } as Parameters<typeof getExpiredBadgeLabel>[0])).toBeNull();
     });
 });
 
