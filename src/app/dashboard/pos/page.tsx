@@ -36,6 +36,7 @@ import {
     EXPIRED_BATCH_SALE_MESSAGE,
     FIFO_PICK_HINT,
     expiryHint,
+    batchIsExpired,
     isBatchExpired,
     sortBatchesFifo,
     unexpiredBatches,
@@ -105,7 +106,8 @@ interface RetailerProfile {
 
 export default function POSPage() {
     const { hasPermission, isModuleEnabled, locationId, permissions } = useOrgContext();
-    const canOverrideCredit = hasPermission(PERMISSIONS.ORDERS_UPDATE);
+    // Overriding a credit lock needs its own permission (not general order access).
+    const canOverrideCredit = hasPermission(PERMISSIONS.CREDIT_OVERRIDE);
     const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
@@ -479,7 +481,10 @@ export default function POSPage() {
             try {
                 const [listRes, lookupRes] = await Promise.all([
                     customerService.getRetailerCustomers({ search: mobile }),
-                    customerService.lookupByPhone(mobile).catch(() => null),
+                    // Order history needs orders.read; the till does not fetch it otherwise.
+                    hasPermission(PERMISSIONS.ORDERS_READ)
+                        ? customerService.lookupByPhone(mobile).catch(() => null)
+                        : Promise.resolve(null),
                 ]);
                 const rows = listRes.data?.results || listRes.data;
                 const list = Array.isArray(rows) ? rows : [];
@@ -587,7 +592,7 @@ export default function POSPage() {
                     setIsBatchModalOpen(true);
                     return;
                 }
-                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && isBatchExpired(b.expiry_date));
+                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && batchIsExpired(b));
                 if (expiredMatch.length && matchingBatches.length === 0) {
                     toast.error(EXPIRED_BATCH_SALE_MESSAGE);
                     return;
@@ -613,7 +618,7 @@ export default function POSPage() {
     };
 
     const finalizeAddToCart = (product: Product, batch?: any) => {
-        if (batch && isBatchExpired(batch.expiry_date)) {
+        if (batch && batchIsExpired(batch)) {
             toast.error(EXPIRED_BATCH_SALE_MESSAGE);
             return;
         }
@@ -1767,11 +1772,13 @@ export default function POSPage() {
                                 {sortBatchesFifo(batchModalProduct.batches?.filter(b => b.is_active !== false) || []).map((batch) => {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
                                     const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
-                                    const expired = isBatchExpired(batch.expiry_date);
+                                    const expired = batchIsExpired(batch);
 
                                     return (
                                         <button
                                             key={batch.id}
+                                            disabled={expired}
+                                            aria-disabled={expired}
                                             onClick={() => finalizeAddToCart(batchModalProduct, batch)}
                                             className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left ${
                                                 expired

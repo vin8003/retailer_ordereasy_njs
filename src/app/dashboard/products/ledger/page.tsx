@@ -69,11 +69,17 @@ function LedgerContent() {
             if (!productId) return;
             setIsLoading(true);
             try {
-                const [_, prodRes] = await Promise.all([
+                // The product must load even if the ledger request fails, so the write-off
+                // form stays usable; the ledger error is reported separately.
+                const [ledgerResult, prodResult] = await Promise.allSettled([
                     loadLedger('all'),
                     api.get(`/products/${productId}/`)
                 ]);
-                setProduct(prodRes.data);
+                if (prodResult.status === 'rejected') throw prodResult.reason;
+                setProduct(prodResult.value.data);
+                if (ledgerResult.status === 'rejected') {
+                    toast.error("Could not load the movement history. You can still record a write-off.");
+                }
             } catch (error) {
                 toast.error("Failed to load inventory history");
             } finally {

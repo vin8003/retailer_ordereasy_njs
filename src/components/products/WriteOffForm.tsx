@@ -50,6 +50,7 @@ export function WriteOffForm({
   const [quantity, setQuantity] = useState("");
   const [batchId, setBatchId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<WriteOffResult | null>(null);
 
@@ -58,7 +59,7 @@ export function WriteOffForm({
   if (!canWriteOff) {
     return (
       <p className="text-sm text-muted-foreground">
-        Write-off needs <code>inventory.adjust</code>. This posts the existing write-off document — no StockMovement engine.
+        Ask the shop owner for stock adjustment access to record a write-off.
       </p>
     );
   }
@@ -144,9 +145,50 @@ export function WriteOffForm({
           </Select>
         </div>
       </div>
-      <Button type="button" onClick={submit} disabled={submitting}>
-        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Write off"}
-      </Button>
+      {confirming ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm space-y-2" role="alertdialog" aria-label="Confirm write-off">
+          <p>
+            Remove <strong>{quantity || "?"}</strong> from stock as <strong>{reason || "?"}</strong>
+            {batchId && batchId !== "none" ? ` (batch ${batchId})` : ""}. This cannot be undone here.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={submitting}
+              onClick={async () => {
+                await submit();
+                setConfirming(false);
+              }}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm write-off"}
+            </Button>
+            <Button type="button" variant="outline" disabled={submitting} onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          onClick={() => {
+            const payload = buildWriteOffPayload({
+              quantity,
+              reason,
+              batchId: batchId && batchId !== "none" ? batchId : null,
+            });
+            if (!payload) {
+              setError("Enter a quantity greater than 0 and pick damage, expiry, or spoilage.");
+              return;
+            }
+            setError(null);
+            setConfirming(true);
+          }}
+          disabled={submitting}
+        >
+          Review write-off
+        </Button>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {result && (
         <p className="text-xs text-green-700">

@@ -124,8 +124,8 @@ export function InboxFiltersBar({
                 if (next) onNeedsActionChange(false);
               }}
             >
-              <div className="w-full overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <TabsList className="h-9 w-max">
+              <div className="w-full">
+                <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
                   {statusChips.map((option) => (
                     <TabsTrigger
                       key={option.chip || "all"}

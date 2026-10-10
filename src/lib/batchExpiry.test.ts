@@ -90,3 +90,18 @@ describe("errors", () => {
     expect(EXPIRED_BATCH_SALE_MESSAGE).toMatch(/Expired/);
   });
 });
+
+import { batchIsExpired } from "./batchExpiry";
+
+describe("batchIsExpired", () => {
+  it("prefers the server verdict over the device clock", () => {
+    expect(batchIsExpired({ expiry_date: "2000-01-01", is_expired: false })).toBe(false);
+    expect(batchIsExpired({ expiry_date: "2999-01-01", is_expired: true })).toBe(true);
+  });
+
+  it("falls back to the date when the server flag is missing", () => {
+    expect(batchIsExpired({ expiry_date: "2000-01-01" }, "2026-10-10")).toBe(true);
+    expect(batchIsExpired({ expiry_date: "2999-01-01" }, "2026-10-10")).toBe(false);
+    expect(batchIsExpired({ expiry_date: null }, "2026-10-10")).toBe(false);
+  });
+});
