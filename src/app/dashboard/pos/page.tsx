@@ -95,7 +95,8 @@ interface RetailerProfile {
 
 export default function POSPage() {
     const { hasPermission } = useOrgContext();
-    const canOverrideCredit = hasPermission(PERMISSIONS.ORDERS_UPDATE);
+    // Overriding a credit lock needs its own permission (not general order access).
+    const canOverrideCredit = hasPermission(PERMISSIONS.CREDIT_OVERRIDE);
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
 
