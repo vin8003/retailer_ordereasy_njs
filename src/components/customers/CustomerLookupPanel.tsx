@@ -103,7 +103,13 @@ export function CustomerLookupPanel({ canExport = false }: CustomerLookupPanelPr
             placeholder="10-digit phone"
             value={phone}
             maxLength={14}
-            onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ""))}
+            onChange={(e) => {
+              setPhone(e.target.value.replace(/[^\d+]/g, ""));
+              // A new number must not keep showing the previous customer.
+              setResult(null);
+              setExportRows(null);
+              setError(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") runLookup();
             }}
