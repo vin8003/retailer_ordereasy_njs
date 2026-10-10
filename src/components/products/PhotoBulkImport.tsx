@@ -18,6 +18,7 @@ import {
 import {
   PHOTO_ROW_ATTACHED,
   buildPhotoImportFormData,
+  validatePhotoImportSelection,
   parsePhotoImportReport,
   photoImportErrorMessage,
   type PhotoImportReport,
@@ -41,12 +42,17 @@ export function PhotoBulkImport({ canImport }: PhotoBulkImportProps) {
   if (!canImport) {
     return (
       <p className="text-sm text-muted-foreground">
-        Photo attach needs <code>catalog.image</code>. This uses the existing product image field — no second media library.
+        Ask the shop owner for photo upload access to use this.
       </p>
     );
   }
 
   const onSubmit = async () => {
+    const selectionError = validatePhotoImportSelection({ archive, csv, images });
+    if (selectionError) {
+      setError(selectionError);
+      return;
+    }
     const form = buildPhotoImportFormData({ archive, csv, images });
     if (!form) {
       setError("Choose a zip archive and/or a CSV plus image files.");
@@ -61,6 +67,13 @@ export function PhotoBulkImport({ canImport }: PhotoBulkImportProps) {
         setError("Unexpected import payload.");
         return;
       }
+      // Clear the pickers so the same files are not re-sent by accident.
+      setArchive(null);
+      setCsv(null);
+      setImages([]);
+      if (archiveRef.current) archiveRef.current.value = "";
+      if (csvRef.current) csvRef.current.value = "";
+      if (imagesRef.current) imagesRef.current.value = "";
       setReport(parsed);
       toast.success(
         `${parsed.successfulRows} attached, ${parsed.failedRows} failed (file not aborted).`

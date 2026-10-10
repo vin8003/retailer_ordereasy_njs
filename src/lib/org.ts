@@ -13,6 +13,9 @@ export const PERMISSIONS = {
   CATALOG_IMAGE: 'catalog.image',
   INVENTORY_ADJUST: 'inventory.adjust',
   PURCHASING_TERMS: 'purchasing.terms',
+  PURCHASING_SUPPLIERS: 'purchasing.suppliers',
+  CREDIT_MANAGE: 'credit.manage',
+  CREDIT_OVERRIDE: 'credit.override',
 } as const;
 
 export type PermissionCode = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -143,14 +146,22 @@ export function callerIsOrgOwner(
   return userIdFromJwtPayload(accessToken) === ownerId;
 }
 
+export type StaffCaller = string | { id?: number | null; username?: string | null };
+
 export function resolvePermissionsFromStaff(
-  username: string,
+  caller: StaffCaller,
   staff: OrgStaffMember[] | unknown,
   permissionCatalog: string[],
   options?: { isOwner?: boolean }
 ): string[] {
   const list = unwrapPaginatedResults<OrgStaffMember>(staff);
-  const match = list.find((m) => m.is_active && m.username === username);
+  const who = typeof caller === "string" ? { id: null, username: caller } : caller;
+  // Match on the user id when known (usernames can change or be reused).
+  const match = list.find(
+    (m) =>
+      m.is_active &&
+      (who.id != null ? m.user === who.id : who.username != null && m.username === who.username)
+  );
   if (match) {
     return match.permissions ?? [];
   }

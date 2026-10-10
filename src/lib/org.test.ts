@@ -80,6 +80,20 @@ describe("unwrapPaginatedResults", () => {
   });
 });
 
+describe("resolvePermissionsFromStaff by user id", () => {
+  const staff = [
+    { id: 1, organization: 1, user: 11, username: "old_name", email: "", role: 1, role_slug: "cashier", role_name: "Cashier", permissions: ["orders.read"], is_active: true },
+  ];
+
+  it("matches on user id even if the username changed", () => {
+    expect(resolvePermissionsFromStaff({ id: 11, username: "renamed" }, staff, [])).toEqual(["orders.read"]);
+  });
+
+  it("does not match a different user with the same username", () => {
+    expect(resolvePermissionsFromStaff({ id: 12, username: "old_name" }, staff, [])).toEqual([]);
+  });
+});
+
 describe("callerIsOrgOwner", () => {
   it("matches owner id from profile.user", () => {
     expect(callerIsOrgOwner(42, { user: 42 })).toBe(true);

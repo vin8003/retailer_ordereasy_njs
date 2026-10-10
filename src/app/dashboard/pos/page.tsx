@@ -105,7 +105,8 @@ interface RetailerProfile {
 
 export default function POSPage() {
     const { hasPermission, isModuleEnabled, locationId, permissions } = useOrgContext();
-    const canOverrideCredit = hasPermission(PERMISSIONS.ORDERS_UPDATE);
+    // Overriding a credit lock needs its own permission (not general order access).
+    const canOverrideCredit = hasPermission(PERMISSIONS.CREDIT_OVERRIDE);
     const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
@@ -479,7 +480,10 @@ export default function POSPage() {
             try {
                 const [listRes, lookupRes] = await Promise.all([
                     customerService.getRetailerCustomers({ search: mobile }),
-                    customerService.lookupByPhone(mobile).catch(() => null),
+                    // Order history needs orders.read; the till does not fetch it otherwise.
+                    hasPermission(PERMISSIONS.ORDERS_READ)
+                        ? customerService.lookupByPhone(mobile).catch(() => null)
+                        : Promise.resolve(null),
                 ]);
                 const rows = listRes.data?.results || listRes.data;
                 const list = Array.isArray(rows) ? rows : [];

@@ -93,3 +93,28 @@ export function buildPhotoImportFormData(input: {
   }
   return hasFile ? form : null;
 }
+
+/** Mirrors the backend limits so oversized uploads fail before the request. */
+export const PHOTO_IMPORT_LIMITS = {
+  maxArchiveBytes: 20 * 1024 * 1024,
+  maxImageBytes: 5 * 1024 * 1024,
+  maxImages: 200,
+} as const;
+
+export function validatePhotoImportSelection(input: {
+  archive: File | null;
+  csv: File | null;
+  images: File[];
+}): string | null {
+  if (input.archive && input.archive.size > PHOTO_IMPORT_LIMITS.maxArchiveBytes) {
+    return "The zip is over 20 MB. Split it into smaller zips.";
+  }
+  if (input.images.length > PHOTO_IMPORT_LIMITS.maxImages) {
+    return "Choose at most 200 images per import.";
+  }
+  const tooBig = input.images.find((f) => f.size > PHOTO_IMPORT_LIMITS.maxImageBytes);
+  if (tooBig) {
+    return `${tooBig.name} is over 5 MB.`;
+  }
+  return null;
+}

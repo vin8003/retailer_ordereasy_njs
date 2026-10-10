@@ -37,7 +37,9 @@ export default function OperatingHoursPage() {
     const [hours, setHours] = useState<OperatingHour[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [slotCapacity, setSlotCapacity] = useState<number>(5);
+    // Kept as text while typing so clearing the box does not jump to 1.
+    const [slotCapacity, setSlotCapacity] = useState<string>('5');
+    const [capacityLoadFailed, setCapacityLoadFailed] = useState(false);
     const [orgId, setOrgId] = useState<number | null>(null);
     const [locationId, setLocationId] = useState<number | null>(null);
     const [isSavingCapacity, setIsSavingCapacity] = useState(false);
@@ -67,25 +69,34 @@ export default function OperatingHoursPage() {
                 (loc: { location_id: number }) => loc.location_id === resolvedLocationId
             ) || locations[0];
             if (match?.fulfillment_slot_capacity) {
-                setSlotCapacity(match.fulfillment_slot_capacity);
+                setSlotCapacity(String(match.fulfillment_slot_capacity));
             }
+            setCapacityLoadFailed(false);
         } catch (error) {
             console.error('Failed to fetch fulfillment slot config:', error);
+            // Do not show the default (5) as if it were the saved value.
+            setCapacityLoadFailed(true);
         }
     };
 
     const handleSaveCapacity = async () => {
-        if (!orgId || slotCapacity < 1) {
-            toast.error('Enter a valid slot capacity (minimum 1)');
+        const capacity = Number(slotCapacity);
+        if (!orgId || !Number.isInteger(capacity) || capacity < 1 || capacity > 9999) {
+            toast.error('Enter a whole number from 1 to 9999');
             return;
         }
         setIsSavingCapacity(true);
         try {
-            await fulfillmentService.updateSlotConfig(orgId, slotCapacity, locationId ?? undefined);
+            await fulfillmentService.updateSlotConfig(orgId, capacity, locationId ?? undefined);
             toast.success('Fulfillment slot capacity updated');
         } catch (error) {
             console.error('Failed to save slot capacity:', error);
-            toast.error('Failed to save slot capacity (requires fulfillment.manage permission)');
+            const status = (error as { response?: { status?: number } })?.response?.status;
+            toast.error(
+                status === 403
+                    ? 'You need the fulfillment.manage permission to change this'
+                    : 'Failed to save slot capacity. Try again.'
+            );
         } finally {
             setIsSavingCapacity(false);
         }
@@ -282,10 +293,18 @@ export default function OperatingHoursPage() {
                                 min={1}
                                 max={9999}
                                 value={slotCapacity}
-                                onChange={(e) => setSlotCapacity(parseInt(e.target.value, 10) || 1)}
+                                onChange={(e) => setSlotCapacity(e.target.value)}
                             />
                         </div>
-                        <Button onClick={handleSaveCapacity} disabled={isSavingCapacity || !canManageFulfillment}>
+                        {capacityLoadFailed && (
+                            <p className="text-sm text-destructive" role="alert">
+                                Could not load the current capacity. Reload the page before saving.
+                            </p>
+                        )}
+                        <Button
+                            onClick={handleSaveCapacity}
+                            disabled={isSavingCapacity || !canManageFulfillment || capacityLoadFailed}
+                        >
                             {isSavingCapacity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Save capacity
                         </Button>
