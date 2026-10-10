@@ -36,6 +36,7 @@ import {
     EXPIRED_BATCH_SALE_MESSAGE,
     FIFO_PICK_HINT,
     expiryHint,
+    batchIsExpired,
     isBatchExpired,
     sortBatchesFifo,
     unexpiredBatches,
@@ -591,7 +592,7 @@ export default function POSPage() {
                     setIsBatchModalOpen(true);
                     return;
                 }
-                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && isBatchExpired(b.expiry_date));
+                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && batchIsExpired(b));
                 if (expiredMatch.length && matchingBatches.length === 0) {
                     toast.error(EXPIRED_BATCH_SALE_MESSAGE);
                     return;
@@ -617,7 +618,7 @@ export default function POSPage() {
     };
 
     const finalizeAddToCart = (product: Product, batch?: any) => {
-        if (batch && isBatchExpired(batch.expiry_date)) {
+        if (batch && batchIsExpired(batch)) {
             toast.error(EXPIRED_BATCH_SALE_MESSAGE);
             return;
         }
@@ -1771,11 +1772,13 @@ export default function POSPage() {
                                 {sortBatchesFifo(batchModalProduct.batches?.filter(b => b.is_active !== false) || []).map((batch) => {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
                                     const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
-                                    const expired = isBatchExpired(batch.expiry_date);
+                                    const expired = batchIsExpired(batch);
 
                                     return (
                                         <button
                                             key={batch.id}
+                                            disabled={expired}
+                                            aria-disabled={expired}
                                             onClick={() => finalizeAddToCart(batchModalProduct, batch)}
                                             className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left ${
                                                 expired
