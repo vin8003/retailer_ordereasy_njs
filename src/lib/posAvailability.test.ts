@@ -160,3 +160,14 @@ describe("isSellableProduct", () => {
     );
   });
 });
+
+describe("isSellableProduct (inactive and unavailable)", () => {
+  it("blocks is_available=false as well as is_active=false", async () => {
+    const { isSellableProduct } = await import("./posAvailability");
+    expect(isSellableProduct({ is_active: true, is_available: true })).toBe(true);
+    expect(isSellableProduct({ is_active: true })).toBe(true);
+    expect(isSellableProduct({ is_active: false })).toBe(false);
+    expect(isSellableProduct({ is_active: true, is_available: false })).toBe(false);
+    expect(isSellableProduct(null)).toBe(false);
+  });
+});

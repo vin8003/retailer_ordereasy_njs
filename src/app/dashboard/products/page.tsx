@@ -25,7 +25,7 @@ import { PriceUpdatePrintPrompt } from "@/components/labels/PriceUpdatePrintProm
 import { enqueuePrintProductIds } from "@/lib/labelPrint/printList";
 import { useOrgContext } from "@/hooks/useOrgContext";
 import { PERMISSIONS } from "@/lib/org";
-import { QTY_ADJUST_MESSAGE, axiosInventoryAdjustError, canAdjustInventory } from "@/lib/inventoryAdjust";
+import { axiosInventoryAdjustError, canAdjustInventory } from "@/lib/inventoryAdjust";
 
 export default function ProductsPage() {
     const router = useRouter();
@@ -565,10 +565,8 @@ export default function ProductsPage() {
                         }
                     }}
                     onUpdateStock={async (product: any, newStock: number) => {
-                        if (!canAdjust) {
-                            toast.error(QTY_ADJUST_MESSAGE);
-                            throw new Error(QTY_ADJUST_MESSAGE);
-                        }
+                        // The server decides: a role change made elsewhere takes effect without a
+                        // reload, and a 403 is mapped to the adjust message below.
                         try {
                             setProducts(products.map(p => p.id === product.id ? { ...p, quantity: newStock } : p));
                             const formData = new FormData();

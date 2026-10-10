@@ -57,6 +57,7 @@ import { toast } from 'sonner';
 import { useOrgContext } from '@/hooks/useOrgContext';
 import { LoyaltyRedeemPanel } from '@/components/customers/LoyaltyRedeemPanel';
 import { canStaffRedeem } from '@/lib/loyaltyRedeem';
+import { PERMISSIONS } from '@/lib/org';
 
 interface CustomerDetail {
     customerId: number;
@@ -106,7 +107,8 @@ function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>):
 function CustomerDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { permissions, isModuleEnabled, locationId } = useOrgContext();
+    const { hasPermission, permissions, isModuleEnabled, locationId } = useOrgContext();
+    const canManageCredit = hasPermission(PERMISSIONS.CREDIT_MANAGE);
     const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [id, setId] = useState<number | null>(null);
     const capturedIdRef = useRef<number | null>(null);
@@ -291,17 +293,32 @@ function CustomerDetailContent() {
 
     const handleUpdateCreditLimit = async () => {
         if (!id || !newCreditLimit) return;
+        const limit = Number(newCreditLimit);
+        const dueRaw = newCreditDueDays.trim();
+        const dueDays = dueRaw === '' ? null : Number(dueRaw);
+        if (!Number.isFinite(limit) || limit < 0) {
+            toast.error('Enter a credit limit of 0 or more');
+            return;
+        }
+        if (dueDays !== null && (!Number.isInteger(dueDays) || dueDays < 0)) {
+            toast.error('Credit due days must be a whole number of 0 or more');
+            return;
+        }
         setActionLoading(true);
         try {
-            const dueRaw = newCreditDueDays.trim();
-            await customerService.updateCreditLimit(id, parseFloat(newCreditLimit), {
-                credit_due_days: dueRaw === '' ? null : parseInt(dueRaw, 10),
+            await customerService.updateCreditLimit(id, limit, {
+                credit_due_days: dueDays,
             });
             toast.success('Credit limit updated successfully');
             setShowCreditLimitDialog(false);
             fetchDetails();
         } catch (err) {
-            toast.error('Failed to update credit limit');
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            toast.error(
+                status === 403
+                    ? 'You need the credit.manage permission to change this'
+                    : 'Failed to update credit limit'
+            );
         } finally {
             setActionLoading(false);
         }
@@ -407,6 +424,8 @@ function CustomerDetailContent() {
                                 <Button
                                     variant="outline"
                                     className="w-full gap-2"
+                                    disabled={!canManageCredit}
+                                    title={canManageCredit ? undefined : 'Needs the credit.manage permission'}
                                     onClick={() => setShowCreditLimitDialog(true)}
                                 >
                                     <ShieldBan className="h-4 w-4" /> Set Credit Limit

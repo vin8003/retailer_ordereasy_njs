@@ -10,7 +10,7 @@ const UNSELLABLE_PRODUCT_PATTERN =
 
 export const UNSELLABLE_PRODUCT_HINT = "Remove it from the cart to complete this bill.";
 export const INACTIVE_PRODUCT_ADD_MESSAGE =
-  "This product is inactive and cannot be added to a sale.";
+  "This product is inactive or unavailable and cannot be added to a sale.";
 
 export interface UnsellableProduct {
   productId: number;
@@ -19,10 +19,11 @@ export interface UnsellableProduct {
 
 /** Active unless the catalog says otherwise (POS list is already an is_active=true fetch). */
 export function isSellableProduct(
-  product: { is_active?: boolean } | null | undefined
+  product: { is_active?: boolean; is_available?: boolean } | null | undefined
 ): boolean {
   if (!product) return false;
-  return product.is_active !== false;
+  // The server rejects inactive and unavailable products alike.
+  return product.is_active !== false && product.is_available !== false;
 }
 
 export function parseUnsellableProductError(
