@@ -64,6 +64,7 @@ interface Product {
     category_name: string;
     barcode?: string;
     is_active?: boolean;
+    is_available?: boolean;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
