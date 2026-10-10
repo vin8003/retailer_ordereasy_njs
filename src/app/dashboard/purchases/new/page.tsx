@@ -17,6 +17,7 @@ import { QuickAddModal } from '@/components/pos/QuickAddModal';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
 import { useOrgContext } from '@/hooks/useOrgContext';
+import { PERMISSIONS } from '@/lib/org';
 import {
     GSTIN_FORMAT_MESSAGE,
     PAYMENT_TERMS_WHITESPACE,
@@ -345,6 +346,7 @@ export default function NewPurchasePage() {
                                 </label>
                                 <button 
                                     type="button"
+                                    hidden={!permissions.has(PERMISSIONS.PURCHASING_SUPPLIERS)}
                                     onClick={() => setShowAddModal(true)}
                                     className="text-[10px] font-bold text-primary flex items-center gap-1 hover:underline"
                                 >
