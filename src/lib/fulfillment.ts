@@ -112,7 +112,7 @@ export const OFD_CLOSEOUT_COPY = {
   markFailedButton: 'Mark as failed',
   dialogTitle: 'Delivery failed',
   dialogDescription:
-    'Shop close-out for this out-for-delivery order. A reason is required.',
+    'Shop close-out for this out-for-delivery order. A reason is required. The order is cancelled and its items go back into stock.',
   reasonLabel: 'Reason',
   reasonPlaceholder: 'Why did this delivery fail?',
   submit: 'Mark as failed',
