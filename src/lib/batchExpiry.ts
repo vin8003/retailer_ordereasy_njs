@@ -9,6 +9,8 @@ export interface ExpiryBatch {
   expiry_date?: string | null;
   quantity?: number | string;
   is_active?: boolean;
+  /** Server verdict (shop date). Preferred over comparing against the device clock. */
+  is_expired?: boolean;
 }
 
 export function todayIsoDate(now: Date = new Date()): string {
@@ -35,13 +37,22 @@ export function isBatchExpired(
   return day < today;
 }
 
+/** Prefer the server's is_expired; fall back to the device date only when it is missing. */
+export function batchIsExpired(
+  batch: Pick<ExpiryBatch, "expiry_date" | "is_expired">,
+  today: string = todayIsoDate()
+): boolean {
+  if (typeof batch.is_expired === "boolean") return batch.is_expired;
+  return isBatchExpired(batch.expiry_date, today);
+}
+
 /** Active lots that are not past expiry_date. Undated lots stay eligible. */
 export function unexpiredBatches<T extends ExpiryBatch>(
   batches: T[],
   today: string = todayIsoDate()
 ): T[] {
   return batches.filter(
-    (b) => b.is_active !== false && !isBatchExpired(b.expiry_date, today)
+    (b) => b.is_active !== false && !batchIsExpired(b, today)
   );
 }
 
@@ -82,7 +93,7 @@ export function prepareBatchesForSave<T extends Record<string, unknown>>(
       } else {
         delete copy.expiry_date;
       }
-      return copy;
+      return copy as T;
     }
     copy.expiry_date = expiryDateForWrite(copy.expiry_date);
     return copy;

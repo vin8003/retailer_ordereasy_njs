@@ -47,6 +47,7 @@ import {
     EXPIRED_BATCH_SALE_MESSAGE,
     FIFO_PICK_HINT,
     expiryHint,
+    batchIsExpired,
     isBatchExpired,
     sortBatchesFifo,
     unexpiredBatches,
@@ -117,7 +118,8 @@ interface RetailerProfile {
 
 export default function POSPage() {
     const { hasPermission, isModuleEnabled, locationId, permissions } = useOrgContext();
-    const canOverrideCredit = hasPermission(PERMISSIONS.ORDERS_UPDATE);
+    // Overriding a credit lock needs its own permission (not general order access).
+    const canOverrideCredit = hasPermission(PERMISSIONS.CREDIT_OVERRIDE);
     const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
@@ -207,6 +209,8 @@ export default function POSPage() {
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [khata, setKhata] = useState<(KhataMapping & { customerId: number | null }) | null>(null);
+    // A failed credit lookup must not look like "no credit limit".
+    const [khataLoadFailed, setKhataLoadFailed] = useState(false);
     const [creditOverride, setCreditOverride] = useState(false);
     const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
     const [lookupOrders, setLookupOrders] = useState<LookupOrder[]>([]);
@@ -481,6 +485,7 @@ export default function POSPage() {
     useEffect(() => {
         setCreditOverride(false);
         setServerLockReasons([]);
+        setKhataLoadFailed(false);
         const mobile = activeSession.customerMobile;
         if (mobile.length !== 10) {
             setKhata(null);
@@ -493,7 +498,10 @@ export default function POSPage() {
             try {
                 const [listRes, lookupRes] = await Promise.all([
                     customerService.getRetailerCustomers({ search: mobile }),
-                    customerService.lookupByPhone(mobile).catch(() => null),
+                    // Order history needs orders.read; the till does not fetch it otherwise.
+                    hasPermission(PERMISSIONS.ORDERS_READ)
+                        ? customerService.lookupByPhone(mobile).catch(() => null)
+                        : Promise.resolve(null),
                 ]);
                 const rows = listRes.data?.results || listRes.data;
                 const list = Array.isArray(rows) ? rows : [];
@@ -518,6 +526,7 @@ export default function POSPage() {
                 console.error(err);
                 if (!cancelled) {
                     setKhata(null);
+                    setKhataLoadFailed(true);
                     setLookupOrders([]);
                     setLookupCustomerId(null);
                 }
@@ -607,7 +616,7 @@ export default function POSPage() {
                     setIsBatchModalOpen(true);
                     return;
                 }
-                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && isBatchExpired(b.expiry_date));
+                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && batchIsExpired(b));
                 if (expiredMatch.length && matchingBatches.length === 0) {
                     toast.error(EXPIRED_BATCH_SALE_MESSAGE);
                     return;
@@ -633,7 +642,7 @@ export default function POSPage() {
     };
 
     const finalizeAddToCart = (product: Product, batch?: any) => {
-        if (batch && isBatchExpired(batch.expiry_date)) {
+        if (batch && batchIsExpired(batch)) {
             toast.error(EXPIRED_BATCH_SALE_MESSAGE);
             return;
         }
@@ -1760,6 +1769,11 @@ export default function POSPage() {
                         )}
                     </div>
 
+                    {creditAmount > 0 && khataLoadFailed && (
+                        <p className="text-xs text-amber-700" role="status">
+                            Could not check this customer&apos;s credit. The server still enforces the limit.
+                        </p>
+                    )}
                     {unsellableInCart && (
                         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
                             <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
@@ -1844,11 +1858,13 @@ export default function POSPage() {
                                 {sortBatchesFifo(batchModalProduct.batches?.filter(b => b.is_active !== false) || []).map((batch) => {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
                                     const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
-                                    const expired = isBatchExpired(batch.expiry_date);
+                                    const expired = batchIsExpired(batch);
 
                                     return (
                                         <button
                                             key={batch.id}
+                                            disabled={expired}
+                                            aria-disabled={expired}
                                             onClick={() => finalizeAddToCart(batchModalProduct, batch)}
                                             className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left ${
                                                 expired

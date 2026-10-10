@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { X, Save, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,26 @@ export function BulkEditMatrix({ open, products, onClose, onSave, canEditAppPric
     };
 
     const handleSave = async () => {
+        // Reject non-numeric money/stock input; Number("abc") would be NaN and silently
+        // serialise as null (clearing the app price).
+        for (const [idStr, changeData] of Object.entries(changes)) {
+            const numericFields: Array<[string, string | undefined, boolean]> = [
+                ["Price", changeData.price, false],
+                ["App price", canEditAppPrice ? changeData.app_price : undefined, true],
+                ["Stock", changeData.quantity, false],
+                ["MRP", changeData.original_price, false],
+            ];
+            for (const [label, raw, canBeEmpty] of numericFields) {
+                if (raw === undefined || (raw === "" && canBeEmpty)) continue;
+                if (raw === "") continue;
+                const value = Number(raw);
+                if (!Number.isFinite(value) || value < 0 || (label === "App price" && value === 0)) {
+                    toast.error(`${label} for product #${idStr} must be a valid positive number`);
+                    return;
+                }
+            }
+        }
+
         // Prepare payload only for modified items
         const payload = Object.entries(changes).map(([idStr, changeData]) => {
             const id = parseInt(idStr, 10);

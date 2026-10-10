@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useOrgContext } from "@/hooks/useOrgContext";
+import { PERMISSIONS } from "@/lib/org";
 import {
     Plus, Search, Tag, Calendar, Percent, ShoppingBag, LayoutGrid,
     Loader2, Save, Award, Users, Settings, Coins
@@ -60,6 +62,10 @@ interface RewardConfig {
 }
 
 export default function OffersPage() {
+    // Turning the OTP requirement off removes customer consent for point redemption,
+    // so only organization admins may change it.
+    const { hasPermission } = useOrgContext();
+    const canChangeOtpRule = hasPermission(PERMISSIONS.ORG_UPDATE);
     // --- Offers State ---
     const [offers, setOffers] = useState<Offer[]>([]);
     const [isLoadingOffers, setIsLoadingOffers] = useState(true);
@@ -395,10 +401,12 @@ export default function OffersPage() {
                                                 <Label htmlFor="otp-required">Require OTP to redeem</Label>
                                                 <p className="text-xs text-muted-foreground">
                                                     Staff and app checkout must send/enter a redeem OTP when this is on.
+                                                    {!canChangeOtpRule && " Only an organization admin can change this."}
                                                 </p>
                                             </div>
                                             <Switch
                                                 id="otp-required"
+                                                disabled={!canChangeOtpRule}
                                                 checked={otpRequiredForRedeem}
                                                 onCheckedChange={(checked) => setValue("otp_required_for_redeem", checked)}
                                             />
