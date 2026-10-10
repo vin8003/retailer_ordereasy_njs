@@ -199,6 +199,8 @@ export default function POSPage() {
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [khata, setKhata] = useState<(KhataMapping & { customerId: number | null }) | null>(null);
+    // A failed credit lookup must not look like "no credit limit".
+    const [khataLoadFailed, setKhataLoadFailed] = useState(false);
     const [creditOverride, setCreditOverride] = useState(false);
     const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
     const [lookupOrders, setLookupOrders] = useState<LookupOrder[]>([]);
@@ -472,6 +474,7 @@ export default function POSPage() {
     useEffect(() => {
         setCreditOverride(false);
         setServerLockReasons([]);
+        setKhataLoadFailed(false);
         const mobile = activeSession.customerMobile;
         if (mobile.length !== 10) {
             setKhata(null);
@@ -512,6 +515,7 @@ export default function POSPage() {
                 console.error(err);
                 if (!cancelled) {
                     setKhata(null);
+                    setKhataLoadFailed(true);
                     setLookupOrders([]);
                     setLookupCustomerId(null);
                 }
@@ -1726,6 +1730,11 @@ export default function POSPage() {
                         )}
                     </div>
 
+                    {creditAmount > 0 && khataLoadFailed && (
+                        <p className="text-xs text-amber-700" role="status">
+                            Could not check this customer&apos;s credit. The server still enforces the limit.
+                        </p>
+                    )}
                     {creditAmount > 0 && (
                         <CreditLockBanner
                             mapping={khataMapping}
