@@ -173,7 +173,14 @@ export function OrderStatusUpdate({
             onStatusUpdate();
         } catch (error) {
             console.error("Failed to mark order as failed", error);
-            toast.error("Failed to mark order as failed");
+            const data = (error as { response?: { data?: { reason?: unknown; error?: unknown } } })
+                ?.response?.data;
+            const reasonMsg = Array.isArray(data?.reason) ? String(data?.reason[0]) : null;
+            toast.error(
+                reasonMsg ||
+                    (typeof data?.error === "string" ? data.error : null) ||
+                    "Failed to mark order as failed"
+            );
         } finally {
             setIsUpdating(false);
         }
@@ -392,6 +399,7 @@ export function OrderStatusUpdate({
                                 if (failedReasonError) setFailedReasonError(null);
                             }}
                             placeholder={OFD_CLOSEOUT_COPY.reasonPlaceholder}
+                            maxLength={255}
                             aria-invalid={!!failedReasonError}
                         />
                         {failedReasonError && (

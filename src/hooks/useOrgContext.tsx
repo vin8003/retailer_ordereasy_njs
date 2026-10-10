@@ -83,11 +83,10 @@ export function OrgContextProvider({ children }: { children: ReactNode }) {
       const catalogCodes: string[] =
         catalogRes.data?.permissions?.map((p: { code: string }) => p.code) ?? [];
       const staff = unwrapPaginatedResults<OrgStaffMember>(staffRes.data);
-      const accessToken =
-        typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-      const isOwner = callerIsOrgOwner(orgData.owner, profile, accessToken);
+      // The owner is identified from the profile only; the token is not read or decoded here.
+      const isOwner = callerIsOrgOwner(orgData.owner, profile);
       const resolved = resolvePermissionsFromStaff(
-        profile.username,
+        { id: profile.user ?? profile.user_id ?? null, username: profile.username },
         staff,
         catalogCodes,
         { isOwner }
