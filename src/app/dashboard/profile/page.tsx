@@ -111,7 +111,7 @@ export default function ProfilePage() {
                     shopName: data.shop_name,
                     shopDescription: data.shop_description,
                     username: data.username,
-                    contactEmail: data.contact_email,
+                    contactEmail: data.contact_email || data.email || '',
                     contactPhone: data.contact_phone, // This is profile contact phone, usually same as user phone
                     whatsappNumber: data.whatsapp_number,
                     isPhoneVerified: data.is_phone_verified, // Added to serializer
