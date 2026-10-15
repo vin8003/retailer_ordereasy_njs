@@ -3,6 +3,7 @@ import Header from './Header';
 import BottomNav from './BottomNav';
 import { useNotifications } from '@/hooks/useNotifications';
 import { usePendingOrderCount } from '@/hooks/usePendingOrderCount';
+import VerificationAlertBanner from '@/components/dashboard/VerificationAlertBanner';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -18,6 +19,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="md:ml-64 flex flex-col min-h-screen relative z-10">
                 <Header />
                 <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+                    <VerificationAlertBanner />
                     {children}
                 </main>
             </div>

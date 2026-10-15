@@ -55,6 +55,9 @@ export default function LoginPage() {
             const { access, refresh } = response.data.tokens;
 
             setAuthToken(access, refresh);
+            if (response.data.user) {
+                localStorage.setItem('user_profile', JSON.stringify(response.data.user));
+            }
 
             toast.success("Login successful!");
             router.push("/dashboard"); // Redirect to dashboard

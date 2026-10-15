@@ -115,6 +115,7 @@ export const authService = {
   login: (data: any) => api.post('auth/retailer/login/', data),
   signup: (data: any) => api.post('auth/retailer/signup/', data),
   fetchProfile: () => api.get('retailer/profile/'),
+  fetchAuthProfile: () => api.get('auth/profile/'),
   registerDeviceToken: (token: string) => api.post('auth/device/register/', {
     registration_id: token,
     type: 'web',
@@ -259,6 +260,13 @@ export const offerService = {
   updateOffer: (id: string | number, data: any) => api.put(`offers/${id}/`, data),
   calculateOffers: (items: { product_id: number; quantity: number; price: number; batch_id?: number | null }[]) =>
     api.post('offers/calculate/', { items, channel: 'pos' }),
+};
+
+export const adminService = {
+  fetchVerifications: (params?: { status?: string; search?: string }) =>
+    api.get('retailer/admin/verifications/', { params }),
+  verifyAction: (profileId: number, data: { action: 'approve' | 'reject'; reason?: string }) =>
+    api.post(`retailer/admin/verifications/${profileId}/action/`, data),
 };
 
 export default api;
