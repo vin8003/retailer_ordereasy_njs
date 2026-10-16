@@ -19,7 +19,7 @@ export interface UnsellableProduct {
 
 /** Active unless the catalog says otherwise (POS list is already an is_active=true fetch). */
 export function isSellableProduct(
-  product: { is_active?: boolean; is_available?: boolean } | null | undefined
+  product: { is_active?: boolean | null; is_available?: boolean | null } | null | undefined
 ): boolean {
   if (!product) return false;
   // The server rejects inactive and unavailable products alike.
