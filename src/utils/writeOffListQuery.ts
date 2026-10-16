@@ -6,9 +6,13 @@ export const WRITE_OFF_LIST_REASONS = ["damage", "expiry", "spoilage"] as const;
 export type WriteOffListReasonCode = (typeof WRITE_OFF_LIST_REASONS)[number];
 
 export type WriteOffListLedgerQuery = {
-    reason: WriteOffListReasonCode;
+    /** One code, or several comma-separated (BE filters `reason__in`). */
+    reason: string;
     product_id?: number;
 };
+
+/** BE inventory-ledger returns at most this many rows (newest first, no pagination). */
+export const WRITE_OFF_LEDGER_ROW_LIMIT = 100;
 
 /**
  * Product identity for the list GET. Only an explicit `product_id` query.
@@ -49,14 +53,14 @@ export function isWriteOffListRow(row: { reason?: string | null }): boolean {
 }
 
 /**
- * One ledger GET per reason. BE matches a single `reason` exactly and requires
- * `product_id` or `reason`. Always send reason so sale/purchase rows stay out.
+ * One ledger GET for every requested reason (comma-separated), so the BE row cap
+ * applies once, newest first. Always send reason so sale/purchase rows stay out.
  * `product_id` is included only when already parsed — never invented.
  */
-export function buildWriteOffListLedgerQueries(input: {
+export function buildWriteOffListLedgerQuery(input: {
     productId?: number | null;
     reason?: string | null;
-}): WriteOffListLedgerQuery[] {
+}): WriteOffListLedgerQuery {
     const reason = parseWriteOffListReason(input.reason);
     const reasons: WriteOffListReasonCode[] = reason
         ? [reason]
@@ -68,9 +72,7 @@ export function buildWriteOffListLedgerQueries(input: {
             ? input.productId
             : null;
 
-    return reasons.map((code) => {
-        const query: WriteOffListLedgerQuery = { reason: code };
-        if (productId != null) query.product_id = productId;
-        return query;
-    });
+    const query: WriteOffListLedgerQuery = { reason: reasons.join(",") };
+    if (productId != null) query.product_id = productId;
+    return query;
 }

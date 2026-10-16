@@ -8,7 +8,8 @@ import { toast, Toaster } from 'react-hot-toast';
 import { WriteOffList } from '@/components/products/WriteOffList';
 import { collectWriteOffListRows, type WriteOffListItem } from '@/utils/writeOffListReason';
 import {
-    buildWriteOffListLedgerQueries,
+    WRITE_OFF_LEDGER_ROW_LIMIT,
+    buildWriteOffListLedgerQuery,
     parseWriteOffListProductId,
     parseWriteOffListReason,
 } from '@/utils/writeOffListQuery';
@@ -26,11 +27,9 @@ function WriteOffsContent() {
         setIsLoading(true);
         setError(null);
         try {
-            const queries = buildWriteOffListLedgerQueries({ productId, reason });
-            const responses = await Promise.all(
-                queries.map((params) => api.get('/products/erp/inventory-ledger/', { params }))
-            );
-            setItems(collectWriteOffListRows(responses.map((res) => res.data)));
+            const params = buildWriteOffListLedgerQuery({ productId, reason });
+            const res = await api.get('/products/erp/inventory-ledger/', { params });
+            setItems(collectWriteOffListRows([res.data]));
         } catch (err: unknown) {
             const status = (err as { response?: { status?: number } })?.response?.status;
             setItems([]);
@@ -75,9 +74,16 @@ function WriteOffsContent() {
                     {error}
                 </div>
             ) : (
-                <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-                    <WriteOffList items={items} />
-                </div>
+                <>
+                    {items.length >= WRITE_OFF_LEDGER_ROW_LIMIT ? (
+                        <p className="mb-3 text-sm text-muted-foreground">
+                            Showing the latest {WRITE_OFF_LEDGER_ROW_LIMIT} write-offs. Filter by product to see older ones.
+                        </p>
+                    ) : null}
+                    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                        <WriteOffList items={items} />
+                    </div>
+                </>
             )}
         </div>
     );

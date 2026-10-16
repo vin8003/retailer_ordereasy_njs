@@ -10,7 +10,6 @@ export type InventoryLedgerLog = {
     previous_quantity: number;
     new_quantity: number;
     reason?: string | null;
-    note?: string | null;
     batch_number?: string | null;
     created_at: string;
     created_by: string;

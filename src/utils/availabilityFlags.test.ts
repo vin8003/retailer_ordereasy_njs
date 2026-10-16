@@ -33,4 +33,15 @@ describe("getOutOfStockLabel", () => {
     it("does not invent Out of stock from is_available", () => {
         expect(getOutOfStockLabel({ is_available: false })).toBeNull();
     });
+
+    it("follows saleable_quantity when BE sent it, so badge and number agree", () => {
+        expect(getOutOfStockLabel({ is_in_stock: true, saleable_quantity: 0 })).toBe("Out of stock");
+        expect(getOutOfStockLabel({ is_in_stock: false, saleable_quantity: "2.5" })).toBeNull();
+    });
+
+    it("ignores saleable_quantity for untracked SKUs", () => {
+        expect(
+            getOutOfStockLabel({ track_inventory: false, saleable_quantity: 0, is_in_stock: true })
+        ).toBeNull();
+    });
 });

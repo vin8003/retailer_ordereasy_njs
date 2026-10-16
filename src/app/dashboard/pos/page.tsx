@@ -21,7 +21,6 @@ import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
-import { MarginPercentBadge } from '@/components/products/MarginPercentBadge';
 import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
 import { ProductGroupLabel } from '@/components/products/ProductGroupLabel';
 import { SeasonalBadge } from '@/components/products/SeasonalBadge';
@@ -34,7 +33,6 @@ interface Product {
     image: string;
     quantity: number; // Gross stock qty
     saleable_quantity?: number | string | null;
-    margin_percent?: number | string | null;
     category_name: string;
     brand_name?: string | null;
     barcode?: string | null;
@@ -1100,10 +1098,8 @@ export default function POSPage() {
                                             </div>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
-                                            <div className="flex flex-col items-start gap-1 min-w-0">
-                                                <span className="text-lg font-bold text-gray-900">₹{price}</span>
-                                                <MarginPercentBadge product={product} />
-                                            </div>
+                                            {/* No margin badge here: the POS screen can face customers at the counter. */}
+                                            <span className="text-lg font-bold text-gray-900">₹{price}</span>
                                             <span className={`text-xs font-medium px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
                                                 {product.track_inventory === false ? 'Available' : `${getDisplayStockQuantity(product)} in stock`}
                                             </span>

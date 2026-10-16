@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     WRITE_OFF_LIST_REASONS,
-    buildWriteOffListLedgerQueries,
+    buildWriteOffListLedgerQuery,
     isWriteOffListRow,
     parseWriteOffListProductId,
     parseWriteOffListReason,
@@ -46,48 +46,29 @@ describe("parseWriteOffListReason", () => {
     });
 });
 
-describe("buildWriteOffListLedgerQueries", () => {
-    it("always sends write-off/damage reasons so the GET cannot return all ledger rows", () => {
-        expect(buildWriteOffListLedgerQueries({})).toEqual([
-            { reason: "damage" },
-            { reason: "expiry" },
-            { reason: "spoilage" },
-        ]);
+describe("buildWriteOffListLedgerQuery", () => {
+    const ALL = "damage,expiry,spoilage";
+
+    it("asks for every write-off reason in one GET so the BE cap applies once", () => {
+        expect(buildWriteOffListLedgerQuery({})).toEqual({ reason: ALL });
     });
 
     it("uses a single reason when the URL already has a write-off reason", () => {
-        expect(buildWriteOffListLedgerQueries({ reason: "damage" })).toEqual([
-            { reason: "damage" },
-        ]);
+        expect(buildWriteOffListLedgerQuery({ reason: "damage" })).toEqual({ reason: "damage" });
     });
 
     it("includes product_id only when already parsed; never invents it", () => {
-        expect(
-            buildWriteOffListLedgerQueries({ productId: 44, reason: "expiry" })
-        ).toEqual([{ reason: "expiry", product_id: 44 }]);
-        expect(buildWriteOffListLedgerQueries({ productId: null })).toEqual([
-            { reason: "damage" },
-            { reason: "expiry" },
-            { reason: "spoilage" },
-        ]);
-        expect(buildWriteOffListLedgerQueries({ productId: 0 })).toEqual([
-            { reason: "damage" },
-            { reason: "expiry" },
-            { reason: "spoilage" },
-        ]);
-        expect(buildWriteOffListLedgerQueries({ productId: -1 })).toEqual([
-            { reason: "damage" },
-            { reason: "expiry" },
-            { reason: "spoilage" },
-        ]);
+        expect(buildWriteOffListLedgerQuery({ productId: 44, reason: "expiry" })).toEqual({
+            reason: "expiry",
+            product_id: 44,
+        });
+        for (const productId of [null, 0, -1]) {
+            expect(buildWriteOffListLedgerQuery({ productId })).toEqual({ reason: ALL });
+        }
     });
 
     it("ignores unknown reason and still filters to write-off reasons", () => {
-        expect(buildWriteOffListLedgerQueries({ reason: "sold" })).toEqual([
-            { reason: "damage" },
-            { reason: "expiry" },
-            { reason: "spoilage" },
-        ]);
+        expect(buildWriteOffListLedgerQuery({ reason: "sold" })).toEqual({ reason: ALL });
     });
 });
 

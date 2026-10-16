@@ -1,8 +1,8 @@
 /** Optional BE inventory adjust/history row fields. Write-off list is OE-326. */
 export type InventoryAdjustHistoryDisplay = {
     reason?: string | null;
+    /** Allowed on payloads / tests; never used to invent reason. ProductInventoryLog has no note field. */
     note?: string | null;
-    /** Allowed on payloads / tests; never used to invent reason or note. */
     notes?: string | null;
     log_type?: string | null;
     created_by?: string | null;
@@ -23,14 +23,4 @@ export function getInventoryAdjustReasonLabel(
     row: InventoryAdjustHistoryDisplay
 ): string | null {
     return optionalTrimmedText(row.reason);
-}
-
-/**
- * Compact note from top-level `note` only.
- * Absent / undefined / null / blank → do not show. Never derived from reason or `notes`.
- */
-export function getInventoryAdjustNoteLabel(
-    row: InventoryAdjustHistoryDisplay
-): string | null {
-    return optionalTrimmedText(row.note);
 }

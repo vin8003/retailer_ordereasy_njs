@@ -4,31 +4,17 @@ import { describe, expect, it } from "vitest";
 import { InventoryAdjustReasonNote } from "./InventoryAdjustReasonNote";
 
 describe("InventoryAdjustReasonNote", () => {
-    it("shows reason and note when BE sent them", () => {
+    it("shows the reason once and never a note (logs have no note field)", () => {
         const markup = renderToStaticMarkup(
             <InventoryAdjustReasonNote
                 row={{ reason: "Count correction", note: "Shelf 3 recount" }}
             />
         );
-        expect(markup).toContain("Count correction");
-        expect(markup).toContain("Reason Count correction");
-        expect(markup).toContain("Shelf 3 recount");
-        expect(markup).toContain("Note Shelf 3 recount");
-    });
-
-    it("shows only the fields BE actually sent", () => {
-        const reasonOnly = renderToStaticMarkup(
-            <InventoryAdjustReasonNote row={{ reason: "Damaged case" }} />
-        );
-        expect(reasonOnly).toContain("Damaged case");
-        expect(reasonOnly).not.toContain("Note ");
-
-        const noteOnly = renderToStaticMarkup(
-            <InventoryAdjustReasonNote row={{ note: "Found 2 extra" }} />
-        );
-        expect(noteOnly).toContain("Found 2 extra");
-        expect(noteOnly).toContain("Note Found 2 extra");
-        expect(noteOnly).not.toContain("Reason ");
+        expect(markup.match(/Count correction/g)).toHaveLength(2); // text + aria-label
+        expect(markup).not.toContain("Shelf 3 recount");
+        expect(
+            renderToStaticMarkup(<InventoryAdjustReasonNote row={{ note: "Found 2 extra" }} />)
+        ).toBe("");
     });
 
     it("renders nothing when reason/note are omitted, null, or blank", () => {
