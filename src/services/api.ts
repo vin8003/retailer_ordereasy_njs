@@ -323,6 +323,18 @@ export const customerService = {
 export const rewardService = {
   getRewardConfig: () => api.get('retailer/reward-config/'),
   updateRewardConfig: (data: any) => api.put('retailer/reward-config/', data),
+  /** Staff OTP to the customer's registered mobile. Never returns the code. */
+  sendStaffRedeemOtp: (data: {
+    order_id?: number;
+    customer_id?: number;
+    location_id?: number;
+  }) => api.post('customer/retailer/loyalty/redeem-otp/', data),
+  /** Burn points onto a pending, unlocked, single-tender org order. */
+  redeemOnPendingOrder: (data: {
+    order_id: number;
+    otp_code: string;
+    points?: string | number;
+  }) => api.post('customer/retailer/loyalty/redeem/', data),
 };
 
 export const orgService = {

@@ -19,6 +19,8 @@ import { formatInrAmount, hasDistinctAppPrice, posUnitPrice } from '@/lib/channe
 import { useOrgContext } from '@/hooks/useOrgContext';
 import { PERMISSIONS } from '@/lib/org';
 import { CreditLockBanner } from '@/components/pos/CreditLockBanner';
+import { LoyaltyRedeemPanel } from '@/components/customers/LoyaltyRedeemPanel';
+import { canStaffRedeem } from '@/lib/loyaltyRedeem';
 import {
     attachCreditOverride,
     creditAmountForPos,
@@ -116,9 +118,10 @@ interface RetailerProfile {
 }
 
 export default function POSPage() {
-    const { hasPermission } = useOrgContext();
+    const { hasPermission, isModuleEnabled, locationId, permissions } = useOrgContext();
     // Overriding a credit lock needs its own permission (not general order access).
     const canOverrideCredit = hasPermission(PERMISSIONS.CREDIT_OVERRIDE);
+    const canRedeemLoyalty = canStaffRedeem(permissions, isModuleEnabled('rewards'));
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [dismissMobileWarning, setDismissMobileWarning] = useState(false);
 
@@ -211,6 +214,7 @@ export default function POSPage() {
     const [creditOverride, setCreditOverride] = useState(false);
     const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
     const [lookupOrders, setLookupOrders] = useState<LookupOrder[]>([]);
+    const [lookupCustomerId, setLookupCustomerId] = useState<number | null>(null);
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -483,6 +487,7 @@ export default function POSPage() {
         if (mobile.length !== 10) {
             setKhata(null);
             setLookupOrders([]);
+            setLookupCustomerId(null);
             return;
         }
         let cancelled = false;
@@ -510,12 +515,16 @@ export default function POSPage() {
                     setKhata(null);
                 }
                 const parsed = lookupRes ? parseLookupResponse(lookupRes.data) : null;
-                if (!cancelled) setLookupOrders(parsed?.recent_orders ?? []);
+                if (!cancelled) {
+                    setLookupOrders(parsed?.recent_orders ?? []);
+                    setLookupCustomerId(parsed?.customer_id ?? null);
+                }
             } catch (err) {
                 console.error(err);
                 if (!cancelled) {
                     setKhata(null);
                     setLookupOrders([]);
+                    setLookupCustomerId(null);
                 }
             }
         })();
@@ -1573,6 +1582,17 @@ export default function POSPage() {
                                         <span>₹{order.total_amount}</span>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                        {lookupCustomerId != null && (
+                            <div className="rounded-xl border border-gray-100 bg-white p-3">
+                                <LoyaltyRedeemPanel
+                                    compact
+                                    customerId={lookupCustomerId}
+                                    locationId={locationId}
+                                    orders={lookupOrders}
+                                    canRedeem={canRedeemLoyalty}
+                                />
                             </div>
                         )}
                     </div>

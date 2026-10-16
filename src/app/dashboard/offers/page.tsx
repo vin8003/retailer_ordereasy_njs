@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useOrgContext } from "@/hooks/useOrgContext";
+import { PERMISSIONS } from "@/lib/org";
 import {
     Plus, Search, Tag, Calendar, Percent, ShoppingBag, LayoutGrid,
     Loader2, Save, Award, Users, Settings, Coins
@@ -60,9 +62,14 @@ interface RewardConfig {
     referral_reward_points: string;
     referee_reward_points: string;
     min_referral_order_amount: string;
+    otp_required_for_redeem: boolean;
 }
 
 export default function OffersPage() {
+    // Turning the OTP requirement off removes customer consent for point redemption,
+    // so only organization admins may change it.
+    const { hasPermission } = useOrgContext();
+    const canChangeOtpRule = hasPermission(PERMISSIONS.ORG_UPDATE);
     // --- Offers State ---
     const [offers, setOffers] = useState<Offer[]>([]);
     const [isLoadingOffers, setIsLoadingOffers] = useState(true);
@@ -86,11 +93,13 @@ export default function OffersPage() {
             earning_type: 'percentage',
             loyalty_earning_value: "1.0",
             loyalty_min_order_value: "0.0",
+            otp_required_for_redeem: false,
         }
     });
 
     const isLoyaltyActive = watch("is_active");
     const isReferralEnabled = watch("is_referral_enabled");
+    const otpRequiredForRedeem = watch("otp_required_for_redeem");
 
     // --- Effects ---
     useEffect(() => {
@@ -129,6 +138,7 @@ export default function OffersPage() {
                 earning_type: data.earning_type || "percentage",
                 loyalty_earning_value: data.loyalty_earning_value?.toString() || "1.0",
                 loyalty_min_order_value: data.loyalty_min_order_value?.toString() || "0.0",
+                otp_required_for_redeem: Boolean(data.otp_required_for_redeem),
             });
         } catch (error) {
             console.error("Failed to fetch reward config:", error);
@@ -155,6 +165,7 @@ export default function OffersPage() {
                 earning_type: data.earning_type,
                 loyalty_earning_value: parseFloat(data.loyalty_earning_value) || 0,
                 loyalty_min_order_value: parseFloat(data.loyalty_min_order_value) || 0,
+                otp_required_for_redeem: Boolean(data.otp_required_for_redeem),
             });
             toast.success("Settings saved successfully");
             fetchConfig();
@@ -425,6 +436,22 @@ export default function OffersPage() {
                                         </div>
 
                                         <Separator />
+
+                                        <div className="flex items-center justify-between rounded-lg border p-3">
+                                            <div>
+                                                <Label htmlFor="otp-required">Require OTP to redeem</Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Staff and app checkout must send/enter a redeem OTP when this is on.
+                                                    {!canChangeOtpRule && " Only an organization admin can change this."}
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="otp-required"
+                                                disabled={!canChangeOtpRule}
+                                                checked={otpRequiredForRedeem}
+                                                onCheckedChange={(checked) => setValue("otp_required_for_redeem", checked)}
+                                            />
+                                        </div>
 
                                         <div className="grid gap-4 md:grid-cols-2">
                                             <div className="space-y-2">
