@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { PERM_INVENTORY_ADJUST } from "./inventoryAdjust";
 import {
   ERR_NON_EXPIRED,
-  PERM_INVENTORY_ADJUST,
   WRITE_OFF_REASONS,
   axiosWriteOffError,
   buildWriteOffPayload,

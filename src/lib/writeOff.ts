@@ -1,8 +1,6 @@
 /** OE-141 / F-0032 — damage/expiry/spoilage write-off (BE POST products/:id/write-off/). */
 
-import { PERM_INVENTORY_ADJUST, canAdjustInventory } from "@/lib/inventoryAdjust";
-
-export { PERM_INVENTORY_ADJUST };
+import { canAdjustInventory } from "@/lib/inventoryAdjust";
 
 export const WRITE_OFF_REASONS = ["damage", "expiry", "spoilage"] as const;
 export type WriteOffReason = (typeof WRITE_OFF_REASONS)[number];

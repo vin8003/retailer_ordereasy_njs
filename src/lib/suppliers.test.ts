@@ -14,6 +14,7 @@ import {
   isWhitespaceOnlyPaymentTerms,
   normalizeGstin,
   purchaseInvoiceErrorMessage,
+  mergeKeptSupplier,
   selectableSuppliersForNewPurchase,
   selectionAfterSupplierCreate,
   supplierErrorMessage,
@@ -111,6 +112,33 @@ describe("inactive picker", () => {
     expect(selectableSuppliersForNewPurchase(rows, 2).map((s) => s.id)).toEqual([1, 2]);
     expect(isSupplierSelectableForNewPurchase({ is_active: false })).toBe(false);
     expect(isSupplierSelectableForNewPurchase({ is_active: true })).toBe(true);
+  });
+});
+
+describe("mergeKeptSupplier", () => {
+  const active = { id: 1, company_name: "Active Co", is_active: true };
+  const inactive = { id: 2, company_name: "Quiet Co", is_active: false };
+
+  it("carries the kept supplier over an active-only refetch", () => {
+    const merged = mergeKeptSupplier([active], [active, inactive], 2);
+    expect(merged.map((s) => s.id)).toEqual([2, 1]);
+    // keepId is only useful once the record survives the refetch.
+    expect(selectableSuppliersForNewPurchase(merged, 2).map((s) => s.id)).toEqual([2, 1]);
+    expect(selectableSuppliersForNewPurchase([active], 2).map((s) => s.id)).toEqual([1]);
+  });
+
+  it("accepts a string keepId from the select value", () => {
+    expect(mergeKeptSupplier([active], [active, inactive], "2").map((s) => s.id)).toEqual([2, 1]);
+  });
+
+  it("does not duplicate a supplier the refetch already returned", () => {
+    expect(mergeKeptSupplier([active, inactive], [inactive], 2).map((s) => s.id)).toEqual([1, 2]);
+  });
+
+  it("leaves the refetch alone with no keepId or no known record (negative)", () => {
+    expect(mergeKeptSupplier([active], [inactive], null)).toEqual([active]);
+    expect(mergeKeptSupplier([active], [inactive], "")).toEqual([active]);
+    expect(mergeKeptSupplier([active], [], 2)).toEqual([active]);
   });
 });
 

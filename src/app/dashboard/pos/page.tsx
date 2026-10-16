@@ -35,6 +35,15 @@ import {
 } from '@/lib/creditLock';
 import { formatLookupSource, parseLookupResponse, type LookupOrder } from '@/lib/customerLookup';
 import {
+    INACTIVE_PRODUCT_ADD_MESSAGE,
+    axiosUnsellableProduct,
+    cartWithoutProduct,
+    isSellableProduct,
+    unsellableCartHit,
+    unsellableProductMessage,
+    type UnsellableProduct,
+} from '@/lib/posAvailability';
+import {
     EXPIRED_BATCH_SALE_MESSAGE,
     FIFO_PICK_HINT,
     expiryHint,
@@ -67,6 +76,7 @@ interface Product {
     barcode?: string | null;
     product_group?: string | null;
     is_seasonal?: boolean | null;
+    is_active?: boolean;
     is_available?: boolean | null;
     is_in_stock?: boolean | null;
     track_inventory?: boolean;
@@ -228,7 +238,8 @@ export default function POSPage() {
     const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
     const [lookupOrders, setLookupOrders] = useState<LookupOrder[]>([]);
     const [lookupCustomerId, setLookupCustomerId] = useState<number | null>(null);
-    const creditGateRef = useRef({ blocked: false, message: '' });
+    const [unsellableProduct, setUnsellableProduct] = useState<UnsellableProduct | null>(null);
+    const checkoutGateRef = useRef({ blocked: false, message: '' });
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -595,6 +606,12 @@ export default function POSPage() {
     };
 
     const handleAddToCart = (product: Product, scanBarcode?: string) => {
+        // The POS catalog is an is_active=true fetch; this only catches a stale row.
+        if (!isSellableProduct(product)) {
+            toast.error(`${product.name}: ${INACTIVE_PRODUCT_ADD_MESSAGE}`);
+            return;
+        }
+
         const shouldTrack = product.track_inventory !== false;
         
         // POS allows negative stock, so we don't block here
@@ -768,13 +785,20 @@ export default function POSPage() {
         override: creditOverride,
         canOverride: canOverrideCredit,
     });
+    // BE already rejected this product for this cart; re-posting it just 400s again.
+    const unsellableInCart = unsellableCartHit(activeSession.cart, unsellableProduct);
+    const checkoutBlocked = creditCheckoutBlocked || unsellableInCart !== null;
+    const checkoutBlockedMessage = unsellableInCart
+        ? unsellableProductMessage(unsellableInCart)
+        : creditCheckoutBlocked
+          ? formatCreditLockMessage(khataMapping, creditLockReasons)
+          : '';
+
     // The keydown effect keeps an older handleCheckout, so read the gate from a ref.
-    creditGateRef.current = {
-        blocked: creditCheckoutBlocked,
-        message: creditCheckoutBlocked
-            ? formatCreditLockMessage(khataMapping, creditLockReasons)
-            : '',
-    };
+    // Committed in an effect: a ref must not be written while rendering.
+    useEffect(() => {
+        checkoutGateRef.current = { blocked: checkoutBlocked, message: checkoutBlockedMessage };
+    }, [checkoutBlocked, checkoutBlockedMessage]);
     // Order number once the bill is settled, otherwise the open bill's reference.
     const upiBillRef = activeSession.completedOrder?.order_number || activeSession.billRef;
 
@@ -785,8 +809,8 @@ export default function POSPage() {
         }
 
         // Ctrl+Enter reaches this without the disabled Complete Bill button.
-        if (creditGateRef.current.blocked) {
-            toast.error(creditGateRef.current.message);
+        if (checkoutGateRef.current.blocked) {
+            toast.error(checkoutGateRef.current.message);
             return;
         }
         
@@ -846,12 +870,20 @@ export default function POSPage() {
             updateActiveSession({ completedOrder: response.data.order });
             setCreditOverride(false);
             setServerLockReasons([]);
+            setUnsellableProduct(null);
             fetchProducts(); // Refresh stock
         } catch (error: any) {
             const errMsg = error.response?.data?.error || "Checkout failed";
             const fromServer = lockReasonsFromCheckoutError(errMsg);
             if (fromServer.length) setServerLockReasons(fromServer);
-            toast.error(errMsg);
+            // OE-190: name the offending line instead of echoing the raw BE sentence.
+            const unsellable = axiosUnsellableProduct(error);
+            setUnsellableProduct(unsellable);
+            if (unsellable) {
+                toast.error(unsellableProductMessage(unsellable), { duration: 6000 });
+            } else {
+                toast.error(errMsg);
+            }
         } finally {
             setIsCheckoutLoading(false);
         }
@@ -874,6 +906,7 @@ export default function POSPage() {
         setRatingComment('');
         setCreditOverride(false);
         setServerLockReasons([]);
+        setUnsellableProduct(null);
         setKhata(null);
         setLookupOrders([]);
         setActiveGridIndex(-1);
@@ -1413,13 +1446,21 @@ export default function POSPage() {
                             <tbody className="divide-y divide-gray-100">
                                 {activeSession.cart.map((item, cartIdx) => {
                                     const isCartActive = cartIdx === activeCartIndex && currentFocus === 'cart';
+                                    const isUnsellable = unsellableInCart?.productId === item.id;
                                     return (
                                         <tr 
                                             key={`${item.id}-${item.batch_id}`} 
-                                            className={`group transition-all ${isCartActive ? 'bg-primary/5' : 'bg-white hover:bg-gray-50/50'}`}
+                                            className={`group transition-all ${isUnsellable ? 'bg-red-50/70' : isCartActive ? 'bg-primary/5' : 'bg-white hover:bg-gray-50/50'}`}
                                         >
                                             <td className="px-6 py-4">
-                                                <POSCartLineDetails item={item} />
+                                                <div className="flex flex-col">
+                                                    <POSCartLineDetails item={item} />
+                                                    {isUnsellable && (
+                                                        <span className="text-[10px] text-red-600 font-black uppercase mt-0.5 tracking-tighter flex items-center gap-1">
+                                                            <AlertCircle size={10} /> Inactive — cannot be sold
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="flex items-center justify-center bg-gray-100 rounded-lg p-0.5 w-fit mx-auto border border-gray-200/50">
@@ -1777,6 +1818,29 @@ export default function POSPage() {
                             Could not check this customer&apos;s credit. The server still enforces the limit.
                         </p>
                     )}
+                    {unsellableInCart && (
+                        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+                            <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-xs font-black text-red-700 uppercase tracking-widest mb-1">Item cannot be sold</p>
+                                <p className="text-xs text-red-600 font-medium leading-relaxed">
+                                    {unsellableProductMessage(unsellableInCart)}
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        updateActiveSession({
+                                            cart: cartWithoutProduct(activeSession.cart, unsellableInCart.productId),
+                                        });
+                                        setUnsellableProduct(null);
+                                    }}
+                                    className="mt-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[11px] font-bold transition-colors"
+                                >
+                                    Remove from cart
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {creditAmount > 0 && (
                         <CreditLockBanner
                             mapping={khataMapping}
@@ -1788,7 +1852,7 @@ export default function POSPage() {
                     )}
                     <button
                         onClick={handleCheckout}
-                        disabled={activeSession.cart.length === 0 || isCheckoutLoading || creditCheckoutBlocked}
+                        disabled={activeSession.cart.length === 0 || isCheckoutLoading || checkoutBlocked}
                         className="w-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-5 rounded-2xl font-black text-xl flex justify-center items-center gap-3 transition-all active:scale-[0.98] border-b-4 border-primary/20"
                         data-tour="checkout"
                     >
