@@ -275,6 +275,11 @@ export const productService = {
     });
   },
   downloadTemplate: () => api.get('products/bulk-template/', { responseType: 'blob' }),
+  /** Zip and/or csv+files → attach to existing shop SKUs (OE-124). */
+  uploadProductImages: (formData: FormData) =>
+    api.post('products/upload/images/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 
   // Scanner Sessions
   getActiveSessions: () => api.get('products/upload/session/active/'),
