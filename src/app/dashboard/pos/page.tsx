@@ -32,6 +32,15 @@ import {
     type KhataMapping,
 } from '@/lib/creditLock';
 import { formatLookupSource, parseLookupResponse, type LookupOrder } from '@/lib/customerLookup';
+import {
+    EXPIRED_BATCH_SALE_MESSAGE,
+    FIFO_PICK_HINT,
+    expiryHint,
+    batchIsExpired,
+    isBatchExpired,
+    sortBatchesFifo,
+    unexpiredBatches,
+} from '@/lib/batchExpiry';
 import { POSCartLineDetails } from '@/components/pos/POSCartLineDetails';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
@@ -590,10 +599,11 @@ export default function POSPage() {
         if (product.has_batches && product.batches && product.batches.length > 0) {
             // Default is_active to true — POS fast path only returns active batches
             const activeBatches = product.batches.filter(b => b.is_active !== false);
+            const pickable = unexpiredBatches(activeBatches);
             
             if (scanBarcode) {
                 // Barcode scan: find batches matching this specific barcode
-                const matchingBatches = activeBatches.filter(b => b.barcode === scanBarcode);
+                const matchingBatches = pickable.filter(b => b.barcode === scanBarcode);
                 
                 if (matchingBatches.length === 1) {
                     // Unique barcode -> auto-select, no modal needed
@@ -605,13 +615,20 @@ export default function POSPage() {
                     setIsBatchModalOpen(true);
                     return;
                 }
+                const expiredMatch = activeBatches.filter(b => b.barcode === scanBarcode && batchIsExpired(b));
+                if (expiredMatch.length && matchingBatches.length === 0) {
+                    toast.error(EXPIRED_BATCH_SALE_MESSAGE);
+                    return;
+                }
                 // If no batch matched this barcode, fall through to check product-level barcode
             }
             
             // Manual click (no scan) or barcode didn't match any batch
-            if (activeBatches.length === 1) {
-                // Only 1 active batch -> auto-select, no modal needed
-                finalizeAddToCart(product, activeBatches[0]);
+            if (pickable.length === 1 && activeBatches.length === 1) {
+                // Only 1 active unexpired batch -> auto-select, no modal needed
+                finalizeAddToCart(product, pickable[0]);
+            } else if (pickable.length === 0 && activeBatches.length > 0) {
+                toast.error(EXPIRED_BATCH_SALE_MESSAGE);
             } else {
                 // 2+ active batches, no unique barcode match -> show modal
                 setBatchModalProduct(product);
@@ -624,6 +641,10 @@ export default function POSPage() {
     };
 
     const finalizeAddToCart = (product: Product, batch?: any) => {
+        if (batch && batchIsExpired(batch)) {
+            toast.error(EXPIRED_BATCH_SALE_MESSAGE);
+            return;
+        }
         const shouldTrack = product.track_inventory !== false;
         const price = posUnitPrice(product, batch);
         const originalPrice = batch 
@@ -1782,6 +1803,7 @@ export default function POSPage() {
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900">Select Batch</h2>
                                 <p className="text-sm text-gray-500">{batchModalProduct.name}</p>
+                                <p className="text-xs text-gray-400 mt-1">{FIFO_PICK_HINT}</p>
                             </div>
                             <button onClick={() => setIsBatchModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                                 <X size={20} className="text-gray-400" />
@@ -1790,15 +1812,22 @@ export default function POSPage() {
                         
                         <div className="p-6 max-h-[60vh] overflow-y-auto">
                             <div className="grid gap-3">
-                                {batchModalProduct.batches?.filter(b => b.is_active !== false).map((batch) => {
+                                {sortBatchesFifo(batchModalProduct.batches?.filter(b => b.is_active !== false) || []).map((batch) => {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
                                     const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
-                                    
+                                    const expired = batchIsExpired(batch);
+
                                     return (
                                         <button
                                             key={batch.id}
+                                            disabled={expired}
+                                            aria-disabled={expired}
                                             onClick={() => finalizeAddToCart(batchModalProduct, batch)}
-                                            className="flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left border-gray-100 hover:border-primary hover:bg-primary/5"
+                                            className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left ${
+                                                expired
+                                                    ? 'border-red-100 bg-red-50/40 opacity-70'
+                                                    : 'border-gray-100 hover:border-primary hover:bg-primary/5'
+                                            }`}
                                         >
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
@@ -1811,12 +1840,15 @@ export default function POSPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="flex gap-3 text-sm">
+                                                <div className="flex gap-3 text-sm flex-wrap">
                                                     <span className={`${isDiffPrice ? 'text-primary font-bold' : 'text-gray-500'}`}>
                                                         Price: ₹{parseFloat(batch.price).toFixed(2)}
                                                     </span>
                                                     <span className={`${isDiffMRP ? 'text-orange-500 font-bold' : 'text-gray-400'}`}>
                                                         MRP: ₹{parseFloat(batch.original_price).toFixed(2)}
+                                                    </span>
+                                                    <span className={expired ? 'text-red-600 font-bold' : 'text-gray-500'}>
+                                                        {expiryHint(batch.expiry_date)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1826,7 +1858,7 @@ export default function POSPage() {
                                                     {batch.quantity} in stock
                                                 </p>
                                                 <div className="mt-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold text-sm">
-                                                    Select <Check size={16} />
+                                                    {expired ? 'Expired' : <>Select <Check size={16} /></>}
                                                 </div>
                                             </div>
                                         </button>
