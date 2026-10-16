@@ -35,12 +35,16 @@ interface Offer {
     name: string;
     offer_type: 'bxgy' | 'percentage' | 'flat_amount' | 'cart_value' | 'tiered_price' | 'flat_price';
     benefit_type?: 'discount' | 'credit_points';
+    coupon_code?: string | null;
+    is_public?: boolean;
+    target_audience?: 'all' | 'first_time' | 'selected';
     value: number;
     value_type: 'percent' | 'amount';
     start_date: string;
     end_date: string | null;
     is_active: boolean;
     current_redemptions: number;
+    usage_limit_total?: number | null;
 }
 
 interface RewardConfig {
@@ -238,7 +242,7 @@ export default function OffersPage() {
                                     href={`/dashboard/offers/edit?id=${offer.id}`}
                                     className="bg-card hover:bg-muted/50 transition-colors rounded-lg border p-4 group"
                                 >
-                                    <div className="flex justify-between items-start mb-4">
+                                    <div className="flex justify-between items-start mb-3">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-primary/10 rounded-full">
                                                 {getOfferIcon(offer.offer_type)}
@@ -249,16 +253,53 @@ export default function OffersPage() {
                                                 </h3>
                                                 <p className="text-xs text-muted-foreground">
                                                     {formatOfferType(offer.offer_type)}
-                                                    {offer.benefit_type === 'credit_points' && <span className="text-amber-600 font-medium ml-1"> • Cashback</span>}
+                                                    {offer.benefit_type === 'credit_points' && <span className="text-amber-600 font-medium ml-1"> • Cashback Points</span>}
                                                 </p>
                                             </div>
                                         </div>
-                                        <Badge variant={offer.is_active ? "default" : "secondary"}>
-                                            {offer.is_active ? 'Active' : 'Inactive'}
-                                        </Badge>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <Badge variant={offer.is_active ? "default" : "secondary"}>
+                                                {offer.is_active ? 'Active' : 'Inactive'}
+                                            </Badge>
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-2 text-sm text-muted-foreground">
+                                    {/* Coupon & Audience Badges */}
+                                    <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {offer.coupon_code ? (
+                                            <>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                                    🎟️ {offer.coupon_code}
+                                                </span>
+                                                {offer.is_public ? (
+                                                    <Badge variant="outline" className="text-[11px] text-green-700 bg-green-50 border-green-200">
+                                                        Public
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[11px] text-amber-700 bg-amber-50 border-amber-200">
+                                                        Secret / Hidden
+                                                    </Badge>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <Badge variant="outline" className="text-[11px] text-muted-foreground">
+                                                Automatic
+                                            </Badge>
+                                        )}
+
+                                        {offer.target_audience === 'first_time' && (
+                                            <Badge variant="secondary" className="text-[11px] bg-blue-50 text-blue-700">
+                                                1st Order Only
+                                            </Badge>
+                                        )}
+                                        {offer.target_audience === 'selected' && (
+                                            <Badge variant="secondary" className="text-[11px] bg-indigo-50 text-indigo-700">
+                                                Targeted Customers
+                                            </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2 text-sm text-muted-foreground border-t pt-3">
                                         <div className="flex items-center gap-2">
                                             <Calendar className="w-4 h-4" />
                                             <span>
@@ -269,7 +310,7 @@ export default function OffersPage() {
                                         <div className="flex items-center gap-2">
                                             <Tag className="w-4 h-4" />
                                             <span>
-                                                Redemptions: {offer.current_redemptions}
+                                                Redemptions: {offer.current_redemptions}{offer.usage_limit_total ? ` / ${offer.usage_limit_total}` : ''}
                                             </span>
                                         </div>
                                     </div>

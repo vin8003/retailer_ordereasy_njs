@@ -11,7 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
+import { OrderDetailNotes } from "@/components/orders/OrderDetailNotes";
+import { OrderCustomerPhone } from "@/components/orders/OrderCustomerPhone";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { PaymentModeLabel } from "@/components/orders/PaymentModeLabel";
+import { getPaymentModeLabel } from "@/utils/orderPaymentMode";
 import { FulfillmentSlotReschedule } from "@/components/orders/FulfillmentSlotReschedule";
 
 import { orderService, customerService } from "@/services/api";
@@ -198,6 +202,9 @@ function OrderDetailContent() {
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
     if (error || !order) return <div className="p-8 text-center text-red-500">{error || "Order not found"}</div>;
 
+    const paymentModeLabel = getPaymentModeLabel(order);
+    const showUpiPaymentExtras = order.payment_mode === 'upi';
+
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100';
@@ -235,6 +242,7 @@ function OrderDetailContent() {
                     <p className="text-muted-foreground">
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
                     </p>
+                    <OrderDetailNotes order={order} />
                     {order.expected_processing_start && order.status === 'pending' && (
                         <div className="flex items-center gap-2 text-orange-600 bg-orange-50 border border-orange-200 px-3 py-2 rounded-md mt-1 w-fit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -281,11 +289,19 @@ function OrderDetailContent() {
                                     quantity: item.quantity,
                                     unit_price: item.price || (item.total_price / item.quantity),
                                     total_price: item.total_price,
+                                    hsn_code: item.hsn_code,
+                                    gst_rate: item.gst_rate,
+                                    tax_amount: item.tax_amount,
+                                    tax_type: item.tax_type,
                                     mrp: item.mrp || null,
                                     product_price: item.product_price || null,
                                 })),
                                 subtotal: order.subtotal,
                                 discount_amount: order.discount_amount || 0,
+                                delivery_fee: order.delivery_fee || 0,
+                                discount_from_points: order.discount_from_points || 0,
+                                taxable_amount: order.taxable_amount,
+                                tax_amount: order.tax_amount,
                                 total_amount: order.total_amount,
                                 payment_mode: order.payment_mode || 'COD',
                                 payment_status: order.payment_status === 'paid' ? 'PAID' : 'COD/UNPAID',
@@ -297,6 +313,9 @@ function OrderDetailContent() {
                                 retailer_gst_number: order.retailer_gst_number || retailerProfile?.gst_number,
                                 retailer_receipt_footer: order.retailer_receipt_footer || retailerProfile?.receipt_footer,
                                 retailer_show_gst: order.retailer_show_gst ?? (retailerProfile?.show_gst_on_receipt || false),
+                                retailer_print_upi_qr: order.retailer_print_upi_qr ?? (retailerProfile?.print_upi_qr_on_receipt || false),
+                                retailer_upi_id: order.retailer_upi_id || retailerProfile?.upi_id,
+                                print_upi_qr_scope: 'orders',
                                 order_source: order.source === 'pos' ? 'Store Order' : 'Online Order',
                                 delivery_address: order.order_type === 'delivery' || order.delivery_mode === 'delivery'
                                     ? (order.shipping_address?.address_line1 || order.delivery_address_text || 'Address not provided') 
@@ -337,11 +356,22 @@ function OrderDetailContent() {
                                 <div className="space-y-1 py-1">
                                     {order.applied_offers.map((offer: any, idx: number) => (
                                         <div key={idx} className="flex justify-between text-sm text-green-600">
-                                            <span className="flex items-center gap-1">
-                                                <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 border-green-200 text-green-700 bg-green-50">OFFER</Badge>
-                                                {offer.name}
+                                            <span className="flex items-center gap-1.5">
+                                                <Badge variant="outline" className={`text-[10px] h-4 px-1 py-0 ${offer.is_coupon ? 'border-purple-200 text-purple-700 bg-purple-50' : 'border-green-200 text-green-700 bg-green-50'}`}>
+                                                    {offer.is_coupon ? 'COUPON' : 'OFFER'}
+                                                </Badge>
+                                                <span>{offer.name}</span>
+                                                {offer.coupon_code && (
+                                                    <span className="font-mono text-xs font-semibold text-purple-700">({offer.coupon_code})</span>
+                                                )}
                                             </span>
-                                            <span>- ₹{Number(offer.discount).toFixed(2)}</span>
+                                            {Number(offer.discount || 0) > 0 ? (
+                                                <span>- ₹{Number(offer.discount).toFixed(2)}</span>
+                                            ) : Number(offer.points_earned || 0) > 0 ? (
+                                                <span className="text-blue-600 font-medium">+{Number(offer.points_earned)} pts</span>
+                                            ) : (
+                                                <span>- ₹0.00</span>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -497,86 +527,87 @@ function OrderDetailContent() {
                         </Card>
                     )}
 
-                    {/* Payment Details */}
-                    {order.payment_mode === 'upi' && (
-                        <Card className="border-primary/20 bg-primary/5 shadow-none">
+                    {/* Payment Details — optional payment_mode from payload; UPI extras unchanged */}
+                    {(paymentModeLabel || showUpiPaymentExtras) && (
+                        <Card className={cn(showUpiPaymentExtras && "border-primary/20 bg-primary/5 shadow-none")}>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                                <CardTitle className={cn("text-lg flex items-center gap-2", showUpiPaymentExtras && "text-primary")}>
                                     <FileText className="h-5 w-5" /> Payment info
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-muted-foreground">Method:</span>
-                                        <Badge variant="outline" className="font-bold border-primary/30 text-primary">UPI</Badge>
-                                    </div>
+                                    <PaymentModeLabel order={order} />
 
-                                    {order.payment_edit_count > 1 && (
-                                        <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded w-fit animate-pulse">
-                                            CUSTOMER UPDATED TRANSACTION ID
-                                        </div>
+                                    {showUpiPaymentExtras && (
+                                        <>
+                                            {order.payment_edit_count > 1 && (
+                                                <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded w-fit animate-pulse">
+                                                    CUSTOMER UPDATED TRANSACTION ID
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-sm text-muted-foreground">Transaction ID:</span>
+                                                {order.payment_reference_id ? (
+                                                    <div className="flex items-center justify-between p-2 bg-white rounded border border-primary/20">
+                                                        <code className="text-sm font-bold text-primary break-all">{order.payment_reference_id}</code>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[10px] shrink-0"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(order.payment_reference_id);
+                                                                toast.success("Transaction ID copied!");
+                                                            }}
+                                                        >
+                                                            Copy
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm font-medium text-amber-600 italic bg-amber-50 p-2 rounded border border-amber-100">
+                                                        Pending Submission
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-2 flex flex-col gap-2">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs text-muted-foreground font-bold uppercase">Status:</span>
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-[10px] font-bold",
+                                                        order.payment_status === 'verified' ? "bg-green-50 text-green-700 border-green-200" :
+                                                        order.payment_status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
+                                                        "bg-blue-50 text-blue-700 border-blue-200"
+                                                    )}>
+                                                        {(order.payment_status || 'pending').replace('_', ' ').toUpperCase()}
+                                                    </Badge>
+                                                </div>
+
+                                                {order.payment_status === 'pending_verification' && (
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
+                                                            onClick={() => handleVerifyPayment('verify')}
+                                                            disabled={isVerifyingPayment}
+                                                        >
+                                                            {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verify"}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="h-8 text-xs"
+                                                            onClick={() => handleVerifyPayment('fail')}
+                                                            disabled={isVerifyingPayment}
+                                                        >
+                                                            {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Fail"}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
                                     )}
-
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-sm text-muted-foreground">Transaction ID:</span>
-                                        {order.payment_reference_id ? (
-                                            <div className="flex items-center justify-between p-2 bg-white rounded border border-primary/20">
-                                                <code className="text-sm font-bold text-primary break-all">{order.payment_reference_id}</code>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="h-6 px-2 text-[10px] shrink-0"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(order.payment_reference_id);
-                                                        toast.success("Transaction ID copied!");
-                                                    }}
-                                                >
-                                                    Copy
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm font-medium text-amber-600 italic bg-amber-50 p-2 rounded border border-amber-100">
-                                                Pending Submission
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="pt-2 flex flex-col gap-2">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs text-muted-foreground font-bold uppercase">Status:</span>
-                                            <Badge variant="outline" className={cn(
-                                                "text-[10px] font-bold",
-                                                order.payment_status === 'verified' ? "bg-green-50 text-green-700 border-green-200" :
-                                                order.payment_status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
-                                                "bg-blue-50 text-blue-700 border-blue-200"
-                                            )}>
-                                                {(order.payment_status || 'pending').replace('_', ' ').toUpperCase()}
-                                            </Badge>
-                                        </div>
-
-                                        {order.payment_status === 'pending_verification' && (
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
-                                                    onClick={() => handleVerifyPayment('verify')}
-                                                    disabled={isVerifyingPayment}
-                                                >
-                                                    {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verify"}
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="destructive" 
-                                                    className="h-8 text-xs"
-                                                    onClick={() => handleVerifyPayment('fail')}
-                                                    disabled={isVerifyingPayment}
-                                                >
-                                                    {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Fail"}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -611,12 +642,7 @@ function OrderDetailContent() {
                             </div>
                             <Separator />
                             <div className="space-y-2 text-sm">
-                                {order.customer_phone && (
-                                    <div className="flex items-center gap-2">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <span>{order.customer_phone}</span>
-                                    </div>
-                                )}
+                                <OrderCustomerPhone order={order} />
                                 {order.customer_email && (
                                     <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-muted-foreground" />
