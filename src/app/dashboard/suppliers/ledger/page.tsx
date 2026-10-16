@@ -21,6 +21,8 @@ import {
     isWhitespaceOnlyPaymentTerms,
     supplierErrorMessage,
 } from '@/lib/suppliers';
+import { SupplierDetailScalars } from '@/components/suppliers/SupplierDetailScalars';
+import { SupplierDetailContact } from '@/components/suppliers/SupplierDetailContact';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
 
@@ -352,6 +354,8 @@ function SupplierLedgerDetails() {
                             <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Mobile Number</p>
                             <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">{supplier.phone_number}</p>
                         </div>
+                        <SupplierDetailScalars supplier={supplier} />
+                        <SupplierDetailContact supplier={supplier} />
                     </div>
                 </div>
             </div>

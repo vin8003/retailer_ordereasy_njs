@@ -54,6 +54,15 @@ import {
     sortBatchesFifo,
     unexpiredBatches,
 } from '@/lib/batchExpiry';
+import { POSCartLineDetails } from '@/components/pos/POSCartLineDetails';
+import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
+import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
+import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
+import { BarcodeLabel } from '@/components/products/BarcodeLabel';
+import { BrandNameLabel } from '@/components/products/BrandNameLabel';
+import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
+import { ProductGroupLabel } from '@/components/products/ProductGroupLabel';
+import { SeasonalBadge } from '@/components/products/SeasonalBadge';
 
 interface Product {
     id: number;
@@ -62,11 +71,16 @@ interface Product {
     app_price?: number | string | null;
     discounted_price: number | string;
     image: string;
-    quantity: number; // Stock qty
+    quantity: number; // Gross stock qty
+    saleable_quantity?: number | string | null;
     category_name: string;
-    barcode?: string;
+    brand_name?: string | null;
+    barcode?: string | null;
+    product_group?: string | null;
+    is_seasonal?: boolean | null;
     is_active?: boolean;
-    is_available?: boolean;
+    is_available?: boolean | null;
+    is_in_stock?: boolean | null;
     track_inventory?: boolean;
     has_batches?: boolean;
     batches?: any[];
@@ -84,6 +98,7 @@ interface CartItem {
     original_price?: number;
     barcode?: string;
     image?: string;
+    brand_name?: string | null;
 }
 
 interface CustomerSuggestion {
@@ -92,8 +107,12 @@ interface CustomerSuggestion {
     status: 'verified' | 'returning_guest';
 }
 
+/** Reference for an open bill, unique per bill so UPI intents never reuse a `tr`. */
+const createBillRef = () => `POS${Date.now().toString(36).toUpperCase()}`;
+
 interface POSSession {
     id: string;
+    billRef: string;
     cart: CartItem[];
     customerName: string;
     customerMobile: string;
@@ -110,12 +129,14 @@ interface POSSession {
 
 interface RetailerProfile {
     shop_name: string;
+    upi_id?: string | null;
     contact_phone: string;
     address_line1: string;
     city: string;
     gst_number?: string;
     receipt_footer?: string;
     show_gst_on_receipt?: boolean;
+    print_upi_qr_on_receipt?: boolean;
     printer_size?: string;
 }
 
@@ -147,6 +168,7 @@ export default function POSPage() {
     const [sessions, setSessions] = useState<POSSession[]>([
         {
             id: '1',
+            billRef: createBillRef(),
             cart: [],
             customerName: '',
             customerMobile: '',
@@ -596,7 +618,7 @@ export default function POSPage() {
         const shouldTrack = product.track_inventory !== false;
         
         // POS allows negative stock, so we don't block here
-        if (shouldTrack && !product.has_batches && product.quantity <= 0) {
+        if (shouldTrack && !product.has_batches && getDisplayStockQuantity(product) <= 0) {
             console.log(`${product.name} is out of stock in system, but allowing sale.`);
         }
 
@@ -661,7 +683,7 @@ export default function POSPage() {
                     : (product.price || 0)
                   )
               );
-        const quantity = batch ? batch.quantity : product.quantity;
+        const quantity = batch ? batch.quantity : getDisplayStockQuantity(product);
         
         // POS allows negative stock, so we don't block even if quantity is <= 0
         if (shouldTrack && quantity <= 0) {
@@ -692,7 +714,8 @@ export default function POSPage() {
                 batch_id: batch?.id || null,
                 batch_name: batch?.batch_number || null,
                 barcode: batch?.barcode || product.barcode,
-                image: product.image
+                image: product.image,
+                brand_name: pickPosCartLineBrandName(product),
             }];
         }
 
@@ -779,6 +802,8 @@ export default function POSPage() {
     useLayoutEffect(() => {
         checkoutGateRef.current = { blocked: checkoutBlocked, message: checkoutBlockedMessage };
     }, [checkoutBlocked, checkoutBlockedMessage]);
+    // Order number once the bill is settled, otherwise the open bill's reference.
+    const upiBillRef = activeSession.completedOrder?.order_number || activeSession.billRef;
 
     const handleCheckout = async () => {
         const startBlock = checkoutSubmitBlock({
@@ -876,6 +901,7 @@ export default function POSPage() {
 
     const handleNewBill = () => {
         updateActiveSession({
+            billRef: createBillRef(),
             cart: [],
             customerName: '',
             customerMobile: '',
@@ -925,6 +951,7 @@ export default function POSPage() {
         const newId = String(Date.now());
         const newSession: POSSession = {
             id: newId,
+            billRef: createBillRef(),
             cart: [],
             customerName: '',
             customerMobile: '',
@@ -1218,7 +1245,7 @@ export default function POSPage() {
                             {displayedProducts.map((product, gridIdx) => {
                                 const price = posUnitPrice(product);
                                 const showApp = hasDistinctAppPrice(product);
-                                const isOutOfStock = product.track_inventory !== false ? product.quantity <= 0 : false;
+                                const isOutOfStock = product.track_inventory !== false ? getDisplayStockQuantity(product) <= 0 : false;
                                 const isGridActive = gridIdx === activeGridIndex;
                                 
                                 return (
@@ -1250,9 +1277,16 @@ export default function POSPage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-xs font-medium text-gray-400 mb-1">{product.category_name || 'Uncategorized'}</p>
-                                            <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight mb-2">
-                                                {product.name}
-                                            </h3>
+                                            <div className="mb-2">
+                                                <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
+                                                    {product.name}
+                                                </h3>
+                                                <BrandNameLabel product={product} />
+                                                <ProductGroupLabel product={product} />
+                                                <BarcodeLabel product={product} />
+                                                <SeasonalBadge product={product} className="mt-0.5" />
+                                                <AvailabilityBadges product={product} className="mt-0.5" />
+                                            </div>
                                         </div>
                                         <div className="flex justify-between items-end mt-2 w-full">
                                             <div className="flex flex-col">
@@ -1263,7 +1297,7 @@ export default function POSPage() {
                                                 )}
                                             </div>
                                             <span className={`text-xs font-medium px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                {product.track_inventory === false ? 'Available' : `${product.quantity} in stock`}
+                                                {product.track_inventory === false ? 'Available' : `${getDisplayStockQuantity(product)} in stock`}
                                             </span>
                                         </div>
                                     </button>
@@ -1320,6 +1354,9 @@ export default function POSPage() {
                             retailer_gst_number: activeSession.completedOrder.retailer_gst_number || retailerProfile?.gst_number,
                             retailer_receipt_footer: activeSession.completedOrder.retailer_receipt_footer || retailerProfile?.receipt_footer,
                             retailer_show_gst: activeSession.completedOrder.retailer_show_gst ?? (retailerProfile?.show_gst_on_receipt || false),
+                            retailer_print_upi_qr: activeSession.completedOrder.retailer_print_upi_qr ?? (retailerProfile?.print_upi_qr_on_receipt || false),
+                            retailer_upi_id: activeSession.completedOrder.retailer_upi_id || retailerProfile?.upi_id,
+                            print_upi_qr_scope: 'pos',
                             retailer_name: retailerProfile?.shop_name || activeSession.completedOrder.retailer_name,
                             retailer_address: retailerProfile ? `${retailerProfile.address_line1}, ${retailerProfile.city}` : activeSession.completedOrder.retailer_address,
                             retailer_phone: retailerProfile?.contact_phone || activeSession.completedOrder.retailer_phone,
@@ -1427,10 +1464,7 @@ export default function POSPage() {
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-gray-800 line-clamp-1">{item.name}</span>
-                                                    {item.batch_name && (
-                                                        <span className="text-[10px] text-primary font-bold uppercase mt-0.5 tracking-tighter">Batch: {item.batch_name}</span>
-                                                    )}
+                                                    <POSCartLineDetails item={item} />
                                                     {isUnsellable && (
                                                         <span className="text-[10px] text-red-600 font-black uppercase mt-0.5 tracking-tighter flex items-center gap-1">
                                                             <AlertCircle size={10} /> Inactive — cannot be sold
@@ -1778,6 +1812,15 @@ export default function POSPage() {
                                 )}
                             </div>
                         )}
+
+                        <UpiQrPanel
+                            paymentMode={activeSession.paymentMode}
+                            total={total}
+                            paymentSplit={activeSession.paymentSplit}
+                            upiId={retailerProfile?.upi_id}
+                            shopName={retailerProfile?.shop_name}
+                            billRef={upiBillRef}
+                        />
                     </div>
 
                     {creditAmount > 0 && khataLoadFailed && (
