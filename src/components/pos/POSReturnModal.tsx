@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Search, Loader2, RotateCcw, AlertCircle, Banknote, CreditCard, ChevronRight, User, Phone, Hash, Calendar } from 'lucide-react';
+import { X, Search, Loader2, RotateCcw, Banknote, CreditCard, ChevronRight, User, Phone, Calendar } from 'lucide-react';
 import api from '@/services/api';
 import { toast } from 'react-hot-toast';
+import { calculateInclusiveReturnTax } from '@/lib/returnTax';
 
 interface POSReturnModalProps {
     isOpen: boolean;
@@ -20,6 +21,10 @@ interface OrderItem {
     available_qty: number;
     unit_price: number;
     batch_id: number | null;
+    hsn_code: string;
+    gst_rate: number;
+    product_gst_rate?: number;
+    tax_type: 'GST' | 'IGST';
 }
 
 interface FoundOrder {
@@ -32,6 +37,10 @@ interface FoundOrder {
     status: string;
     created_at: string;
     items: OrderItem[];
+}
+
+interface ApiError {
+    response?: { data?: { error?: string } };
 }
 
 type ModalStep = 'search' | 'select' | 'process';
@@ -70,8 +79,8 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
                 setStep('process');
             }
             setReturnQtys({});
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Order not found');
+        } catch (err: unknown) {
+            toast.error((err as ApiError).response?.data?.error || 'Order not found');
             setFoundOrders([]);
             setSelectedOrder(null);
         } finally {
@@ -84,13 +93,16 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
         setReturnQtys(prev => ({ ...prev, [itemId]: newQty }));
     };
 
-    const calculateRefund = () => {
-        if (!selectedOrder) return 0;
-        return selectedOrder.items.reduce((sum, item) => {
-            const qty = returnQtys[item.id] || 0;
-            return sum + (qty * item.unit_price);
-        }, 0);
-    };
+    const returnTaxTotals = calculateInclusiveReturnTax(
+        selectedOrder?.items.map(item => ({
+            quantity: returnQtys[item.id] || 0,
+            unitPrice: item.unit_price,
+            gstRate: item.gst_rate,
+            productGstRate: item.product_gst_rate,
+        })) || [],
+    );
+
+    const calculateRefund = () => returnTaxTotals.inclusiveTotal;
 
     const handleSubmit = async () => {
         const itemsToReturn = selectedOrder?.items
@@ -121,8 +133,8 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
             onClose();
             // Reset
             resetModal();
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Failed to process return');
+        } catch (err: unknown) {
+            toast.error((err as ApiError).response?.data?.error || 'Failed to process return');
         } finally {
             setIsSubmitting(false);
         }
@@ -252,6 +264,7 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
                                                 <h5 className="font-bold text-gray-800">{item.product_name}</h5>
                                                 <div className="flex gap-4 mt-1">
                                                     <p className="text-xs text-gray-500 font-medium">Bought: {item.quantity}</p>
+                                                    <p className="text-xs text-blue-600 font-bold">{item.tax_type} {Number(item.gst_rate)}%</p>
                                                     {item.already_returned > 0 && (
                                                         <p className="text-xs text-red-500 font-bold">Returned: {item.already_returned}</p>
                                                     )}
@@ -332,7 +345,15 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
                 {/* Footer */}
                 <div className="p-8 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="text-sm text-gray-500 font-medium">Total Refund:</div>
+                        <div>
+                            <div className="text-sm text-gray-500 font-medium">Total Refund (incl. tax)</div>
+                            <div className="text-xs text-gray-400">
+                                Taxable ₹{returnTaxTotals.taxableAmount.toFixed(2)} + Tax ₹{returnTaxTotals.taxAmount.toFixed(2)}
+                                {returnTaxTotals.rateCoerced && (
+                                    <span className="block text-amber-600">Tax preview adjusted: invalid GST rate on line</span>
+                                )}
+                            </div>
+                        </div>
                         <div className="text-3xl font-black text-gray-900">₹{calculateRefund().toFixed(2)}</div>
                     </div>
                     <div className="flex gap-4">
