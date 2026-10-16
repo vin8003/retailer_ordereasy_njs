@@ -626,7 +626,9 @@ export default function ProductsPage() {
                                         ...(modification.price !== undefined ? { price: modification.price } : {}),
                                         ...(modification.quantity !== undefined ? { quantity: modification.quantity } : {}),
                                         ...(modification.is_active !== undefined ? { is_active: modification.is_active } : {}),
-                                        ...(modification.is_seasonal !== undefined ? { is_seasonal: modification.is_seasonal } : {})
+                                        ...(modification.is_seasonal !== undefined ? { is_seasonal: modification.is_seasonal } : {}),
+                                        ...(modification.hsn_code !== undefined ? { hsn_code: modification.hsn_code } : {}),
+                                        ...(modification.gst_rate !== undefined ? { gst_rate: modification.gst_rate } : {})
                                     };
                                 }
                                 return p;
