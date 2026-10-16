@@ -1,8 +1,9 @@
 /** OE-127 / OE-103 — inventory.adjust 403 copy + pack-link guard (BE RCP #90/#91). */
 
-import { hasPermission } from "@/lib/org";
+import { PERMISSIONS, hasPermission } from "@/lib/org";
 
-export const PERM_INVENTORY_ADJUST = "inventory.adjust";
+/** Single source for the inventory.adjust gate (batch expiry and write-off reuse it). */
+export const PERM_INVENTORY_ADJUST = PERMISSIONS.INVENTORY_ADJUST;
 export const ERR_INVENTORY_ADJUST = "Inventory adjust permission required";
 export const ERR_CONVERSION_FACTOR = "conversion_factor must be greater than 0";
 export const QTY_ADJUST_MESSAGE =

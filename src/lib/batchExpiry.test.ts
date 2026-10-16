@@ -1,24 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { ERR_INVENTORY_ADJUST } from "./inventoryAdjust";
 import {
-  ERR_INVENTORY_ADJUST,
   EXPIRED_BATCH_SALE_MESSAGE,
-  PERM_INVENTORY_ADJUST,
   axiosBatchExpiryError,
-  canAdjustInventory,
   expiryHint,
   isBatchExpired,
   prepareBatchesForSave,
   sortBatchesFifo,
   unexpiredBatches,
 } from "./batchExpiry";
-
-describe("canAdjustInventory", () => {
-  it("requires inventory.adjust", () => {
-    expect(canAdjustInventory(["inventory.adjust"])).toBe(true);
-    expect(canAdjustInventory(["catalog.price"])).toBe(false);
-    expect(PERM_INVENTORY_ADJUST).toBe("inventory.adjust");
-  });
-});
 
 describe("expiry hints", () => {
   it("treats null expiry as still valid (BE optional until filled)", () => {

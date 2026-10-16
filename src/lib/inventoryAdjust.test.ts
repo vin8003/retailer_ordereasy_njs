@@ -13,12 +13,26 @@ import {
   packLinkIsSet,
   quantityDiffers,
 } from "./inventoryAdjust";
+import * as batchExpiry from "./batchExpiry";
+import { canWriteOffStock } from "./writeOff";
+import { PERMISSIONS } from "./org";
 
 describe("canAdjustInventory", () => {
   it("requires inventory.adjust (no shrinkage.* invent)", () => {
     expect(canAdjustInventory(["inventory.adjust"])).toBe(true);
     expect(canAdjustInventory(["purchasing.terms"])).toBe(false);
     expect(PERM_INVENTORY_ADJUST).toBe("inventory.adjust");
+    expect(PERM_INVENTORY_ADJUST).toBe(PERMISSIONS.INVENTORY_ADJUST);
+  });
+
+  it("is the only inventory.adjust gate (batch expiry keeps no parallel helper)", () => {
+    expect("canAdjustInventory" in batchExpiry).toBe(false);
+    expect("PERM_INVENTORY_ADJUST" in batchExpiry).toBe(false);
+  });
+
+  it("backs write-off with the same gate", () => {
+    expect(canWriteOffStock(["inventory.adjust"])).toBe(canAdjustInventory(["inventory.adjust"]));
+    expect(canWriteOffStock(["catalog.price"])).toBe(canAdjustInventory(["catalog.price"]));
   });
 });
 

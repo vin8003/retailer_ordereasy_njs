@@ -25,6 +25,8 @@ import {
     attachCreditOverride,
     creditAmountForPos,
     creditSaleLockReasons,
+    formatCreditLockMessage,
+    isCreditCheckoutBlocked,
     khataFromDetail,
     lockReasonsFromCheckoutError,
     mergeLockReasons,
@@ -220,10 +222,13 @@ export default function POSPage() {
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(true);
     const [khata, setKhata] = useState<(KhataMapping & { customerId: number | null }) | null>(null);
+    // A failed credit lookup must not look like "no credit limit".
+    const [khataLoadFailed, setKhataLoadFailed] = useState(false);
     const [creditOverride, setCreditOverride] = useState(false);
     const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
     const [lookupOrders, setLookupOrders] = useState<LookupOrder[]>([]);
     const [lookupCustomerId, setLookupCustomerId] = useState<number | null>(null);
+    const creditGateRef = useRef({ blocked: false, message: '' });
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -492,6 +497,7 @@ export default function POSPage() {
     useEffect(() => {
         setCreditOverride(false);
         setServerLockReasons([]);
+        setKhataLoadFailed(false);
         const mobile = activeSession.customerMobile;
         if (mobile.length !== 10) {
             setKhata(null);
@@ -532,6 +538,7 @@ export default function POSPage() {
                 console.error(err);
                 if (!cancelled) {
                     setKhata(null);
+                    setKhataLoadFailed(true);
                     setLookupOrders([]);
                     setLookupCustomerId(null);
                 }
@@ -745,12 +752,41 @@ export default function POSPage() {
 
     const total = Math.max(0, subtotal - Math.max(offerCalculation.totalSavings, activeSession.discountAmount));
 
+    const creditAmount = creditAmountForPos(
+        activeSession.paymentMode,
+        activeSession.paymentSplit,
+        total
+    );
+    const khataMapping = khata ?? { creditLimit: 0, currentBalance: 0, creditDueDays: null };
+    const creditLockReasons = mergeLockReasons(
+        creditSaleLockReasons(khata, creditAmount),
+        serverLockReasons
+    );
+    const creditCheckoutBlocked = isCreditCheckoutBlocked({
+        creditAmount,
+        reasons: creditLockReasons,
+        override: creditOverride,
+        canOverride: canOverrideCredit,
+    });
+    // The keydown effect keeps an older handleCheckout, so read the gate from a ref.
+    creditGateRef.current = {
+        blocked: creditCheckoutBlocked,
+        message: creditCheckoutBlocked
+            ? formatCreditLockMessage(khataMapping, creditLockReasons)
+            : '',
+    };
     // Order number once the bill is settled, otherwise the open bill's reference.
     const upiBillRef = activeSession.completedOrder?.order_number || activeSession.billRef;
 
     const handleCheckout = async () => {
         if (activeSession.cart.length === 0) {
             toast.error("Cart is empty");
+            return;
+        }
+
+        // Ctrl+Enter reaches this without the disabled Complete Bill button.
+        if (creditGateRef.current.blocked) {
+            toast.error(creditGateRef.current.message);
             return;
         }
         
@@ -1736,33 +1772,23 @@ export default function POSPage() {
                         />
                     </div>
 
-                    {(() => {
-                        const creditAmt = creditAmountForPos(
-                            activeSession.paymentMode,
-                            activeSession.paymentSplit,
-                            total
-                        );
-                        const mapping = khata ?? { creditLimit: 0, currentBalance: 0, creditDueDays: null };
-                        const reasons = mergeLockReasons(
-                            creditSaleLockReasons(khata, creditAmt),
-                            serverLockReasons
-                        );
-                        const locked = creditAmt > 0 && reasons.length > 0;
-                        const blockComplete = locked && !(creditOverride && canOverrideCredit);
-                        return (
-                            <>
-                                {creditAmt > 0 && (
-                                    <CreditLockBanner
-                                        mapping={mapping}
-                                        reasons={reasons}
-                                        canOverride={canOverrideCredit}
-                                        override={creditOverride}
-                                        onOverrideChange={setCreditOverride}
-                                    />
-                                )}
+                    {creditAmount > 0 && khataLoadFailed && (
+                        <p className="text-xs text-amber-700" role="status">
+                            Could not check this customer&apos;s credit. The server still enforces the limit.
+                        </p>
+                    )}
+                    {creditAmount > 0 && (
+                        <CreditLockBanner
+                            mapping={khataMapping}
+                            reasons={creditLockReasons}
+                            canOverride={canOverrideCredit}
+                            override={creditOverride}
+                            onOverrideChange={setCreditOverride}
+                        />
+                    )}
                     <button
                         onClick={handleCheckout}
-                        disabled={activeSession.cart.length === 0 || isCheckoutLoading || blockComplete}
+                        disabled={activeSession.cart.length === 0 || isCheckoutLoading || creditCheckoutBlocked}
                         className="w-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-5 rounded-2xl font-black text-xl flex justify-center items-center gap-3 transition-all active:scale-[0.98] border-b-4 border-primary/20"
                         data-tour="checkout"
                     >
@@ -1774,9 +1800,6 @@ export default function POSPage() {
                             </>
                         )}
                     </button>
-                            </>
-                        );
-                    })()}
                 </div>
             </div>
 

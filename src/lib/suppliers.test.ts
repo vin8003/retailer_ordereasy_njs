@@ -15,6 +15,7 @@ import {
   normalizeGstin,
   purchaseInvoiceErrorMessage,
   selectableSuppliersForNewPurchase,
+  selectionAfterSupplierCreate,
   supplierErrorMessage,
 } from "./suppliers";
 
@@ -110,6 +111,32 @@ describe("inactive picker", () => {
     expect(selectableSuppliersForNewPurchase(rows, 2).map((s) => s.id)).toEqual([1, 2]);
     expect(isSupplierSelectableForNewPurchase({ is_active: false })).toBe(false);
     expect(isSupplierSelectableForNewPurchase({ is_active: true })).toBe(true);
+  });
+});
+
+describe("selectionAfterSupplierCreate", () => {
+  it("selects a freshly added active supplier", () => {
+    expect(selectionAfterSupplierCreate({ id: 7, is_active: true }, "")).toEqual({
+      value: "7",
+      warning: null,
+    });
+    expect(selectionAfterSupplierCreate({ id: 7 }, "3")).toEqual({
+      value: "7",
+      warning: null,
+    });
+  });
+
+  it("keeps the previous pick and warns when the new supplier is inactive (negative)", () => {
+    expect(selectionAfterSupplierCreate({ id: 8, is_active: false }, "3")).toEqual({
+      value: "3",
+      warning: INACTIVE_SUPPLIER_MESSAGE,
+    });
+    expect(selectionAfterSupplierCreate({ id: 8, is_active: false }, "").value).toBe("");
+  });
+
+  it("leaves the pick alone when create returned nothing usable (negative)", () => {
+    expect(selectionAfterSupplierCreate(null, "3")).toEqual({ value: "3", warning: null });
+    expect(selectionAfterSupplierCreate(undefined, "")).toEqual({ value: "", warning: null });
   });
 });
 

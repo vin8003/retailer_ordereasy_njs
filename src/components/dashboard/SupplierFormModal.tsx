@@ -35,6 +35,8 @@ type SupplierFormModalProps = {
     onSubmit: (e: React.FormEvent) => void;
     isSubmitting?: boolean;
     canEditTerms?: boolean;
+    /** Purchase documents cannot use an inactive supplier, so they hide the toggle. */
+    allowInactive?: boolean;
 };
 
 export function SupplierFormModal({
@@ -46,6 +48,7 @@ export function SupplierFormModal({
     onSubmit,
     isSubmitting = false,
     canEditTerms = false,
+    allowInactive = true,
 }: SupplierFormModalProps) {
     if (!open) return null;
 
@@ -154,17 +157,19 @@ export function SupplierFormModal({
                         />
                     </div>
 
-                    <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={values.is_active}
-                            onChange={e => set('is_active', e.target.checked)}
-                            className="size-4 rounded border-gray-300 text-primary focus:ring-primary/20"
-                        />
-                        <span className="text-sm font-medium text-gray-700">
-                            Active — inactive suppliers cannot be chosen on a new purchase invoice
-                        </span>
-                    </label>
+                    {allowInactive && (
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={values.is_active}
+                                onChange={e => set('is_active', e.target.checked)}
+                                className="size-4 rounded border-gray-300 text-primary focus:ring-primary/20"
+                            />
+                            <span className="text-sm font-medium text-gray-700">
+                                Active — inactive suppliers cannot be chosen on a new purchase invoice
+                            </span>
+                        </label>
+                    )}
 
                     <div className="flex gap-4 pt-6">
                         <button

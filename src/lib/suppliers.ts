@@ -82,6 +82,21 @@ export function isSupplierSelectableForNewPurchase(
   return supplier.is_active !== false;
 }
 
+/**
+ * Add-New on a purchase document. BE rejects an inactive supplier there, so an
+ * inactive record stays created but unselected instead of failing on save.
+ */
+export function selectionAfterSupplierCreate(
+  created: Pick<SupplierRecord, "id" | "is_active"> | null | undefined,
+  currentValue: string
+): { value: string; warning: string | null } {
+  if (!created || created.id == null) return { value: currentValue, warning: null };
+  if (!isSupplierSelectableForNewPurchase(created)) {
+    return { value: currentValue, warning: INACTIVE_SUPPLIER_MESSAGE };
+  }
+  return { value: String(created.id), warning: null };
+}
+
 export function buildSupplierWritePayload(
   values: SupplierFormFields,
   options: { canEditTerms: boolean }
