@@ -54,6 +54,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { toast } from 'sonner';
+import { useOrgContext } from '@/hooks/useOrgContext';
+import { PERMISSIONS } from '@/lib/org';
 import { CustomerMappingNotes } from '@/components/customers/CustomerMappingNotes';
 import { KhataLedgerNotes } from '@/components/customers/KhataLedgerNotes';
 import { type KhataLedgerListRow } from '@/utils/khataLedgerNotes';
@@ -72,6 +74,7 @@ interface CustomerDetail {
     isBlacklisted: boolean;
     creditLimit: number;
     currentBalance: number;
+    creditDueDays: number | null;
     notes?: string | null;
     recentOrders: any[];
     rewardHistory: any[];
@@ -106,6 +109,8 @@ function resolveCustomerQuery(searchParams: ReturnType<typeof useSearchParams>):
 function CustomerDetailContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { hasPermission } = useOrgContext();
+    const canManageCredit = hasPermission(PERMISSIONS.CREDIT_MANAGE);
     const [id, setId] = useState<number | null>(null);
     const capturedIdRef = useRef<number | null>(null);
     // Capture once on first client render — never re-resolve after Next wipes search.
@@ -141,6 +146,7 @@ function CustomerDetailContent() {
 
     // Credit Limit state
     const [newCreditLimit, setNewCreditLimit] = useState('');
+    const [newCreditDueDays, setNewCreditDueDays] = useState('');
 
 
     const fetchDetails = async () => {
@@ -168,11 +174,19 @@ function CustomerDetailContent() {
                     isBlacklisted: data.is_blacklisted,
                     creditLimit: data.credit_limit ? parseFloat(data.credit_limit) : 0,
                     currentBalance: data.current_balance ? parseFloat(data.current_balance) : 0,
+                    creditDueDays: data.credit_due_days == null || data.credit_due_days === ''
+                        ? null
+                        : Number(data.credit_due_days),
                     notes: data.notes,
                     recentOrders: data.recent_orders || [],
                     rewardHistory: data.reward_history || [],
                 });
                 setNewCreditLimit(data.credit_limit?.toString() || '0');
+                setNewCreditDueDays(
+                    data.credit_due_days == null || data.credit_due_days === ''
+                        ? ''
+                        : String(data.credit_due_days)
+                );
                 try { sessionStorage.removeItem('oe:qs:' + window.location.pathname.replace(/\/$/, '')); } catch (e) {}
             } else {
                 throw new Error('Failed to load details');
@@ -286,14 +300,32 @@ function CustomerDetailContent() {
 
     const handleUpdateCreditLimit = async () => {
         if (!id || !newCreditLimit) return;
+        const limit = Number(newCreditLimit);
+        const dueRaw = newCreditDueDays.trim();
+        const dueDays = dueRaw === '' ? null : Number(dueRaw);
+        if (!Number.isFinite(limit) || limit < 0) {
+            toast.error('Enter a credit limit of 0 or more');
+            return;
+        }
+        if (dueDays !== null && (!Number.isInteger(dueDays) || dueDays < 0)) {
+            toast.error('Credit due days must be a whole number of 0 or more');
+            return;
+        }
         setActionLoading(true);
         try {
-            await customerService.updateCreditLimit(id, parseFloat(newCreditLimit));
+            await customerService.updateCreditLimit(id, limit, {
+                credit_due_days: dueDays,
+            });
             toast.success('Credit limit updated successfully');
             setShowCreditLimitDialog(false);
             fetchDetails();
         } catch (err) {
-            toast.error('Failed to update credit limit');
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            toast.error(
+                status === 403
+                    ? 'You need the credit.manage permission to change this'
+                    : 'Failed to update credit limit'
+            );
         } finally {
             setActionLoading(false);
         }
@@ -381,6 +413,11 @@ function CustomerDetailContent() {
                                 valueClassName={customer.currentBalance > 0 ? "text-red-600" : "text-green-600"}
                             />
                             <StatRow icon={CreditCard} label="Credit Limit" value={formatCurrency(customer.creditLimit)} />
+                            <StatRow
+                                icon={Calendar}
+                                label="Credit due days"
+                                value={customer.creditDueDays == null ? "Not set" : `${customer.creditDueDays} days`}
+                            />
                             <StatRow icon={ShoppingBag} label="Total Orders" value={customer.customerName === "Walking Customer" ? "POS Only" : customer.totalOrders.toString()} />
                             <StatRow icon={Star} label="Avg Rating" value={(customer.averageRating || 0).toFixed(1)} />
 
@@ -395,6 +432,8 @@ function CustomerDetailContent() {
                                 <Button
                                     variant="outline"
                                     className="w-full gap-2"
+                                    disabled={!canManageCredit}
+                                    title={canManageCredit ? undefined : 'Needs the credit.manage permission'}
                                     onClick={() => setShowCreditLimitDialog(true)}
                                 >
                                     <ShieldBan className="h-4 w-4" /> Set Credit Limit
@@ -786,6 +825,20 @@ function CustomerDetailContent() {
                             />
                             <p className="text-xs text-muted-foreground italic">
                                 Currently set to {formatCurrency(customer.creditLimit)}
+                            </p>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="credit-due-days">Credit due days</Label>
+                            <Input
+                                id="credit-due-days"
+                                type="number"
+                                min="0"
+                                value={newCreditDueDays}
+                                onChange={(e) => setNewCreditDueDays(e.target.value)}
+                                placeholder="Empty = no due-days lock"
+                            />
+                            <p className="text-xs text-muted-foreground italic">
+                                After this many days with outstanding, new credit sales lock. Leave empty to disable.
                             </p>
                         </div>
                     </div>
