@@ -2,18 +2,21 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import api from '@/services/api';
+import api, { authService } from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
 import { findProductByBarcode, loadRetailerProducts, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { productService } from '@/services/api';
-import { 
-    Package, Plus, Trash2, Search, ScanLine, 
+import { calculatePurchaseTax, purchaseTaxSnapshot, resolvePurchaseTaxType } from '@/lib/purchaseTax';
+import {
+    Plus, Trash2, ScanLine,
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
     Info, AlertCircle, ShoppingCart, IndianRupee, UserPlus, ImageIcon, X
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { PurchaseDetailNotes } from '@/components/purchases/PurchaseDetailNotes';
+import type { PurchaseDetailNotesDisplay } from '@/utils/purchaseDetailNotes';
 
 interface Product {
     id: number;
@@ -26,6 +29,8 @@ interface Product {
     additional_barcodes?: string[];
     has_batches?: boolean;
     batches?: { id?: number; barcode?: string; batch_number?: string }[];
+    hsn_code?: string;
+    gst_rate?: number | string;
 }
 
 interface PurchaseRow {
@@ -35,13 +40,37 @@ interface PurchaseRow {
     new_price: number;
     new_original_price: number;
     total: number;
+    gstRate: number;
+    hsnCode: string;
 }
 
 interface Supplier {
     id: number;
     company_name: string;
     is_active?: boolean;
+    gst_number?: string;
 }
+
+interface InvoiceItem {
+    product: number;
+    product_name: string;
+    quantity: number | string;
+    purchase_price: number | string;
+    total: number | string;
+    hsn_code: string;
+    gst_rate: number | string;
+    taxable_value: number | string;
+    tax_amount: number | string;
+    tax_type: 'GST' | 'IGST';
+}
+
+const getApiError = (error: unknown, fallback: string) => {
+    if (typeof error !== 'object' || error === null || !('response' in error)) {
+        return fallback;
+    }
+    return (error as { response?: { data?: { error?: string } } })
+        .response?.data?.error || fallback;
+};
 
 function EditPurchaseContent() {
     const router = useRouter();
@@ -57,6 +86,7 @@ function EditPurchaseContent() {
     const [rows, setRows] = useState<PurchaseRow[]>([]);
     const [paidAmount, setPaidAmount] = useState<number>(0);
     const [notes, setNotes] = useState('');
+    const [invoiceFromBe, setInvoiceFromBe] = useState<PurchaseDetailNotesDisplay | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [hasReturns, setHasReturns] = useState(false);
@@ -64,6 +94,7 @@ function EditPurchaseContent() {
     const [existingBillImage, setExistingBillImage] = useState<string | null>(null);
     const [billImageFile, setBillImageFile] = useState<File | null>(null);
     const [billImagePreview, setBillImagePreview] = useState<string | null>(null);
+    const [retailerGstin, setRetailerGstin] = useState('');
     
     // Add Supplier Modal State
     const [showAddModal, setShowAddModal] = useState(false);
@@ -95,7 +126,7 @@ function EditPurchaseContent() {
                 email: '',
                 address: ''
             });
-        } catch (error) {
+        } catch {
             toast.error("Failed to add supplier");
         }
     };
@@ -103,9 +134,10 @@ function EditPurchaseContent() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [suppliersResult, productsResult] = await Promise.allSettled([
+                const [suppliersResult, productsResult, profileResult] = await Promise.allSettled([
                     fetchAllPages('/products/erp/suppliers/', { is_active: true }),
                     loadRetailerProducts(fetchAllPages),
+                    authService.fetchProfile(),
                 ]);
                 let loadedSuppliers: Supplier[] =
                     suppliersResult.status === 'fulfilled' ? suppliersResult.value : [];
@@ -119,6 +151,9 @@ function EditPurchaseContent() {
                     setProducts(fetchedProducts);
                 } else {
                     toast.error("Failed to load products");
+                }
+                if (profileResult.status === 'fulfilled') {
+                    setRetailerGstin(profileResult.value.data?.gst_number || '');
                 }
 
                 if (invoiceId) {
@@ -142,28 +177,35 @@ function EditPurchaseContent() {
                     setInvoiceDate(inv.invoice_date);
                     setPaidAmount(Number(inv.paid_amount));
                     setNotes(inv.notes || '');
+                    setInvoiceFromBe({
+                        notes: inv.notes,
+                        invoice_number: inv.invoice_number,
+                        payment_status: inv.payment_status,
+                        supplier_name: inv.supplier_name,
+                    });
                     setHasReturns(inv.is_returned);
                     setRefundAmount(Number(inv.refund_amount));
                     setExistingBillImage(inv.bill_image || null);
                     setBillImagePreview(inv.bill_image || null);
                     
                     // Map items to rows
-                    const mappedRows: PurchaseRow[] = inv.items.map((item: any) => {
-                        const prod = fetchedProducts.find((p: any) => p.id === item.product);
+                    const mappedRows: PurchaseRow[] = inv.items.map((item: InvoiceItem) => {
+                        const prod = fetchedProducts.find((p) => p.id === item.product);
                         return {
                             product: prod || { id: item.product, name: item.product_name, barcode: '', price: 0, purchase_price: 0, original_price: 0, image: '' },
                             quantity: Number(item.quantity),
                             purchase_price: Number(item.purchase_price),
                             new_price: Number(prod?.price || 0),
                             new_original_price: Number(prod?.original_price || 0),
-                            total: Number(item.total)
+                            total: Number(item.total),
+                            ...purchaseTaxSnapshot(item),
                         };
                     });
                     setRows(mappedRows);
                 } else {
                     setSuppliers(loadedSuppliers);
                 }
-            } catch (error) {
+            } catch {
                 toast.error("Failed to load bill data");
             } finally {
                 setIsLoading(false);
@@ -204,6 +246,7 @@ function EditPurchaseContent() {
             const newRows = [...rows];
             newRows[existingIdx].quantity += 1;
             newRows[existingIdx].total = newRows[existingIdx].quantity * newRows[existingIdx].purchase_price;
+            Object.assign(newRows[existingIdx], purchaseTaxSnapshot(product));
             setRows(newRows);
         } else {
             setRows([...rows, {
@@ -212,7 +255,8 @@ function EditPurchaseContent() {
                 purchase_price: Number(product.purchase_price) || 0,
                 new_price: Number(product.price) || 0,
                 new_original_price: Number(product.original_price) || 0,
-                total: Number(product.purchase_price) || 0
+                total: Number(product.purchase_price) || 0,
+                ...purchaseTaxSnapshot(product),
             }]);
         }
         setSearchTerm('');
@@ -239,9 +283,13 @@ function EditPurchaseContent() {
         }
     };
 
-    const updateRow = (index: number, field: keyof PurchaseRow, value: any) => {
+    const updateRow = (
+        index: number,
+        field: 'quantity' | 'purchase_price' | 'new_price' | 'new_original_price' | 'total',
+        value: number,
+    ) => {
         const newRows = [...rows];
-        (newRows[index] as any)[field] = value;
+        newRows[index][field] = value;
         if (field === 'quantity' || field === 'purchase_price') {
             newRows[index].total = newRows[index].quantity * newRows[index].purchase_price;
         }
@@ -252,7 +300,17 @@ function EditPurchaseContent() {
         setRows(rows.filter((_, i) => i !== index));
     };
 
-    const subtotal = rows.reduce((sum, r) => sum + r.total, 0);
+    const taxTotals = calculatePurchaseTax(rows.map((row) => ({
+        total: row.total,
+        gstRate: row.gstRate,
+    })));
+    const selectedSupplierRecord = suppliers.find(
+        (supplier) => supplier.id.toString() === selectedSupplier
+    );
+    const taxType = resolvePurchaseTaxType(
+        retailerGstin,
+        selectedSupplierRecord?.gst_number,
+    );
 
     const handleSubmit = async () => {
         if (!selectedSupplier) return toast.error("Please select a supplier");
@@ -265,10 +323,10 @@ function EditPurchaseContent() {
                 supplier: selectedSupplier,
                 invoice_number: invoiceNumber,
                 invoice_date: invoiceDate,
-                total_amount: Math.round(subtotal),
+                total_amount: taxTotals.grandTotal,
                 paid_amount: paidAmount,
                 notes: notes,
-                payment_status: paidAmount >= subtotal ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
+                payment_status: paidAmount >= taxTotals.grandTotal ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
                 items: rows.map(r => ({
                     product: r.product.id,
                     quantity: r.quantity,
@@ -301,8 +359,8 @@ function EditPurchaseContent() {
             }
             toast.success("Purchase bill updated successfully!");
             router.push('/dashboard/purchases');
-        } catch (error: any) {
-            toast.error(error.response?.data?.error || "Failed to update purchase");
+        } catch (error: unknown) {
+            toast.error(getApiError(error, "Failed to update purchase"));
             console.error(error);
         } finally {
             setIsSubmitting(false);
@@ -349,7 +407,7 @@ function EditPurchaseContent() {
                             <div>
                                 <h3 className="text-red-800 font-bold mb-1">Returns exist for this bill</h3>
                                 <p className="text-xs font-medium text-red-700 leading-relaxed">
-                                    Items worth ₹{refundAmount.toFixed(2)} have been returned from this bill. Editing the bill now will only modify the original quantities and prices. The returns are tracked separately and won't be affected by your edits here.
+                                    Items worth ₹{refundAmount.toFixed(2)} have been returned from this bill. Editing the bill now will only modify the original quantities and prices. The returns are tracked separately and won&apos;t be affected by your edits here.
                                 </p>
                             </div>
                         </div>
@@ -436,6 +494,10 @@ function EditPurchaseContent() {
                                 <p className="text-[11px] text-gray-400 font-medium">Current bill photo is attached. Choose a file to replace it.</p>
                             )}
                         </div>
+                        <PurchaseDetailNotes
+                            invoice={invoiceFromBe ?? {}}
+                            className="md:col-span-3"
+                        />
                     </div>
 
                     {/* Product Search & Table */}
@@ -505,8 +567,13 @@ function EditPurchaseContent() {
                                             <td className="p-4 px-6">
                                                 <div className="font-bold text-gray-900">{row.product.name}</div>
                                                 <div className="text-xs text-gray-400 font-medium font-mono">{row.product.barcode}</div>
+                                                {row.gstRate > 0 && !row.hsnCode.trim() && (
+                                                    <div className="mt-1 text-[11px] font-bold text-amber-600">
+                                                        GST {row.gstRate}%: HSN code missing
+                                                    </div>
+                                                )}
                                             </td>
-                                            <td className="p-4 w-28">
+                                            <td className="p-4 w-36">
                                                 <input 
                                                     type="number"
                                                     value={row.quantity}
@@ -514,7 +581,7 @@ function EditPurchaseContent() {
                                                     className="w-full bg-white border border-gray-100 rounded-lg py-2 px-3 text-center font-black focus:ring-2 focus:ring-primary/20 text-primary"
                                                 />
                                             </td>
-                                            <td className="p-4 w-32">
+                                            <td className="p-4 w-40">
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs text-primary font-bold">₹</span>
                                                     <input 
@@ -525,7 +592,7 @@ function EditPurchaseContent() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className="p-4 w-32">
+                                            <td className="p-4 w-40">
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
                                                     <input 
@@ -536,7 +603,7 @@ function EditPurchaseContent() {
                                                     />
                                                 </div>
                                             </td>
-                                            <td className="p-4 w-32">
+                                            <td className="p-4 w-40">
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-xs font-bold">₹</span>
                                                     <input 
@@ -575,12 +642,22 @@ function EditPurchaseContent() {
                         
                         <div className="space-y-4 mb-8">
                             <div className="flex justify-between text-gray-500 font-medium">
-                                <span>Subtotal ({rows.length} Items)</span>
-                                <span>₹{Math.round(subtotal)}</span>
+                                <span>Taxable ({rows.length} Items)</span>
+                                <span>₹{taxTotals.taxableAmount.toFixed(2)}</span>
                             </div>
+                            <div className="flex justify-between text-gray-500 font-medium">
+                                <span>{taxType}</span>
+                                <span>₹{taxTotals.taxAmount.toFixed(2)}</span>
+                            </div>
+                            {Math.abs(taxTotals.roundOff) >= 0.005 && (
+                                <div className="flex justify-between text-gray-500 font-medium">
+                                    <span>Round Off</span>
+                                    <span>{taxTotals.roundOff < 0 ? '-' : '+'}₹{Math.abs(taxTotals.roundOff).toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-end pt-4 border-t border-dashed border-gray-200">
-                                <span className="text-lg font-bold text-gray-900">Total Bill</span>
-                                <span className="text-4xl font-black text-primary tracking-tighter">₹{Math.round(subtotal)}</span>
+                                <span className="text-lg font-bold text-gray-900">Grand Total</span>
+                                <span className="text-4xl font-black text-primary tracking-tighter">₹{taxTotals.grandTotal}</span>
                             </div>
                         </div>
 
@@ -600,7 +677,7 @@ function EditPurchaseContent() {
                             </div>
                             <div className="mt-4 flex justify-between items-center px-1">
                                 <span className="text-xs font-bold text-gray-400">Balance Effect</span>
-                                <span className="text-sm font-black text-red-500">₹{Math.round(subtotal - paidAmount)}</span>
+                                <span className="text-sm font-black text-red-500">₹{taxTotals.grandTotal - paidAmount}</span>
                             </div>
                         </div>
 

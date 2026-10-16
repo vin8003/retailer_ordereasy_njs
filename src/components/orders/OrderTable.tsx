@@ -25,6 +25,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OrderFeeDiscountLines } from "@/components/orders/OrderFeeDiscountLines";
+import { OrderListPaymentMode } from "@/components/orders/OrderListPaymentMode";
 
 interface Order {
     id: number;
@@ -48,6 +50,11 @@ interface Order {
     refund_amount: number;
     net_amount: number;
     is_returned: boolean;
+    /** Optional BE list scalars (OE-307 / OE-301). Display-only; never invent. */
+    delivery_fee?: number | string | null;
+    discount_amount?: number | string | null;
+    /** Optional BE list scalar — display only; hide when null/blank. */
+    payment_mode?: string | null;
 }
 
 interface OrderTableProps {
@@ -126,6 +133,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                     <div className="flex flex-col items-start leading-tight">
                                         <span>{order.order_number}</span>
                                         {getSourceBadge(order.source)}
+                                        <OrderListPaymentMode order={order} className="mt-1" />
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -191,6 +199,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                                 ₹{Number(order.net_amount).toLocaleString('en-IN')}
                                             </span>
                                         )}
+                                        <OrderFeeDiscountLines order={order} />
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -243,6 +252,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         {format(new Date(order.created_at), "MMM d, h:mm a")}
                                     </span>
                                 </div>
+                                <OrderListPaymentMode order={order} className="text-[10px]" />
                             </div>
                             <div className="flex flex-col items-end">
                                 <span className={cn("font-extrabold text-base text-gray-900", order.is_returned && "text-gray-400 line-through text-xs font-semibold decoration-red-400")}>
@@ -253,6 +263,7 @@ export function OrderTable({ orders, isLoading }: OrderTableProps) {
                                         ₹{Number(order.net_amount).toLocaleString('en-IN')}
                                     </span>
                                 )}
+                                <OrderFeeDiscountLines order={order} />
                             </div>
                         </div>
 

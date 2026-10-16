@@ -68,6 +68,7 @@ interface RetailerProfile {
     // Receipt Customization
     receiptFooter?: string;
     showGstOnReceipt: boolean;
+    printUpiQrOnReceipt: boolean;
     printerSize: '80mm' | '58mm';
 }
 
@@ -139,6 +140,7 @@ export default function ProfilePage() {
                     shopImage: data.shop_image,
                     receiptFooter: data.receipt_footer,
                     showGstOnReceipt: data.show_gst_on_receipt ?? true,
+                    printUpiQrOnReceipt: data.print_upi_qr_on_receipt ?? false,
                     printerSize: data.printer_size || '80mm',
                 };
                 setProfile(mappedProfile);
@@ -670,6 +672,17 @@ export default function ProfilePage() {
                                     disabled={!isEditing}
                                     checked={formData.showGstOnReceipt}
                                     onCheckedChange={val => setFormData({ ...formData, showGstOnReceipt: val })}
+                                />
+                            </div>
+                            <div className="flex items-center justify-between border rounded-lg p-4 bg-slate-50">
+                                <div className="space-y-0.5">
+                                    <Label>Print UPI QR Code</Label>
+                                    <div className="text-sm text-muted-foreground">Print exact-amount UPI QR on thermal receipts</div>
+                                </div>
+                                <Switch
+                                    disabled={!isEditing}
+                                    checked={formData.printUpiQrOnReceipt ?? false}
+                                    onCheckedChange={val => setFormData({ ...formData, printUpiQrOnReceipt: val })}
                                 />
                             </div>
                             <div className="flex items-center justify-between border rounded-lg p-4 bg-slate-50">
