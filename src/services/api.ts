@@ -309,6 +309,51 @@ export const rewardService = {
   updateRewardConfig: (data: any) => api.put('retailer/reward-config/', data),
 };
 
+export const orgService = {
+  fetchOrgMe: () => api.get('retailer/org/'),
+  fetchOrg: (orgId: number) => api.get(`retailer/org/${orgId}/`),
+  updateOrg: (orgId: number, data: { name?: string; is_active?: boolean }) =>
+    api.patch(`retailer/org/${orgId}/`, data),
+  fetchPermissionCatalog: (orgId: number) =>
+    api.get(`retailer/org/${orgId}/permissions/`),
+  fetchRoles: (orgId: number) => api.get(`retailer/org/${orgId}/roles/`),
+  createRole: (orgId: number, data: { name: string; slug: string; permissions?: string[] }) =>
+    api.post(`retailer/org/${orgId}/roles/`, data),
+  updateRole: (
+    orgId: number,
+    roleId: number,
+    data: { name?: string; permissions?: string[] }
+  ) => api.patch(`retailer/org/${orgId}/roles/${roleId}/`, data),
+  fetchStaff: (orgId: number, params?: Record<string, string | number>) =>
+    api.get(`retailer/org/${orgId}/staff/`, { params }),
+  assignStaff: (
+    orgId: number,
+    data: {
+      role_id: number;
+      user_id?: number;
+      username?: string;
+      email?: string;
+      password?: string;
+    }
+  ) => api.post(`retailer/org/${orgId}/staff/`, data),
+  updateStaff: (
+    orgId: number,
+    membershipId: number,
+    data: { role_id?: number; is_active?: boolean }
+  ) => api.patch(`retailer/org/${orgId}/staff/${membershipId}/`, data),
+  revokeStaff: (orgId: number, membershipId: number) =>
+    api.delete(`retailer/org/${orgId}/staff/${membershipId}/`),
+  fetchAuditLog: (
+    orgId: number,
+    params?: Record<string, string | number | undefined>
+  ) => api.get(`retailer/org/${orgId}/audit-log/`, { params }),
+  fetchModuleFlagsCatalog: (orgId: number) =>
+    api.get(`retailer/org/${orgId}/module-flags/catalog/`),
+  fetchModuleFlags: (orgId: number) => api.get(`retailer/org/${orgId}/module-flags/`),
+  updateModuleFlags: (orgId: number, flags: Record<string, boolean>) =>
+    api.patch(`retailer/org/${orgId}/module-flags/`, { flags }),
+};
+
 export const offerService = {
   fetchOffers: () => api.get('offers/'),
   fetchOfferDetails: (id: string | number) => api.get(`offers/${id}/`),
