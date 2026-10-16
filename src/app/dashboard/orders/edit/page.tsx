@@ -57,7 +57,7 @@ function OrderEditContent() {
             setOrder(orderData);
             setItems(orderData.items.map((item: any) => ({
                 ...item,
-                product_id: item.product?.id || item.product_id
+                product_id: item.product?.id || item.product_id || (typeof item.product === 'number' ? item.product : undefined)
             })));
             setDeliveryMode(orderData.delivery_mode);
             setDiscountAmount(Number(orderData.discount_amount || 0));
