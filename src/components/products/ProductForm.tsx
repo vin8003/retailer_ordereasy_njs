@@ -26,6 +26,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
     Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
 import { Autocomplete } from "@/components/ui/Autocomplete";
@@ -53,6 +56,7 @@ import {
     applyLinkedChildQuantity,
     type PackLinkFields,
 } from "@/lib/inventoryAdjust";
+import { GST_RATE_OPTIONS, shouldRecommendHsn } from "@/lib/productTax";
 
 interface ProductFormProps {
     initialData?: any;
@@ -84,6 +88,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
     const [maxOrderQty, setMaxOrderQty] = useState(initialData?.maximum_order_quantity || "");
     const [productGroup, setProductGroup] = useState(initialData?.product_group || "");
     const [barcode, setBarcode] = useState(initialData?.barcode || "");
+    const [hsnCode, setHsnCode] = useState(initialData?.hsn_code || "");
+    const [gstRate, setGstRate] = useState(String(Number(initialData?.gst_rate) || 0));
     const [masterProductId, setMasterProductId] = useState(initialData?.master_product || "");
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [isSearchingMaster, setIsSearchingMaster] = useState(false);
@@ -336,6 +342,8 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
             if (maxOrderQty) formData.append("maximum_order_quantity", maxOrderQty);
             if (productGroup) formData.append("product_group", productGroup);
             formData.append("barcode", barcode || "");
+            formData.append("hsn_code", hsnCode.trim());
+            formData.append("gst_rate", gstRate);
             if (masterProductId) formData.append("master_product", masterProductId);
 
             if (categoryId) formData.append("category", categoryId);
@@ -517,6 +525,39 @@ export function ProductForm({ initialData, isEditing = false }: ProductFormProps
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                     />
+                </div>
+
+                {/* Tax details */}
+                <div className="space-y-2">
+                    <Label htmlFor="hsnCode">HSN Code</Label>
+                    <Input
+                        id="hsnCode"
+                        placeholder="e.g. 21069099"
+                        value={hsnCode}
+                        maxLength={8}
+                        onChange={(e) => setHsnCode(e.target.value)}
+                    />
+                    {shouldRecommendHsn(gstRate, hsnCode) && (
+                        <p className="text-xs font-medium text-amber-600">
+                            HSN recommended when GST is not 0%
+                        </p>
+                    )}
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="gstRate">GST Rate</Label>
+                    <Select value={gstRate} onValueChange={setGstRate}>
+                        <SelectTrigger id="gstRate">
+                            <SelectValue placeholder="Select GST rate" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {GST_RATE_OPTIONS.map((rate) => (
+                                <SelectItem key={rate} value={String(rate)}>
+                                    {rate}%
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Batch System Toggle */}
