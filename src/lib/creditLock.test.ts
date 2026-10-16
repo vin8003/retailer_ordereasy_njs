@@ -4,6 +4,7 @@ import {
   REASON_CREDIT_OVERDUE,
   attachCreditOverride,
   canOverrideCreditLock,
+  checkoutSubmitBlock,
   creditAmountForPos,
   creditSaleLockReasons,
   formatCreditLockMessage,
@@ -161,5 +162,31 @@ describe("isCreditCheckoutBlocked", () => {
   it("does not block cash sales or unlocked credit", () => {
     expect(isCreditCheckoutBlocked({ ...blocked, creditAmount: 0 })).toBe(false);
     expect(isCreditCheckoutBlocked({ ...blocked, reasons: [] })).toBe(false);
+  });
+});
+
+describe("checkoutSubmitBlock", () => {
+  const ready = { cartLength: 1, inFlight: false, blocked: false };
+
+  it("lets a ready cart through for both Complete Bill and Ctrl+Enter", () => {
+    expect(checkoutSubmitBlock(ready)).toBeNull();
+  });
+
+  it("blocks an empty cart before an in-flight POST", () => {
+    expect(checkoutSubmitBlock({ ...ready, cartLength: 0 })).toBe("empty");
+    expect(checkoutSubmitBlock({ cartLength: 0, inFlight: true, blocked: true })).toBe(
+      "empty"
+    );
+  });
+
+  it("blocks Ctrl+Enter while a checkout POST is in flight (negative)", () => {
+    expect(checkoutSubmitBlock({ ...ready, inFlight: true })).toBe("in_flight");
+    expect(checkoutSubmitBlock({ ...ready, inFlight: true, blocked: true })).toBe(
+      "in_flight"
+    );
+  });
+
+  it("still blocks an unsellable or credit-locked cart once idle", () => {
+    expect(checkoutSubmitBlock({ ...ready, blocked: true })).toBe("blocked");
   });
 });

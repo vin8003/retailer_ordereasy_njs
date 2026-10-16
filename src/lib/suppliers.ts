@@ -64,15 +64,43 @@ export function isWhitespaceOnlyPaymentTerms(
   return Boolean(raw) && !raw.trim();
 }
 
+type SupplierKeepId = string | number | null | undefined;
+
+function keepIdSet(
+  keepId?: SupplierKeepId | ReadonlyArray<SupplierKeepId>
+): Set<string> {
+  const raw =
+    keepId === undefined || keepId === null
+      ? []
+      : Array.isArray(keepId)
+        ? keepId
+        : [keepId];
+  return new Set(
+    raw.filter((id): id is string | number => id != null && id !== "").map(String)
+  );
+}
+
 /** Active suppliers only; keep current id so an existing PI can stay on an inactive supplier. */
 export function selectableSuppliersForNewPurchase<T extends SupplierRecord>(
   suppliers: T[],
+  keepId?: SupplierKeepId | ReadonlyArray<SupplierKeepId>
+): T[] {
+  const keep = keepIdSet(keepId);
+  return suppliers.filter(
+    (s) => s.is_active !== false || keep.has(String(s.id))
+  );
+}
+
+/**
+ * Picker membership. keepId stays even when `value` is a newly selected active id
+ * (Edit PI Add-New). New PI omits keepId and still hides inactive rows.
+ */
+export function visibleSuppliersForPicker<T extends SupplierRecord>(
+  suppliers: T[],
+  value: string | number | null | undefined,
   keepId?: string | number | null
 ): T[] {
-  const keep = keepId == null || keepId === "" ? null : String(keepId);
-  return suppliers.filter(
-    (s) => s.is_active !== false || (keep != null && String(s.id) === keep)
-  );
+  return selectableSuppliersForNewPurchase(suppliers, [keepId, value]);
 }
 
 /**
@@ -90,6 +118,22 @@ export function mergeKeptSupplier<T extends SupplierRecord>(
   if (fetched.some((s) => String(s.id) === keep)) return fetched;
   const kept = known.find((s) => String(s.id) === keep);
   return kept ? [kept, ...fetched] : fetched;
+}
+
+/**
+ * After Add-New, keep the previous pick — not the new selection.
+ * An active create auto-selects; keepId-on-selection would drop an inactive
+ * invoice supplier from the Edit PI picker.
+ */
+export function keepIdAfterSupplierCreate(
+  previousSelectedId: string | number | null | undefined,
+  selectionValue: string
+): string {
+  const previous =
+    previousSelectedId == null || previousSelectedId === ""
+      ? ""
+      : String(previousSelectedId);
+  return previous || selectionValue;
 }
 
 export function isSupplierSelectableForNewPurchase(

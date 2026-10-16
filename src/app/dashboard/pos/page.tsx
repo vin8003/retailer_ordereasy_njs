@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import api, { customerService, offerService } from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
@@ -23,6 +23,7 @@ import { LoyaltyRedeemPanel } from '@/components/customers/LoyaltyRedeemPanel';
 import { canStaffRedeem } from '@/lib/loyaltyRedeem';
 import {
     attachCreditOverride,
+    checkoutSubmitBlock,
     creditAmountForPos,
     creditSaleLockReasons,
     formatCreditLockMessage,
@@ -35,9 +36,10 @@ import {
 } from '@/lib/creditLock';
 import { formatLookupSource, parseLookupResponse, type LookupOrder } from '@/lib/customerLookup';
 import {
-    INACTIVE_PRODUCT_ADD_MESSAGE,
     axiosUnsellableProduct,
     cartWithoutProduct,
+    checkoutErrorText,
+    inactiveProductAddToast,
     isSellableProduct,
     unsellableCartHit,
     unsellableProductMessage,
@@ -240,6 +242,7 @@ export default function POSPage() {
     const [lookupCustomerId, setLookupCustomerId] = useState<number | null>(null);
     const [unsellableProduct, setUnsellableProduct] = useState<UnsellableProduct | null>(null);
     const checkoutGateRef = useRef({ blocked: false, message: '' });
+    const checkoutInFlightRef = useRef(false);
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -608,7 +611,7 @@ export default function POSPage() {
     const handleAddToCart = (product: Product, scanBarcode?: string) => {
         // The POS catalog is an is_active=true fetch; this only catches a stale row.
         if (!isSellableProduct(product)) {
-            toast.error(`${product.name}: ${INACTIVE_PRODUCT_ADD_MESSAGE}`);
+            toast.error(inactiveProductAddToast(product));
             return;
         }
 
@@ -795,21 +798,26 @@ export default function POSPage() {
           : '';
 
     // The keydown effect keeps an older handleCheckout, so read the gate from a ref.
-    // Committed in an effect: a ref must not be written while rendering.
-    useEffect(() => {
+    // Layout effect: a keypress between paint and useEffect would otherwise see blocked:false.
+    useLayoutEffect(() => {
         checkoutGateRef.current = { blocked: checkoutBlocked, message: checkoutBlockedMessage };
     }, [checkoutBlocked, checkoutBlockedMessage]);
     // Order number once the bill is settled, otherwise the open bill's reference.
     const upiBillRef = activeSession.completedOrder?.order_number || activeSession.billRef;
 
     const handleCheckout = async () => {
-        if (activeSession.cart.length === 0) {
+        const startBlock = checkoutSubmitBlock({
+            cartLength: activeSession.cart.length,
+            inFlight: checkoutInFlightRef.current,
+            blocked: checkoutGateRef.current.blocked,
+        });
+        if (startBlock === 'empty') {
             toast.error("Cart is empty");
             return;
         }
-
-        // Ctrl+Enter reaches this without the disabled Complete Bill button.
-        if (checkoutGateRef.current.blocked) {
+        // Ctrl+Enter is not disabled with the Complete Bill button.
+        if (startBlock === 'in_flight') return;
+        if (startBlock === 'blocked') {
             toast.error(checkoutGateRef.current.message);
             return;
         }
@@ -838,6 +846,7 @@ export default function POSPage() {
             }
         }
 
+        checkoutInFlightRef.current = true;
         setIsCheckoutLoading(true);
         try {
             const payload: any = {
@@ -873,7 +882,7 @@ export default function POSPage() {
             setUnsellableProduct(null);
             fetchProducts(); // Refresh stock
         } catch (error: any) {
-            const errMsg = error.response?.data?.error || "Checkout failed";
+            const errMsg = checkoutErrorText(error.response?.data) || "Checkout failed";
             const fromServer = lockReasonsFromCheckoutError(errMsg);
             if (fromServer.length) setServerLockReasons(fromServer);
             // OE-190: name the offending line instead of echoing the raw BE sentence.
@@ -885,6 +894,7 @@ export default function POSPage() {
                 toast.error(errMsg);
             }
         } finally {
+            checkoutInFlightRef.current = false;
             setIsCheckoutLoading(false);
         }
     };
