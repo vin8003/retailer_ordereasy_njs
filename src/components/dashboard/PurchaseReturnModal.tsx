@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, RotateCcw, AlertCircle, ShoppingCart, Truck, ChevronRight } from 'lucide-react';
+import { X, Loader2, RotateCcw, AlertCircle, Truck } from 'lucide-react';
 import api from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
 import { toast } from 'react-hot-toast';
+import { calculateInclusiveReturnTax } from '@/lib/returnTax';
 
 interface PurchaseReturnModalProps {
     isOpen: boolean;
@@ -23,6 +24,10 @@ interface PurchaseItem {
     purchase_price: number;
     batch_id: number | null;
     batch_number?: string;
+    hsn_code: string;
+    gst_rate: number;
+    product_gst_rate?: number;
+    tax_type: 'GST' | 'IGST';
 }
 
 interface Supplier {
@@ -30,14 +35,24 @@ interface Supplier {
     company_name: string;
 }
 
+interface PurchaseInvoiceSummary {
+    id: number;
+    supplier: number;
+    invoice_number?: string;
+    invoice_date: string;
+}
+
+interface ApiError {
+    response?: { data?: { error?: string } };
+}
+
 export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoiceId }: PurchaseReturnModalProps) {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [selectedSupplier, setSelectedSupplier] = useState<number>(0);
-    const [invoices, setInvoices] = useState<any[]>([]);
+    const [invoices, setInvoices] = useState<PurchaseInvoiceSummary[]>([]);
     const [selectedInvoiceId, setSelectedInvoiceId] = useState<number>(invoiceId || 0);
     const [invoiceItems, setInvoiceItems] = useState<PurchaseItem[]>([]);
     
-    const [isLoading, setIsLoading] = useState(false);
     const [isFetchingItems, setIsFetchingItems] = useState(false);
     const [returnQtys, setReturnQtys] = useState<Record<number, number>>({});
     const [notes, setNotes] = useState('');
@@ -77,7 +92,7 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
             const res = await api.get(`/returns/purchase/get_invoice_items/?invoice_id=${invId}`);
             setInvoiceItems(res.data);
             setReturnQtys({});
-        } catch (err) {
+        } catch {
             toast.error('Failed to fetch invoice items');
         } finally {
             setIsFetchingItems(false);
@@ -101,12 +116,16 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
         setReturnQtys(prev => ({ ...prev, [itemId]: newQty }));
     };
 
-    const calculateTotal = () => {
-        return invoiceItems.reduce((sum, item) => {
-            const qty = returnQtys[item.id] || 0;
-            return sum + (qty * item.purchase_price);
-        }, 0);
-    };
+    const returnTaxTotals = calculateInclusiveReturnTax(
+        invoiceItems.map(item => ({
+            quantity: returnQtys[item.id] || 0,
+            unitPrice: item.purchase_price,
+            gstRate: item.gst_rate,
+            productGstRate: item.product_gst_rate,
+        })),
+    );
+
+    const calculateTotal = () => returnTaxTotals.inclusiveTotal;
 
     const handleSubmit = async () => {
         const itemsToReturn = invoiceItems
@@ -135,8 +154,8 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
             toast.success('Purchase Return processed & Supplier Ledger updated');
             onSuccess();
             onClose();
-        } catch (err: any) {
-            toast.error(err.response?.data?.error || 'Failed to process return');
+        } catch (err: unknown) {
+            toast.error((err as ApiError).response?.data?.error || 'Failed to process return');
         } finally {
             setIsSubmitting(false);
         }
@@ -216,6 +235,7 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
                                                 <h5 className="font-black text-gray-800 group-hover:text-red-900 transition-colors">{item.product_name}</h5>
                                                 <div className="flex gap-4 mt-1">
                                                     <p className="text-xs text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded">Inward: {item.quantity}</p>
+                                                    <p className="text-xs text-blue-600 font-bold">{item.tax_type} {Number(item.gst_rate)}%</p>
                                                     {item.already_returned > 0 && <p className="text-xs text-red-500 font-bold">Returned: {item.already_returned}</p>}
                                                     <p className="text-xs text-green-600 font-bold">Available: {item.available_qty}</p>
                                                     {item.batch_number && <p className="text-xs text-primary font-bold">Batch: {item.batch_number}</p>}
@@ -278,8 +298,14 @@ export default function PurchaseReturnModal({ isOpen, onClose, onSuccess, invoic
                 {/* Footer */}
                 <div className="p-8 bg-white border-t border-gray-100 flex justify-between items-center">
                     <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estimated Credit Note</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estimated Credit Note (Incl. Tax)</p>
                         <div className="text-3xl font-black text-gray-900">₹{calculateTotal().toLocaleString('en-IN')}</div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            Taxable ₹{returnTaxTotals.taxableAmount.toFixed(2)} + Tax ₹{returnTaxTotals.taxAmount.toFixed(2)}
+                            {returnTaxTotals.rateCoerced && (
+                                <span className="block text-amber-600">Tax preview adjusted: invalid GST rate on line</span>
+                            )}
+                        </p>
                     </div>
                     <div className="flex gap-4">
                         <button onClick={onClose} className="px-8 py-4 text-gray-500 font-bold hover:bg-gray-50 rounded-2xl transition-all">

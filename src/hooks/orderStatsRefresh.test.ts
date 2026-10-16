@@ -1,18 +1,17 @@
-import assert from 'node:assert/strict';
-import { afterEach, mock, test } from 'node:test';
+import { afterEach, expect, test, vi } from 'vitest';
 import {
     dispatchOrderStatsRefresh,
     FCM_ORDER_UPDATE_EVENT,
     LOCAL_ORDER_STATS_REFRESH_EVENT,
     subscribeOrderStatsRefresh,
-} from './orderStatsRefresh.ts';
+} from './orderStatsRefresh';
 
 afterEach(() => {
-    mock.restoreAll();
+    vi.restoreAllMocks();
 });
 
 test('subscribes with an immediate refresh and no timer', () => {
-    const intervalSpy = mock.method(globalThis, 'setInterval', () => 0 as unknown as NodeJS.Timeout);
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval');
     const target = new EventTarget();
     let calls = 0;
 
@@ -20,8 +19,8 @@ test('subscribes with an immediate refresh and no timer', () => {
         calls += 1;
     }, target);
 
-    assert.equal(calls, 1);
-    assert.equal(intervalSpy.mock.calls.length, 0);
+    expect(calls).toBe(1);
+    expect(intervalSpy).not.toHaveBeenCalled();
 
     unsubscribe();
 });
@@ -34,11 +33,11 @@ test('refreshes when FCM reports a new or updated order', () => {
     }, target);
 
     target.dispatchEvent(new Event(FCM_ORDER_UPDATE_EVENT));
-    assert.equal(calls, 2);
+    expect(calls).toBe(2);
 
     unsubscribe();
     target.dispatchEvent(new Event(FCM_ORDER_UPDATE_EVENT));
-    assert.equal(calls, 2);
+    expect(calls).toBe(2);
 });
 
 test('refreshes when a local cashier status change is dispatched', () => {
@@ -49,7 +48,7 @@ test('refreshes when a local cashier status change is dispatched', () => {
     }, target);
 
     dispatchOrderStatsRefresh(target);
-    assert.equal(calls, 2);
+    expect(calls).toBe(2);
 });
 
 test('ignores unrelated events', () => {
@@ -61,6 +60,6 @@ test('ignores unrelated events', () => {
 
     target.dispatchEvent(new Event('fcm_chat_message'));
     target.dispatchEvent(new Event('fcm_message'));
-    assert.equal(calls, 1);
-    assert.equal(LOCAL_ORDER_STATS_REFRESH_EVENT, 'order_stats_refresh');
+    expect(calls).toBe(1);
+    expect(LOCAL_ORDER_STATS_REFRESH_EVENT).toBe('order_stats_refresh');
 });
