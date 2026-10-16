@@ -20,6 +20,8 @@ function ledgerTypeClass(logType: string) {
     if (logType === "added") return "text-green-600 bg-green-50";
     if (logType === "sold") return "text-blue-600 bg-blue-50";
     if (logType === "removed") return "text-red-600 bg-red-50";
+    // Write-offs (OE-141) stand out from ordinary removals.
+    if (logType === "damaged" || logType === "expired" || logType === "spoiled") return "text-orange-700 bg-orange-50";
     return "text-gray-600 bg-gray-50";
 }
 
