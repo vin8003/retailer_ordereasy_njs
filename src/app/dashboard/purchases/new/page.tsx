@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '@/services/api';
+import api, { authService } from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
 import { findProductByBarcode, loadRetailerProducts, looksLikeBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { productService } from '@/services/api';
-import { 
-    Package, Plus, Trash2, Search, ScanLine, 
+import { calculatePurchaseTax, resolvePurchaseTaxType } from '@/lib/purchaseTax';
+import {
+    Package, Plus, Trash2, ScanLine,
     ChevronLeft, Save, Loader2, Truck, Calendar, Hash,
     Info, AlertCircle, ShoppingCart, IndianRupee, UserPlus, ImageIcon, X
 } from 'lucide-react';
@@ -15,6 +16,12 @@ import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { QuickAddModal } from '@/components/pos/QuickAddModal';
 import SearchableSupplierSelect from '@/components/ui/SearchableSupplierSelect';
+import { LastSupplierCostHint } from '@/components/purchases/LastSupplierCostHint';
+import {
+    lastSupplierCostsFromHttp,
+    lastSupplierCostsPath,
+    type LastSupplierCostsPayload,
+} from '@/utils/lastSupplierCost';
 
 interface Product {
     id: number;
@@ -27,6 +34,8 @@ interface Product {
     additional_barcodes?: string[];
     has_batches?: boolean;
     batches?: { id?: number; barcode?: string; batch_number?: string }[];
+    hsn_code?: string;
+    gst_rate?: number | string;
 }
 
 interface PurchaseRow {
@@ -42,7 +51,16 @@ interface Supplier {
     id: number;
     company_name: string;
     is_active?: boolean;
+    gst_number?: string;
 }
+
+const getApiError = (error: unknown, fallback: string) => {
+    if (typeof error !== 'object' || error === null || !('response' in error)) {
+        return fallback;
+    }
+    return (error as { response?: { data?: { error?: string } } })
+        .response?.data?.error || fallback;
+};
 
 export default function NewPurchasePage() {
     const router = useRouter();
@@ -59,6 +77,11 @@ export default function NewPurchasePage() {
     const [isLoading, setIsLoading] = useState(true);
     const [billImageFile, setBillImageFile] = useState<File | null>(null);
     const [billImagePreview, setBillImagePreview] = useState<string | null>(null);
+    const [retailerGstin, setRetailerGstin] = useState('');
+    const [lastCostsByProductId, setLastCostsByProductId] = useState<
+        Record<number, LastSupplierCostsPayload>
+    >({});
+    const lastCostTried = useRef<Set<number>>(new Set());
     
     // Quick Add Modal State
     const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -94,16 +117,17 @@ export default function NewPurchasePage() {
                 email: '',
                 address: ''
             });
-        } catch (error) {
+        } catch {
             toast.error("Failed to add supplier");
         }
     };
 
     useEffect(() => {
         const fetchData = async () => {
-            const [suppliersResult, productsResult] = await Promise.allSettled([
+            const [suppliersResult, productsResult, profileResult] = await Promise.allSettled([
                 fetchAllPages('/products/erp/suppliers/', { is_active: true }),
                 loadRetailerProducts(fetchAllPages),
+                authService.fetchProfile(),
             ]);
             if (suppliersResult.status === 'fulfilled') {
                 setSuppliers(suppliersResult.value);
@@ -114,6 +138,9 @@ export default function NewPurchasePage() {
                 setProducts(productsResult.value);
             } else {
                 toast.error("Failed to load products");
+            }
+            if (profileResult.status === 'fulfilled') {
+                setRetailerGstin(profileResult.value.data?.gst_number || '');
             }
             setIsLoading(false);
         };
@@ -147,6 +174,23 @@ export default function NewPurchasePage() {
         return () => clearTimeout(t);
     }, [searchTerm]);
 
+    const loadLastSupplierCosts = async (productId: number) => {
+        if (lastCostTried.current.has(productId)) return;
+        lastCostTried.current.add(productId);
+        try {
+            const res = await api.get(lastSupplierCostsPath(productId), {
+                validateStatus: (status) => status === 200 || status === 403 || status === 404,
+            });
+            const parsed = lastSupplierCostsFromHttp(res.status, res.data);
+            if (!parsed) return;
+            setLastCostsByProductId((prev) => (
+                prev[productId] ? prev : { ...prev, [productId]: parsed }
+            ));
+        } catch {
+            // omit — never invent last-cost from catalog purchase_price
+        }
+    };
+
     const addProductToRows = (product: Product) => {
         const existingIdx = rows.findIndex(r => r.product.id === product.id);
         if (existingIdx > -1) {
@@ -166,6 +210,7 @@ export default function NewPurchasePage() {
         }
         setSearchTerm('');
         toast.success(`Added ${product.name}`, { icon: '📦', duration: 1500 });
+        void loadLastSupplierCosts(product.id);
     };
 
     const handleSearchKeyDown = async (e: React.KeyboardEvent) => {
@@ -216,9 +261,13 @@ export default function NewPurchasePage() {
         }
     };
 
-    const updateRow = (index: number, field: keyof PurchaseRow, value: any) => {
+    const updateRow = (
+        index: number,
+        field: Exclude<keyof PurchaseRow, 'product'>,
+        value: number,
+    ) => {
         const newRows = [...rows];
-        (newRows[index] as any)[field] = value;
+        newRows[index][field] = value;
         if (field === 'quantity' || field === 'purchase_price') {
             newRows[index].total = newRows[index].quantity * newRows[index].purchase_price;
         }
@@ -229,7 +278,17 @@ export default function NewPurchasePage() {
         setRows(rows.filter((_, i) => i !== index));
     };
 
-    const subtotal = rows.reduce((sum, r) => sum + r.total, 0);
+    const taxTotals = calculatePurchaseTax(rows.map((row) => ({
+        total: row.total,
+        gstRate: row.product.gst_rate || 0,
+    })));
+    const selectedSupplierRecord = suppliers.find(
+        (supplier) => supplier.id.toString() === selectedSupplier
+    );
+    const taxType = resolvePurchaseTaxType(
+        retailerGstin,
+        selectedSupplierRecord?.gst_number,
+    );
 
     const handleSubmit = async () => {
         if (!selectedSupplier) return toast.error("Please select a supplier");
@@ -242,10 +301,10 @@ export default function NewPurchasePage() {
                 supplier: selectedSupplier,
                 invoice_number: invoiceNumber,
                 invoice_date: invoiceDate,
-                total_amount: Math.round(subtotal),
+                total_amount: taxTotals.grandTotal,
                 paid_amount: paidAmount,
                 notes: notes,
-                payment_status: paidAmount >= subtotal ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
+                payment_status: paidAmount >= taxTotals.grandTotal ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
                 items: rows.map(r => ({
                     product: r.product.id,
                     quantity: r.quantity,
@@ -278,8 +337,8 @@ export default function NewPurchasePage() {
             }
             toast.success("Purchase recorded and stock updated!");
             router.push('/dashboard/purchases');
-        } catch (error: any) {
-            toast.error(error.response?.data?.error || "Failed to save purchase");
+        } catch (error: unknown) {
+            toast.error(getApiError(error, "Failed to save purchase"));
             console.error(error);
         } finally {
             setIsSubmitting(false);
@@ -472,8 +531,13 @@ export default function NewPurchasePage() {
                                                 <td className="p-4 px-6">
                                                     <div className="font-bold text-gray-900">{row.product.name}</div>
                                                     <div className="text-xs text-gray-400 font-medium font-mono">{row.product.barcode}</div>
+                                                    {Number(row.product.gst_rate) > 0 && !row.product.hsn_code?.trim() && (
+                                                        <div className="mt-1 text-[11px] font-bold text-amber-600">
+                                                            GST {Number(row.product.gst_rate)}%: HSN code missing
+                                                        </div>
+                                                    )}
                                                 </td>
-                                                <td className="p-4 w-28">
+                                                <td className="p-4 w-36">
                                                     <input 
                                                         type="number"
                                                         value={row.quantity}
@@ -481,7 +545,7 @@ export default function NewPurchasePage() {
                                                         className="w-full bg-white border border-gray-100 rounded-lg py-2 px-3 text-center font-black focus:ring-2 focus:ring-primary/20 text-primary"
                                                     />
                                                 </td>
-                                                <td className="p-4 w-32">
+                                                <td className="p-4 w-40">
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs text-primary font-bold">₹</span>
                                                         <input 
@@ -491,8 +555,13 @@ export default function NewPurchasePage() {
                                                             className="w-full bg-blue-50/30 border border-blue-100 rounded-lg py-2 pl-6 pr-3 text-center font-bold focus:ring-2 focus:ring-blue-100"
                                                         />
                                                     </div>
+                                                    <LastSupplierCostHint
+                                                        payload={lastCostsByProductId[row.product.id]}
+                                                        supplierId={selectedSupplier}
+                                                        className="mt-1 text-center"
+                                                    />
                                                 </td>
-                                                <td className="p-4 w-32">
+                                                <td className="p-4 w-40">
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
                                                         <input 
@@ -503,7 +572,7 @@ export default function NewPurchasePage() {
                                                         />
                                                     </div>
                                                 </td>
-                                                <td className="p-4 w-32">
+                                                <td className="p-4 w-40">
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-xs font-bold">₹</span>
                                                         <input 
@@ -543,16 +612,22 @@ export default function NewPurchasePage() {
                         
                         <div className="space-y-4 mb-8">
                             <div className="flex justify-between text-gray-500 font-medium">
-                                <span>Subtotal ({rows.length} Items)</span>
-                                <span>₹{Math.round(subtotal)}</span>
+                                <span>Taxable ({rows.length} Items)</span>
+                                <span>₹{taxTotals.taxableAmount.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-gray-500 font-medium">
-                                <span>GST / Taxes</span>
-                                <span className="text-xs text-gray-400">Included</span>
+                                <span>{taxType}</span>
+                                <span>₹{taxTotals.taxAmount.toFixed(2)}</span>
                             </div>
+                            {Math.abs(taxTotals.roundOff) >= 0.005 && (
+                                <div className="flex justify-between text-gray-500 font-medium">
+                                    <span>Round Off</span>
+                                    <span>{taxTotals.roundOff < 0 ? '-' : '+'}₹{Math.abs(taxTotals.roundOff).toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-end pt-4 border-t border-dashed border-gray-200">
-                                <span className="text-lg font-bold text-gray-900">Total Bill</span>
-                                <span className="text-4xl font-black text-primary tracking-tighter">₹{Math.round(subtotal)}</span>
+                                <span className="text-lg font-bold text-gray-900">Grand Total</span>
+                                <span className="text-4xl font-black text-primary tracking-tighter">₹{taxTotals.grandTotal}</span>
                             </div>
                         </div>
 
@@ -572,7 +647,7 @@ export default function NewPurchasePage() {
                             </div>
                             <div className="mt-4 flex justify-between items-center px-1">
                                 <span className="text-xs font-bold text-gray-400">Remaining Balance</span>
-                                <span className="text-sm font-black text-red-500">₹{Math.round(subtotal - paidAmount)}</span>
+                                <span className="text-sm font-black text-red-500">₹{taxTotals.grandTotal - paidAmount}</span>
                             </div>
                         </div>
 
