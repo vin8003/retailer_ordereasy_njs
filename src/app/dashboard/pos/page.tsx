@@ -29,6 +29,7 @@ import {
     pickCustomerFromList,
     type KhataMapping,
 } from '@/lib/creditLock';
+import { formatLookupSource, parseLookupResponse, type LookupOrder } from '@/lib/customerLookup';
 import { POSCartLineDetails } from '@/components/pos/POSCartLineDetails';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
@@ -209,6 +210,7 @@ export default function POSPage() {
     const [khata, setKhata] = useState<(KhataMapping & { customerId: number | null }) | null>(null);
     const [creditOverride, setCreditOverride] = useState(false);
     const [serverLockReasons, setServerLockReasons] = useState<ReturnType<typeof lockReasonsFromCheckoutError>>([]);
+    const [lookupOrders, setLookupOrders] = useState<LookupOrder[]>([]);
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -480,12 +482,19 @@ export default function POSPage() {
         const mobile = activeSession.customerMobile;
         if (mobile.length !== 10) {
             setKhata(null);
+            setLookupOrders([]);
             return;
         }
         let cancelled = false;
         (async () => {
             try {
-                const listRes = await customerService.getRetailerCustomers({ search: mobile });
+                const [listRes, lookupRes] = await Promise.all([
+                    customerService.getRetailerCustomers({ search: mobile }),
+                    // Order history needs orders.read; the till does not fetch it otherwise.
+                    hasPermission(PERMISSIONS.ORDERS_READ)
+                        ? customerService.lookupByPhone(mobile).catch(() => null)
+                        : Promise.resolve(null),
+                ]);
                 const rows = listRes.data?.results || listRes.data;
                 const list = Array.isArray(rows) ? rows : [];
                 const match = pickCustomerFromList<{
@@ -494,15 +503,20 @@ export default function POSPage() {
                     customerId?: number;
                 }>(list, mobile);
                 const customerId = match?.customer_id ?? match?.customerId;
-                if (!customerId) {
-                    if (!cancelled) setKhata(null);
-                    return;
+                if (customerId) {
+                    const detail = await customerService.getRetailerCustomerDetail(customerId);
+                    if (!cancelled) setKhata(khataFromDetail(detail.data));
+                } else if (!cancelled) {
+                    setKhata(null);
                 }
-                const detail = await customerService.getRetailerCustomerDetail(customerId);
-                if (!cancelled) setKhata(khataFromDetail(detail.data));
+                const parsed = lookupRes ? parseLookupResponse(lookupRes.data) : null;
+                if (!cancelled) setLookupOrders(parsed?.recent_orders ?? []);
             } catch (err) {
                 console.error(err);
-                if (!cancelled) setKhata(null);
+                if (!cancelled) {
+                    setKhata(null);
+                    setLookupOrders([]);
+                }
             }
         })();
         return () => {
@@ -795,6 +809,7 @@ export default function POSPage() {
         setCreditOverride(false);
         setServerLockReasons([]);
         setKhata(null);
+        setLookupOrders([]);
         setActiveGridIndex(-1);
         setActiveCartIndex(-1);
         setCurrentFocus('search');
@@ -1548,6 +1563,18 @@ export default function POSPage() {
                                 className="w-full bg-gray-50 border border-gray-100 rounded-xl py-3 px-4 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
                             />
                         </div>
+                        {lookupOrders.length > 0 && (
+                            <div className="rounded-xl border border-gray-100 bg-gray-50/80 p-3 space-y-1.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recent POS / App</p>
+                                {lookupOrders.slice(0, 5).map((order) => (
+                                    <div key={order.id} className="flex justify-between text-xs text-gray-700">
+                                        <span className="font-semibold">{order.order_number || order.id}</span>
+                                        <span className="text-gray-400">{formatLookupSource(order.source)}</span>
+                                        <span>₹{order.total_amount}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     </div>
 
