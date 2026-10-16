@@ -39,11 +39,13 @@ import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrig
 import { CustomerLookupPanel } from '@/components/customers/CustomerLookupPanel';
 import { useOrgContext } from '@/hooks/useOrgContext';
 import { PERMISSIONS } from '@/lib/org';
+import { CustomerListScalars } from '@/components/customers/CustomerListScalars';
 
 interface RetailerCustomer {
     customerId: number;
     customerName: string;
     phoneNumber?: string;
+    email?: string | null;
     profileImage?: string;
     totalOrders: number;
     totalSpent: number;
@@ -55,6 +57,8 @@ interface RetailerCustomer {
     isPhoneVerified?: boolean;
     nickname?: string;
     currentBalance: number;
+    credit_limit?: number | string | null;
+    credit_due_days?: number | string | null;
 }
 
 export default function CustomersPage() {
@@ -125,6 +129,7 @@ export default function CustomersPage() {
                 customerId: item.customer_id,
                 customerName: item.customer_name,
                 phoneNumber: item.phone_number,
+                email: item.email,
                 profileImage: item.profile_image,
                 totalOrders: item.total_orders,
                 totalSpent: item.total_spent ? parseFloat(item.total_spent) : 0,
@@ -136,6 +141,8 @@ export default function CustomersPage() {
                 isPhoneVerified: item.is_phone_verified,
                 nickname: item.nickname,
                 currentBalance: item.current_balance ? parseFloat(item.current_balance) : 0,
+                credit_limit: item.credit_limit,
+                credit_due_days: item.credit_due_days,
             }));
 
             if (isAppend) {
@@ -358,6 +365,7 @@ export default function CustomersPage() {
                                                             </Badge>
                                                         </div>
                                                         <span className="text-xs text-muted-foreground">ID: {customer.customerId} • {customer.phoneNumber}</span>
+                                                        <CustomerListScalars customer={customer} />
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -432,6 +440,7 @@ export default function CustomersPage() {
                                             </Badge>
                                         </div>
                                         <span className="text-[10px] text-muted-foreground truncate">ID: {customer.customerId} • {customer.phoneNumber}</span>
+                                        <CustomerListScalars customer={customer} className="text-[10px]" />
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1 shrink-0">

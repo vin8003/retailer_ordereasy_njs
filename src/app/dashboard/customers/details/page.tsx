@@ -56,6 +56,9 @@ import {
 import { toast } from 'sonner';
 import { useOrgContext } from '@/hooks/useOrgContext';
 import { PERMISSIONS } from '@/lib/org';
+import { CustomerMappingNotes } from '@/components/customers/CustomerMappingNotes';
+import { KhataLedgerNotes } from '@/components/customers/KhataLedgerNotes';
+import { type KhataLedgerListRow } from '@/utils/khataLedgerNotes';
 
 interface CustomerDetail {
     customerId: number;
@@ -72,6 +75,7 @@ interface CustomerDetail {
     creditLimit: number;
     currentBalance: number;
     creditDueDays: number | null;
+    notes?: string | null;
     recentOrders: any[];
     rewardHistory: any[];
 }
@@ -121,7 +125,7 @@ function CustomerDetailContent() {
     const [error, setError] = useState<string | null>(null);
 
     // Ledger state
-    const [ledger, setLedger] = useState<any[]>([]);
+    const [ledger, setLedger] = useState<KhataLedgerListRow[]>([]);
     const [ledgerLoading, setLedgerLoading] = useState(false);
 
     // Actions State
@@ -173,6 +177,7 @@ function CustomerDetailContent() {
                     creditDueDays: data.credit_due_days == null || data.credit_due_days === ''
                         ? null
                         : Number(data.credit_due_days),
+                    notes: data.notes,
                     recentOrders: data.recent_orders || [],
                     rewardHistory: data.reward_history || [],
                 });
@@ -201,7 +206,12 @@ function CustomerDetailContent() {
         try {
             const response = await customerService.fetchLedger(id);
             if (response.status === 200) {
-                setLedger(response.data.results || response.data || []);
+                const payload = response.data.results || response.data || [];
+                const rows: KhataLedgerListRow[] = (Array.isArray(payload) ? payload : []).map((item: KhataLedgerListRow) => ({
+                    ...item,
+                    notes: item.notes,
+                }));
+                setLedger(rows);
             }
         } catch (err) {
             toast.error('Failed to load ledger history');
@@ -371,6 +381,7 @@ function CustomerDetailContent() {
                         <div className="flex-1 text-center md:text-left space-y-2">
                             <h1 className="text-3xl font-bold">{customer.customerName}</h1>
                             <p className="text-muted-foreground">{customer.phoneNumber || customer.email || 'No contact info'}</p>
+                            <CustomerMappingNotes customer={customer} />
                         </div>
 
                         <div className="flex flex-col items-end gap-2">
@@ -528,10 +539,10 @@ function CustomerDetailContent() {
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {ledger.map((entry: any) => (
+                                                        {ledger.map((entry) => (
                                                             <TableRow key={entry.id}>
                                                                 <TableCell className="text-xs">
-                                                                    {new Date(entry.created_at).toLocaleDateString('en-IN', {
+                                                                    {new Date(entry.created_at || '').toLocaleDateString('en-IN', {
                                                                         day: '2-digit',
                                                                         month: 'short',
                                                                         year: '2-digit',
@@ -553,7 +564,8 @@ function CustomerDetailContent() {
                                                                             >
                                                                                 {`Order #${entry.order_number}`}
                                                                             </Link>
-                                                                        ) : entry.notes}
+                                                                        ) : null}
+                                                                        <KhataLedgerNotes entry={entry} className="mt-0.5" />
                                                                     </div>
                                                                     {entry.payment_mode && (
                                                                         <div className="text-[10px] text-muted-foreground uppercase">
@@ -562,10 +574,10 @@ function CustomerDetailContent() {
                                                                     )}
                                                                 </TableCell>
                                                                 <TableCell className={`text-right font-medium ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
-                                                                    {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
+                                                                    {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-bold">
-                                                                    {formatCurrency(entry.balance_after)}
+                                                                    {formatCurrency(Number(entry.balance_after))}
                                                                 </TableCell>
                                                             </TableRow>
                                                         ))}
@@ -575,7 +587,7 @@ function CustomerDetailContent() {
 
                                             {/* Mobile Ledger List */}
                                             <div className="block md:hidden space-y-3">
-                                                {ledger.map((entry: any) => (
+                                                {ledger.map((entry) => (
                                                     <div 
                                                         key={entry.id} 
                                                         className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm flex flex-col gap-2.5"
@@ -586,7 +598,7 @@ function CustomerDetailContent() {
                                                                     {entry.transaction_type}
                                                                 </Badge>
                                                                 <span className="text-[10px] text-muted-foreground font-semibold">
-                                                                    {new Date(entry.created_at).toLocaleDateString('en-IN', {
+                                                                    {new Date(entry.created_at || '').toLocaleDateString('en-IN', {
                                                                         day: '2-digit',
                                                                         month: 'short',
                                                                         year: '2-digit',
@@ -596,21 +608,22 @@ function CustomerDetailContent() {
                                                                 </span>
                                                             </div>
                                                             <span className={`text-sm font-extrabold ${entry.transaction_type === 'PAYMENT' ? "text-green-600" : "text-red-600"}`}>
-                                                                {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(entry.amount)}
+                                                                {entry.transaction_type === 'PAYMENT' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                                                             </span>
                                                         </div>
                                                         <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-50">
                                                             <div className="flex flex-col gap-0.5 min-w-0">
-                                                                <span className="font-bold text-gray-700 truncate">
-                                                                    {entry.order_number ? (
+                                                                {entry.order_number ? (
+                                                                    <span className="font-bold text-gray-700 truncate">
                                                                         <Link
                                                                             href={orderDetailsHref({ id: entry.order, orderNumber: entry.order_number }) || '#'}
                                                                             className="text-primary hover:underline"
                                                                         >
                                                                             {`Order #${entry.order_number}`}
                                                                         </Link>
-                                                                    ) : (entry.notes || 'No description')}
-                                                                </span>
+                                                                    </span>
+                                                                ) : null}
+                                                                <KhataLedgerNotes entry={entry} className="text-[10px] font-normal normal-case tracking-normal" />
                                                                 {entry.payment_mode && (
                                                                     <span className="text-[9px] text-muted-foreground uppercase font-semibold">
                                                                         Mode: {entry.payment_mode}
@@ -619,7 +632,7 @@ function CustomerDetailContent() {
                                                             </div>
                                                             <div className="flex flex-col items-end shrink-0">
                                                                 <span className="text-[9px] text-muted-foreground uppercase font-bold">Balance</span>
-                                                                <span className="font-extrabold text-gray-900">{formatCurrency(entry.balance_after)}</span>
+                                                                <span className="font-extrabold text-gray-900">{formatCurrency(Number(entry.balance_after))}</span>
                                                             </div>
                                                         </div>
                                                     </div>
