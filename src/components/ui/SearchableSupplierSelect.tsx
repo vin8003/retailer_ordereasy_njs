@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check, X } from 'lucide-react';
+import { selectableSuppliersForNewPurchase } from '@/lib/suppliers';
 
 interface Supplier {
     id: number;
@@ -48,9 +49,8 @@ export default function SearchableSupplierSelect({
 
     const selectedSupplier = suppliers.find(s => s.id.toString() === value);
 
-    const visibleSuppliers = suppliers.filter(
-        s => s.is_active !== false || s.id.toString() === value
-    );
+    // New PI: hide inactive. Edit PI: keep the current supplier even if later deactivated.
+    const visibleSuppliers = selectableSuppliersForNewPurchase(suppliers, value);
 
     const filteredSuppliers = search.trim()
         ? visibleSuppliers.filter(s =>

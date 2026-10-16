@@ -12,6 +12,8 @@ export const PERMISSIONS = {
   CATALOG_PRICE: 'catalog.price',
   CATALOG_IMAGE: 'catalog.image',
   INVENTORY_ADJUST: 'inventory.adjust',
+  PURCHASING_TERMS: 'purchasing.terms',
+  PURCHASING_SUPPLIERS: 'purchasing.suppliers',
   CREDIT_MANAGE: 'credit.manage',
   CREDIT_OVERRIDE: 'credit.override',
 } as const;
