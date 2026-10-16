@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { PurchaseReturnDetailNotes } from '@/components/purchases/PurchaseReturnDetailNotes';
 
 function ReturnDetailContent() {
     const router = useRouter();
@@ -179,16 +180,7 @@ function ReturnDetailContent() {
                             </p>
                         </div>
 
-                        {returnData.notes && (
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">
-                                    Notes
-                                </label>
-                                <div className="bg-gray-50 rounded-2xl py-4 px-5 text-gray-700 text-sm italic border border-gray-100">
-                                    "{returnData.notes}"
-                                </div>
-                            </div>
-                        )}
+                        <PurchaseReturnDetailNotes purchaseReturn={returnData} />
                         
                         {returnData.processed_by_name && (
                             <div className="mt-8 text-xs text-gray-400 font-medium px-1">
