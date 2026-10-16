@@ -13,6 +13,7 @@ import {
   buildInboxQueryParams,
   type InboxDeliveryModeFilter,
   type InboxSourceFilter,
+  type InboxStatusChip,
 } from "@/lib/inbox";
 import { useOrgContext } from "@/hooks/useOrgContext";
 import { PERMISSIONS } from "@/lib/org";
@@ -27,6 +28,7 @@ export default function InboxPage() {
   const [source, setSource] = useState<InboxSourceFilter>("");
   const [deliveryMode, setDeliveryMode] = useState<InboxDeliveryModeFilter>("");
   const [pickupQueue, setPickupQueue] = useState(false);
+  const [statusChip, setStatusChip] = useState<InboxStatusChip>("");
   const [nextPage, setNextPage] = useState<string | null>(null);
 
   const canRead = hasPermission(PERMISSIONS.ORDERS_READ);
@@ -47,9 +49,11 @@ export default function InboxPage() {
           source,
           deliveryMode,
           pickupQueue,
+          statusChip,
           search: searchQuery,
         });
 
+        // BE inbox supports exact ?status= including delivered/cancelled (no history hop).
         let response;
         if (append && nextPage) {
           const url = new URL(nextPage);
@@ -72,10 +76,11 @@ export default function InboxPage() {
         setIsFetchingMore(false);
       }
     },
-    [needsAction, source, deliveryMode, pickupQueue, searchQuery, nextPage, canRead]
+    [needsAction, source, deliveryMode, pickupQueue, statusChip, searchQuery, nextPage, canRead]
   );
 
   useEffect(() => {
+    setNextPage(null);
     const timer = setTimeout(() => {
       fetchInbox(false);
     }, 300);
@@ -87,7 +92,7 @@ export default function InboxPage() {
       clearTimeout(timer);
       window.removeEventListener("fcm_order_update", handleFcmUpdate);
     };
-  }, [needsAction, source, deliveryMode, pickupQueue, searchQuery, canRead]);
+  }, [needsAction, source, deliveryMode, pickupQueue, statusChip, searchQuery, canRead]);
 
   if (!canRead) {
     return (
@@ -129,6 +134,8 @@ export default function InboxPage() {
         onDeliveryModeChange={setDeliveryMode}
         pickupQueue={pickupQueue}
         onPickupQueueChange={setPickupQueue}
+        statusChip={statusChip}
+        onStatusChipChange={setStatusChip}
       />
 
       <OrderTable orders={orders} isLoading={isLoading} />
