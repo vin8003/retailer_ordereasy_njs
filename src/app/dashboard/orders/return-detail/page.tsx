@@ -193,6 +193,14 @@ function SalesReturnDetailContent() {
                             </div>
                         </div>
 
+                        {returnData.reason?.trim() && (
+                            <div className="space-y-2 mb-6">
+                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Reason</div>
+                                <div aria-label={`Reason ${returnData.reason.trim()}`} className="text-sm text-gray-700 font-medium whitespace-pre-wrap">
+                                    {returnData.reason.trim()}
+                                </div>
+                            </div>
+                        )}
                         <SalesReturnDetailNotes salesReturn={returnData} className="mb-8" />
 
                         {returnData.processed_by_name && (

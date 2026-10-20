@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
 import { OrderDetailNotes } from "@/components/orders/OrderDetailNotes";
+import { OrderNotesEditor } from "@/components/orders/OrderNotesEditor";
 import { OrderCustomerPhone } from "@/components/orders/OrderCustomerPhone";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
 import { PaymentModeLabel } from "@/components/orders/PaymentModeLabel";
@@ -240,6 +241,11 @@ function OrderDetailContent() {
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
                     </p>
                     <OrderDetailNotes order={order} />
+                    <OrderNotesEditor
+                        orderId={order.id}
+                        notes={order.notes}
+                        onSaved={(notes) => setOrder((prev: any) => (prev ? { ...prev, notes } : prev))}
+                    />
                     {order.expected_processing_start && order.status === 'pending' && (
                         <div className="flex items-center gap-2 text-orange-600 bg-orange-50 border border-orange-200 px-3 py-2 rounded-md mt-1 w-fit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>

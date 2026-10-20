@@ -13,6 +13,7 @@ import { InfiniteScrollTrigger } from '@/components/dashboard/InfiniteScrollTrig
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
 import { SupplierListScalars } from '@/components/suppliers/SupplierListScalars';
 import { SupplierListEmail } from '@/components/suppliers/SupplierListEmail';
+import { supplierEmailError } from '@/lib/supplierEmail';
 
 interface Supplier {
     id: number;
@@ -114,6 +115,7 @@ export default function SuppliersPage() {
             company_name: formValues.company_name,
             contact_person: formValues.contact_person,
             phone_number: formValues.phone_number,
+            email: formValues.email.trim(),
             address: formValues.address,
         };
         try {
@@ -121,12 +123,17 @@ export default function SuppliersPage() {
                 await api.patch(`/products/erp/suppliers/${editingSupplier.id}/`, details);
                 toast.success("Supplier updated");
             } else {
-                await api.post('/products/erp/suppliers/', { ...details, email: formValues.email });
+                await api.post('/products/erp/suppliers/', details);
                 toast.success("Supplier added successfully");
             }
             closeFormModal();
             fetchSuppliers();
         } catch (error) {
+            const emailError = supplierEmailError(error);
+            if (emailError) {
+                toast.error(emailError);
+                return;
+            }
             toast.error(editingSupplier ? "Failed to update supplier" : "Failed to add supplier");
         } finally {
             setIsSaving(false);
