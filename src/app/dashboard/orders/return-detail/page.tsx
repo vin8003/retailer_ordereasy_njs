@@ -23,6 +23,7 @@ function SalesReturnDetailContent() {
         return_date?: string | null;
         created_at?: string | null;
         total_amount?: number | string | null;
+        refund_amount?: number | string | null;
         processed_by_name?: string | null;
         items?: Array<{
             id?: number;
@@ -187,7 +188,7 @@ function SalesReturnDetailContent() {
                             <div className="flex justify-between items-end pt-4 border-t border-dashed border-gray-200">
                                 <span className="text-lg font-bold text-gray-900">Total Refund</span>
                                 <span className="text-4xl font-black text-red-600 tracking-tighter">
-                                    ₹{Number(returnData.total_amount || 0).toFixed(2)}
+                                    ₹{Number(returnData.refund_amount ?? returnData.total_amount ?? 0).toFixed(2)}
                                 </span>
                             </div>
                         </div>

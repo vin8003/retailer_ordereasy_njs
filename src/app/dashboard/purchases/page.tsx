@@ -137,8 +137,10 @@ export default function PurchasesPage() {
         setShowCustom(key === 'custom');
     };
 
-    const totalPurchases = invoices.reduce((s, i) => s + Number(i.total_amount), 0);
-    const unpaidBalance = invoices.reduce((s, i) => s + (Number(i.total_amount) - Number(i.paid_amount)), 0);
+    // Return rows are merged into this list but carry no paid_amount; totals cover invoices only.
+    const invoiceRows = invoices.filter((i) => i.type !== 'return');
+    const totalPurchases = invoiceRows.reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
+    const unpaidBalance = invoiceRows.reduce((s, i) => s + ((Number(i.total_amount) || 0) - (Number(i.paid_amount) || 0)), 0);
 
     return (
         <div className="p-8 max-w-7xl mx-auto font-sans">
