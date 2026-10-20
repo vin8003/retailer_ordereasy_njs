@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -16,23 +19,52 @@ import {
     Package,
     BookOpen,
     Barcode,
-    Tag
+    Tag,
+    ShieldCheck
 } from 'lucide-react';
+import { authService } from '@/services/api';
 
 const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
     const pathname = usePathname();
+    const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const saved = localStorage.getItem('user_profile');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    return Boolean(parsed.is_admin);
+                }
+            } catch (e) {}
+        }
+        return false;
+    });
+
+    useEffect(() => {
+        authService.fetchAuthProfile()
+            .then((res) => {
+                if (res.data && typeof res.data.is_admin === 'boolean') {
+                    setIsAdmin(res.data.is_admin);
+                    try {
+                        const saved = localStorage.getItem('user_profile');
+                        const current = saved ? JSON.parse(saved) : {};
+                        localStorage.setItem('user_profile', JSON.stringify({ ...current, ...res.data }));
+                    } catch (e) {}
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     const handleLogout = () => {
         // Clear tokens and redirect
         if (typeof window !== 'undefined') {
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
+            localStorage.removeItem('user_profile');
             window.location.href = '/login';
         }
     };
 
-    const navItems = [
-
+    const baseNavItems = [
         { label: 'Overview', icon: LayoutDashboard, href: '/dashboard' },
         { label: 'POS Billing', icon: Calculator, href: '/dashboard/pos' },
         { label: 'Purchases', icon: Package, href: '/dashboard/purchases' },
@@ -48,6 +80,12 @@ const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
         { label: 'Profile', icon: User, href: '/dashboard/profile' },
         { label: 'Operating Hours', icon: Clock, href: '/dashboard/operating-hours' },
     ];
+
+    const adminNavItems = isAdmin
+        ? [{ label: 'Admin Panel', icon: ShieldCheck, href: '/dashboard/admin/verifications' }]
+        : [];
+
+    const navItems = [...baseNavItems, ...adminNavItems];
 
     return (
         <aside className="hidden md:flex flex-col w-64 bg-sidebar border-r border-sidebar-border h-full fixed left-0 top-0 shadow-xl shadow-primary/5">

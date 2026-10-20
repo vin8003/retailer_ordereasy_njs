@@ -29,7 +29,6 @@ const formSchema = z.object({
     phone_number: z.string().length(10, "Phone number must be 10 digits"),
     password: z.string().min(1, "Password is required"),
     confirm_password: z.string().min(1, "Confirm password is required"),
-    access_code: z.string().min(1, "Access code is required"),
 }).refine((data) => data.password === data.confirm_password, {
     message: "Passwords do not match",
     path: ["confirm_password"],
@@ -49,7 +48,6 @@ export default function SignupPage() {
             phone_number: "",
             password: "",
             confirm_password: "",
-            access_code: "",
         },
     });
 
@@ -63,7 +61,6 @@ export default function SignupPage() {
                 phone_number: `+91${values.phone_number}`,
                 password: values.password,
                 password_confirm: values.confirm_password,
-                access_code: values.access_code,
             };
 
             const response = await authService.signup(payload);
@@ -79,8 +76,29 @@ export default function SignupPage() {
             }
         } catch (error: any) {
             console.error("Signup error:", error);
-            const errorMessage =
-                error.response?.data?.detail || "Failed to create account. Please try again.";
+            let errorMessage = "Failed to create account. Please try again.";
+            const data = error.response?.data;
+            if (data) {
+                if (typeof data === "string") {
+                    errorMessage = data;
+                } else if (data.detail) {
+                    errorMessage = data.detail;
+                } else if (data.error) {
+                    errorMessage = data.error;
+                } else if (typeof data === "object") {
+                    const errorParts: string[] = [];
+                    for (const [key, value] of Object.entries(data)) {
+                        const msg = Array.isArray(value) ? value.join(", ") : String(value);
+                        errorParts.push(msg);
+                        if (['username', 'email', 'phone_number', 'password', 'confirm_password'].includes(key)) {
+                            form.setError(key as any, { message: msg });
+                        }
+                    }
+                    if (errorParts.length > 0) {
+                        errorMessage = errorParts[0];
+                    }
+                }
+            }
             toast.error(errorMessage);
         } finally {
             setIsLoading(false);
@@ -163,19 +181,7 @@ export default function SignupPage() {
                                     </FormItem>
                                 )}
                             />
-                            <FormField
-                                control={form.control}
-                                name="access_code"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Access Code</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Enter Admin Access Code" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+
                             <FormField
                                 control={form.control}
                                 name="password"
@@ -252,6 +258,12 @@ export default function SignupPage() {
                             </Button>
                         </form>
                     </Form>
+                    <div className="mt-4 text-center text-sm">
+                        Already have an account?{" "}
+                        <Link href="/login" className="text-blue-600 hover:underline font-medium">
+                            Log in
+                        </Link>
+                    </div>
                 </CardContent>
             </Card>
         </div>
