@@ -18,6 +18,7 @@ import POSStatusBar from '@/components/pos/POSStatusBar';
 import { POSCartLineDetails } from '@/components/pos/POSCartLineDetails';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
+import { getBatchMrp, pickPosBatch } from '@/utils/posBatches';
 import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
@@ -464,9 +465,9 @@ export default function POSPage() {
                 (p.batches && p.batches.some(b => b.barcode === searchTerm))
             );
             if (matches.length === 1) {
-                handleAddToCart(matches[0], searchTerm);
+                const added = handleAddToCart(matches[0], searchTerm);
                 setSearchTerm('');
-                toast.success(`Added ${matches[0].name}`, { duration: 1000, icon: '🛒' });
+                if (added) toast.success(`Added ${matches[0].name}`, { duration: 1000, icon: '🛒' });
             } else if (matches.length > 1) {
                 handleAddToCart(matches[0], searchTerm);
                 setSearchTerm('');
@@ -506,41 +507,26 @@ export default function POSPage() {
             console.log(`${product.name} is out of stock in system, but allowing sale.`);
         }
 
-        // If product has batches, we need to select one
+        // If product has batches, we need to select one (never an expired one: BE refuses it)
         if (product.has_batches && product.batches && product.batches.length > 0) {
-            // Default is_active to true — POS fast path only returns active batches
-            const activeBatches = product.batches.filter(b => b.is_active !== false);
-            
-            if (scanBarcode) {
-                // Barcode scan: find batches matching this specific barcode
-                const matchingBatches = activeBatches.filter(b => b.barcode === scanBarcode);
-                
-                if (matchingBatches.length === 1) {
-                    // Unique barcode -> auto-select, no modal needed
-                    finalizeAddToCart(product, matchingBatches[0]);
-                    return;
-                } else if (matchingBatches.length > 1) {
-                    // 2+ batches share same barcode -> show modal to pick
-                    setBatchModalProduct(product);
-                    setIsBatchModalOpen(true);
-                    return;
-                }
-                // If no batch matched this barcode, fall through to check product-level barcode
+            const pick = pickPosBatch(product.batches, scanBarcode, product.barcode);
+            if (pick.kind === 'batch') {
+                finalizeAddToCart(product, pick.batch);
+                return true;
             }
-            
-            // Manual click (no scan) or barcode didn't match any batch
-            if (activeBatches.length === 1) {
-                // Only 1 active batch -> auto-select, no modal needed
-                finalizeAddToCart(product, activeBatches[0]);
-            } else {
-                // 2+ active batches, no unique barcode match -> show modal
+            if (pick.kind === 'choose') {
                 setBatchModalProduct(product);
                 setIsBatchModalOpen(true);
+                return true;
             }
-            return;
+            toast.error(pick.kind === 'expired'
+                ? `${product.name}: batch ${pick.batch.batch_number || pick.batch.id} has expired and cannot be sold`
+                : `${product.name}: no batch can be sold (all expired or inactive)`);
+            return false;
         }
 
         finalizeAddToCart(product);
+        return true;
     };
 
     const finalizeAddToCart = (product: Product, batch?: any) => {
@@ -862,10 +848,11 @@ export default function POSPage() {
             const matches = products.filter(p => p.barcode === actualBarcode || (p.batches && p.batches.some(b => b.barcode === actualBarcode)));
             if (matches.length > 0) {
                 e.preventDefault();
-                for (let i = 0; i < multiplier; i++) {
-                    handleAddToCart(matches[0], actualBarcode);
+                let added = true;
+                for (let i = 0; i < multiplier && added; i++) {
+                    added = handleAddToCart(matches[0], actualBarcode);
                 }
-                if (multiplier > 1) toast.success(`Added ${multiplier}× ${matches[0].name}`, { duration: 1500, icon: '📦' });
+                if (added && multiplier > 1) toast.success(`Added ${multiplier}× ${matches[0].name}`, { duration: 1500, icon: '📦' });
                 setSearchTerm('');
                 return;
             }
@@ -873,8 +860,9 @@ export default function POSPage() {
             // 2. If single search result, add it directly
             if (filteredProducts.length === 1) {
                 e.preventDefault();
-                for (let i = 0; i < multiplier; i++) {
-                    handleAddToCart(filteredProducts[0]);
+                let added = true;
+                for (let i = 0; i < multiplier && added; i++) {
+                    added = handleAddToCart(filteredProducts[0]);
                 }
                 setSearchTerm('');
                 return;
@@ -1646,13 +1634,16 @@ export default function POSPage() {
                             <div className="grid gap-3">
                                 {batchModalProduct.batches?.filter(b => b.is_active !== false).map((batch) => {
                                     const isDiffPrice = parseFloat(batch.price) !== parseFloat(batchModalProduct.price as any);
-                                    const isDiffMRP = parseFloat(batch.original_price) !== parseFloat(batchModalProduct.discounted_price as any);
-                                    
+                                    const mrp = getBatchMrp(batch);
+                                    const isDiffMRP = mrp !== null && mrp !== parseFloat(batchModalProduct.discounted_price as any);
+                                    const expired = batch.is_expired === true;
+
                                     return (
                                         <button
                                             key={batch.id}
                                             onClick={() => finalizeAddToCart(batchModalProduct, batch)}
-                                            className="flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left border-gray-100 hover:border-primary hover:bg-primary/5"
+                                            disabled={expired}
+                                            className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all group text-left border-gray-100 ${expired ? 'opacity-60 cursor-not-allowed' : 'hover:border-primary hover:bg-primary/5'}`}
                                         >
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
@@ -1664,14 +1655,21 @@ export default function POSPage() {
                                                             {batch.barcode}
                                                         </span>
                                                     )}
+                                                    {expired && (
+                                                        <span className="text-[10px] bg-red-50 px-2 py-0.5 rounded text-red-600 font-bold uppercase">
+                                                            Expired
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className="flex gap-3 text-sm">
                                                     <span className={`${isDiffPrice ? 'text-primary font-bold' : 'text-gray-500'}`}>
                                                         Price: ₹{parseFloat(batch.price).toFixed(2)}
                                                     </span>
-                                                    <span className={`${isDiffMRP ? 'text-orange-500 font-bold' : 'text-gray-400'}`}>
-                                                        MRP: ₹{parseFloat(batch.original_price).toFixed(2)}
-                                                    </span>
+                                                    {mrp !== null && (
+                                                        <span className={`${isDiffMRP ? 'text-orange-500 font-bold' : 'text-gray-400'}`}>
+                                                            MRP: ₹{mrp.toFixed(2)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                             
@@ -1679,9 +1677,11 @@ export default function POSPage() {
                                                 <p className={`text-xs font-bold uppercase tracking-wider ${batch.quantity > 5 ? 'text-green-600' : 'text-red-500'}`}>
                                                     {batch.quantity} in stock
                                                 </p>
-                                                <div className="mt-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold text-sm">
-                                                    Select <Check size={16} />
-                                                </div>
+                                                {!expired && (
+                                                    <div className="mt-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-bold text-sm">
+                                                        Select <Check size={16} />
+                                                    </div>
+                                                )}
                                             </div>
                                         </button>
                                     );
