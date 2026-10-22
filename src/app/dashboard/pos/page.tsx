@@ -20,7 +20,7 @@ import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { getBatchMrp, pickPosBatch } from '@/utils/posBatches';
 import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
-import { POS_DEFAULT_RATING } from '@/utils/posCustomer';
+import { POS_DEFAULT_RATING, customerCheckUpdate } from '@/utils/posCustomer';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
@@ -1395,10 +1395,8 @@ export default function POSPage() {
                                             try {
                                                 const response = await api.get(`/products/erp/verify-pos-customer/?mobile_number=${mobile}`);
                                                 const data = response.data;
-                                                updateActiveSession({
-                                                    verificationStatus: data.status,
-                                                    customerName: data.name && !activeSession.customerName ? data.name : activeSession.customerName
-                                                });
+                                                // The cashier may have typed a name meanwhile: read the session as it is now.
+                                                setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, ...customerCheckUpdate(s.customerName, data) } : s));
                                             } catch (err) {
                                                 console.error(err);
                                             }
