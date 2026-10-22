@@ -20,6 +20,7 @@ import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { getBatchMrp, pickPosBatch } from '@/utils/posBatches';
 import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
+import { POS_DEFAULT_RATING } from '@/utils/posCustomer';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
@@ -192,7 +193,7 @@ export default function POSPage() {
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
-    const [selectedRating, setSelectedRating] = useState<number>(0);
+    const [selectedRating, setSelectedRating] = useState<number>(POS_DEFAULT_RATING);
     const [ratingComment, setRatingComment] = useState('');
     const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
     const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -713,7 +714,7 @@ export default function POSPage() {
             completedOrder: null
         });
         setRatingSubmitted(false);
-        setSelectedRating(5);
+        setSelectedRating(POS_DEFAULT_RATING);
         setRatingComment('');
         setActiveGridIndex(-1);
         setActiveCartIndex(-1);
