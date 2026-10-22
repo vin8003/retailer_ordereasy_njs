@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import api, { offerService } from '@/services/api';
+import api, { customerService, offerService } from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
@@ -729,10 +729,8 @@ export default function POSPage() {
 
         setIsRatingSubmitting(true);
         try {
-            await api.post(`/orders/retailer-rating/${activeSession.completedOrder.id}/`, {
-                rating: selectedRating,
-                comment: ratingComment
-            });
+            // Same route as the order page (orders/<id>/rate-customer/).
+            await customerService.rateCustomer(activeSession.completedOrder.id, selectedRating, ratingComment);
             toast.success("Customer rated successfully!");
             setRatingSubmitted(true);
             setTimeout(() => setIsRatingModalOpen(false), 1500);
