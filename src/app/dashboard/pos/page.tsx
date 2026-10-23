@@ -21,6 +21,7 @@ import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { getBatchMrp, pickPosBatch } from '@/utils/posBatches';
 import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
 import { POS_DEFAULT_RATING, customerCheckUpdate } from '@/utils/posCustomer';
+import { billOversells } from '@/utils/posOversell';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
@@ -673,7 +674,6 @@ export default function POSPage() {
                     quantity: item.cart_quantity,
                     unit_price: item.price
                 })),
-                allow_negative: true,
                 payment_mode: activeSession.paymentMode,
                 subtotal: subtotal,
                 discount_amount: activeSession.discountAmount,
@@ -681,6 +681,12 @@ export default function POSPage() {
                 customer_name: activeSession.customerName,
                 customer_mobile: activeSession.customerMobile
             };
+
+            // The API takes a bill past the stock on hand only for a role with orders.oversell, and refuses
+            // the flag from any other role before it looks at stock, so ask only when a line needs it.
+            if (billOversells(activeSession.cart)) {
+                payload.allow_negative = true;
+            }
 
             if (activeSession.paymentMode === 'split') {
                 payload.payment_details = {
