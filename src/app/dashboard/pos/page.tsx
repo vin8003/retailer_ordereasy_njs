@@ -673,6 +673,7 @@ export default function POSPage() {
                     quantity: item.cart_quantity,
                     unit_price: item.price
                 })),
+                allow_negative: true,
                 payment_mode: activeSession.paymentMode,
                 subtotal: subtotal,
                 discount_amount: activeSession.discountAmount,
