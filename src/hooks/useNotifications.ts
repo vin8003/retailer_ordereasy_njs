@@ -1,17 +1,50 @@
-import { useEffect } from 'react';
-import { messaging, onMessage, requestNotificationPermission } from '@/services/firebase';
+import { useCallback, useEffect, useState } from 'react';
+import { messaging, onMessage, getPushPermission, getPushToken, requestNotificationPermission, type PushPermission } from '@/services/firebase';
 import { authService } from '@/services/api';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+
+const PERMISSION_EVENT = 'push-permission-changed';
+
+/** The notification permission, and `enable` to ask for it. Every user of the hook stays in sync. */
+export const usePushPermission = () => {
+    const pathname = usePathname();
+    // Starts as 'unsupported' so the server HTML and the first client render agree.
+    const [permission, setPermission] = useState<PushPermission>('unsupported');
+
+    useEffect(() => {
+        const read = () => setPermission(getPushPermission());
+        read();
+        window.addEventListener(PERMISSION_EVENT, read);
+        return () => window.removeEventListener(PERMISSION_EVENT, read);
+    }, [pathname]);
+
+    /** Call from a tap: browsers refuse the permission prompt anywhere else. */
+    const enable = useCallback(async () => {
+        const result = await requestNotificationPermission();
+        setPermission(result);
+        window.dispatchEvent(new Event(PERMISSION_EVENT));
+    }, []);
+
+    return { permission, enable };
+};
 
 export const useNotifications = () => {
     const router = useRouter();
+    const pathname = usePathname();
+    const { permission, enable } = usePushPermission();
+    const [signedIn, setSignedIn] = useState(false);
+
+    // Checked after mount and on each navigation, since login and logout happen without a reload.
+    useEffect(() => {
+        setSignedIn(Boolean(localStorage.getItem('access_token')));
+    }, [pathname]);
 
     useEffect(() => {
         const setupNotifications = async () => {
             if (typeof window === 'undefined' || !messaging) return;
 
-            // 1. Request permission and get token
-            const token = await requestNotificationPermission();
+            // 1. Get the token. This never prompts; see `enable`.
+            const token = await getPushToken();
             if (token) {
                 console.log('FCM Token (Retailer):', token);
                 await authService.registerDeviceToken(token);
@@ -77,11 +110,12 @@ export const useNotifications = () => {
             };
         };
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-        if (token) {
-            setupNotifications();
-        }
-    }, [router]);
+        if (!signedIn || permission !== 'granted') return;
+        const setup = setupNotifications();
+        return () => {
+            setup.then((cleanup) => cleanup?.());
+        };
+    }, [router, permission, signedIn]);
 
     const handleNotificationClick = (data: any) => {
         const orderId = data?.order_id || data?.id;
@@ -89,4 +123,6 @@ export const useNotifications = () => {
             router.push(`/dashboard/orders/details?id=${orderId}`);
         }
     };
+
+    return { permission, enable };
 };
