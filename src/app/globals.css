@@ -47,6 +47,7 @@
 }
 
 :root {
+  --bottom-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px));
   --radius: 1rem;
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);

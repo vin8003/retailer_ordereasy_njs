@@ -14,25 +14,12 @@ import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { authService, productService } from "@/services/api";
-
-interface DashboardStats {
-    total_orders: number;
-    total_revenue: number;
-    total_products: number;
-    average_rating: number;
-    average_order_value: number;
-    recent_reviews?: any[];
-    recent_orders?: any[];
-    cash_sales: number;
-    digital_sales: number;
-    pos_sales: number;
-    online_sales: number;
-}
+import { cashPercent, formatRupees, normalizeStats, type DashboardStatsData } from "@/lib/dashboardStats";
 
 export default function DashboardPage() {
     const router = useRouter();
     const [profile, setProfile] = useState<any>(null);
-    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [stats, setStats] = useState<DashboardStatsData | null>(null);
     const [demandInsights, setDemandInsights] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -76,7 +63,8 @@ export default function DashboardPage() {
                 params.end_date = endDate;
             }
             const response = await authService.fetchStats(params);
-            setStats(response.data);
+            setStats(normalizeStats(response.data));
+            setError(null);
         } catch (error: any) {
             console.error("Failed to fetch stats", error);
             const message = `Failed to load stats: ${error.response?.status} ${error.response?.statusText || error.message}`;
@@ -88,7 +76,7 @@ export default function DashboardPage() {
     const loadDemandInsights = async () => {
         try {
             const res = await productService.fetchDemandInsights();
-            setDemandInsights(res.data);
+            setDemandInsights(Array.isArray(res.data) ? res.data : []);
         } catch (error) {
             console.error("Failed to load demand insights", error);
         }
@@ -107,7 +95,11 @@ export default function DashboardPage() {
             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
                 <div className="text-red-500 font-medium">{error}</div>
                 <button
-                    onClick={() => window.location.reload()}
+                    onClick={() => {
+                        setError(null);
+                        setIsLoading(true);
+                        fetchStats().finally(() => setIsLoading(false));
+                    }}
                     className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
                 >
                     Retry
@@ -174,7 +166,7 @@ export default function DashboardPage() {
                 />
                 <StatCard
                     title="Total Revenue"
-                    value={`₹${Number(stats?.total_revenue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    value={formatRupees(stats?.total_revenue ?? 0)}
                     icon={IndianRupee}
                     description={`${timeLabel} revenue`}
                     color="bg-blue-500"
@@ -188,7 +180,7 @@ export default function DashboardPage() {
                 />
                 <StatCard
                     title="Avg Order Value"
-                    value={`₹${Number(stats?.average_order_value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                    value={formatRupees(stats?.average_order_value ?? 0)}
                     icon={TrendingUp}
                     description={`Average per order (${timeLabel})`}
                     color="bg-purple-500"
@@ -210,11 +202,11 @@ export default function DashboardPage() {
                             <div className="flex justify-between items-end">
                                 <div className="space-y-0.5">
                                     <p className="text-[10px] sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Cash in Hand</p>
-                                    <p className="text-xl sm:text-3xl font-black">₹{stats?.cash_sales?.toLocaleString() || 0}</p>
+                                    <p className="text-xl sm:text-3xl font-black">{formatRupees(stats?.cash_sales ?? 0)}</p>
                                 </div>
                                 <div className="text-right space-y-0.5">
                                     <p className="text-[10px] sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Digital</p>
-                                    <p className="text-xl sm:text-3xl font-black">₹{stats?.digital_sales?.toLocaleString() || 0}</p>
+                                    <p className="text-xl sm:text-3xl font-black">{formatRupees(stats?.digital_sales ?? 0)}</p>
                                 </div>
                             </div>
                             
@@ -222,7 +214,7 @@ export default function DashboardPage() {
                                 <div 
                                     className="h-full bg-emerald-500 transition-all duration-1000 ease-out"
                                     style={{ 
-                                        width: `${stats && stats.total_revenue > 0 ? (stats.cash_sales / stats.total_revenue) * 100 : 50}%` 
+                                        width: `${stats ? cashPercent(stats) : 0}%` 
                                     }}
                                 />
                                 <div className="h-full bg-blue-500 flex-1 transition-all duration-1000 ease-out" />
@@ -231,10 +223,10 @@ export default function DashboardPage() {
                             <div className="flex justify-between text-[8px] sm:text-[10px] font-bold uppercase tracking-widest">
                                 <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                                     <div className="size-1.5 sm:size-2 rounded-full bg-emerald-500" />
-                                    {stats && stats.total_revenue > 0 ? ((stats.cash_sales / stats.total_revenue) * 100).toFixed(0) : 0}% Cash
+                                    {stats ? cashPercent(stats) : 0}% Cash
                                 </div>
                                 <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                                    {stats && stats.total_revenue > 0 ? ((stats.digital_sales / stats.total_revenue) * 100).toFixed(0) : 0}% Digital
+                                    {stats && stats.total_revenue > 0 ? 100 - cashPercent(stats) : 0}% Digital
                                     <div className="size-1.5 sm:size-2 rounded-full bg-blue-500" />
                                 </div>
                             </div>
@@ -258,14 +250,14 @@ export default function DashboardPage() {
                                     <MonitorIcon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-600" />
                                 </div>
                                 <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 sm:mb-1">POS Sales</p>
-                                <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white">₹{stats?.pos_sales?.toLocaleString() || 0}</p>
+                                <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white">{formatRupees(stats?.pos_sales ?? 0)}</p>
                             </div>
                             <div className="p-3 sm:p-4 rounded-2xl sm:rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30 flex flex-col items-center justify-center text-center">
                                 <div className="p-1.5 sm:p-2 bg-white dark:bg-indigo-900/30 rounded-xl shadow-sm mb-2 sm:mb-3">
                                     <Globe className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
                                 </div>
                                 <p className="text-[8px] sm:text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-0.5 sm:mb-1">Online Store</p>
-                                <p className="text-lg sm:text-2xl font-black text-indigo-900 dark:text-indigo-100">₹{stats?.online_sales?.toLocaleString() || 0}</p>
+                                <p className="text-lg sm:text-2xl font-black text-indigo-900 dark:text-indigo-100">{formatRupees(stats?.online_sales ?? 0)}</p>
                             </div>
                         </div>
                     </CardContent>
