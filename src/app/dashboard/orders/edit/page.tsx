@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { orderService, rewardService } from "@/services/api";
 import { ProductSelector } from "@/components/products/ProductSelector";
+import { addedLinePrice, discountAmountToSave, extraOrderDiscount, offerSavingsInLines } from "@/utils/orderEditDiscount";
 
 interface OrderItem {
     id: number;
@@ -40,6 +41,8 @@ function OrderEditContent() {
     const [items, setItems] = useState<OrderItem[]>([]);
     const [deliveryMode, setDeliveryMode] = useState<string>("delivery");
     const [discountAmount, setDiscountAmount] = useState<number>(0);
+    // App offer savings inside the loaded line prices; the order discount already counts them.
+    const [offerSavings, setOfferSavings] = useState<number>(0);
 
     useEffect(() => {
         const id = searchParams.get('id');
@@ -60,7 +63,9 @@ function OrderEditContent() {
                 product_id: item.product?.id || item.product_id || (typeof item.product === 'number' ? item.product : undefined)
             })));
             setDeliveryMode(orderData.delivery_mode);
-            setDiscountAmount(Number(orderData.discount_amount || 0));
+            const savings = offerSavingsInLines(orderData.items);
+            setOfferSavings(savings);
+            setDiscountAmount(extraOrderDiscount(orderData.discount_amount, savings));
         } catch (err) {
             console.error("Failed to load order", err);
             toast.error("Failed to load order details");
@@ -117,16 +122,17 @@ function OrderEditContent() {
 
         // Add as new item (use negative ID for temporary tracking if needed, 
         // but backend expects product_id for new items)
+        const price = addedLinePrice(product, order?.source);
         const newItem: OrderItem = {
             id: -(Date.now()), // Temp ID
             product_id: product.id,
             product_name: product.name,
-            product_price: product.price,
-            unit_price: product.price,
+            product_price: price,
+            unit_price: price,
             quantity: 1,
             product_unit: product.unit,
             product_image: product.image_display_url,
-            total_price: product.price
+            total_price: price
         };
         setItems(prev => [...prev, newItem]);
     };
@@ -149,7 +155,12 @@ function OrderEditContent() {
             }
         }
         
-        const totalBeforePoints = Math.max(0, subtotal + deliveryFee - discountAmount);
+        const extraDiscount = Math.max(0, discountAmount || 0);
+        // What BE will count as savings inside the edited lines (offers and price cuts).
+        const lineSavings = offerSavingsInLines(
+            items.map(item => ({ ...item, total_price: item.quantity * item.unit_price }))
+        );
+        const totalBeforePoints = Math.max(0, subtotal + deliveryFee - extraDiscount);
 
         let pointsRefundValue = 0;
         let finalPointsDiscount = 0;
@@ -172,6 +183,8 @@ function OrderEditContent() {
         return {
             subtotal,
             deliveryFee,
+            extraDiscount,
+            lineSavings,
             totalBeforePoints,
             finalPointsDiscount,
             pointsRefundValue,
@@ -194,7 +207,7 @@ function OrderEditContent() {
             await orderService.modifyOrder(order.id, {
                 items: payloadItems,
                 delivery_mode: deliveryMode,
-                discount_amount: discountAmount
+                discount_amount: discountAmountToSave(offerSavings, discountAmount)
             });
 
             toast.success("Order request sent to customer for approval");
@@ -337,10 +350,16 @@ function OrderEditContent() {
                                 <Label>Additional Discount (₹)</Label>
                                 <Input
                                     type="number"
+                                    min={0}
                                     value={discountAmount}
                                     onChange={(e) => setDiscountAmount(Number(e.target.value))}
                                 />
                                 <p className="text-[10px] text-muted-foreground">Adjust manually if needed</p>
+                                {summary.lineSavings > 0 && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Item prices already include ₹{summary.lineSavings.toFixed(2)} off the list price.
+                                    </p>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -360,7 +379,7 @@ function OrderEditContent() {
                             </div>
                             <div className="flex justify-between text-sm text-green-600 font-medium">
                                 <span>Manual Discount</span>
-                                <span>- ₹{summary.deliveryFee > 0 && discountAmount > 0 ? discountAmount.toFixed(2) : discountAmount.toFixed(2)}</span>
+                                <span>- ₹{summary.extraDiscount.toFixed(2)}</span>
                             </div>
                             {summary.finalPointsDiscount > 0 && (
                                 <div className="flex justify-between text-sm text-blue-600 font-medium">

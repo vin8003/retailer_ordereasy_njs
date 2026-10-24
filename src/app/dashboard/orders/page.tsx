@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeftRight, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
@@ -38,9 +39,9 @@ export default function OrdersPage() {
             if (isAppend && nextPage) {
                 const url = new URL(nextPage);
                 const page = url.searchParams.get('page');
-                response = await orderService.fetchOrders({ ...params, page });
+                response = await orderService.fetchOrderList({ ...params, page });
             } else {
-                response = await orderService.fetchOrders(params);
+                response = await orderService.fetchOrderList(params);
             }
 
             const payload = response.data;
@@ -104,11 +105,19 @@ export default function OrdersPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
-                <p className="text-muted-foreground">
-                    Manage and track your customer orders here.
-                </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
+                    <p className="text-muted-foreground">
+                        Manage active orders from the inbox. Open an order for courier and pickup details.
+                    </p>
+                </div>
+                <Link
+                    href="/dashboard/orders/returns"
+                    className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                >
+                    <ArrowLeftRight size={16} className="text-red-500" /> Sales returns
+                </Link>
             </div>
 
             <div className="flex flex-col gap-4">

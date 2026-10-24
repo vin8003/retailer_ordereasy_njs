@@ -55,6 +55,7 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
     const [returnQtys, setReturnQtys] = useState<Record<number, number>>({});
     const [refundMode, setRefundMode] = useState<'cash' | 'upi'>('cash');
     const [reason, setReason] = useState('');
+    const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isOpen) return null;
@@ -126,7 +127,8 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
                 order_id: selectedOrder?.id,
                 items: itemsToReturn,
                 refund_payment_mode: refundMode,
-                reason: reason
+                reason: reason,
+                notes: notes.trim()
             });
             toast.success('Return processed successfully');
             onSuccess();
@@ -146,6 +148,8 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
         setStep('search');
         setSearchQuery('');
         setReturnQtys({});
+        setReason('');
+        setNotes('');
     };
 
     return (
@@ -334,6 +338,17 @@ export default function POSReturnModal({ isOpen, onClose, onSuccess }: POSReturn
                                         value={reason}
                                         onChange={(e) => setReason(e.target.value)}
                                         placeholder="e.g. Damaged product, Wrong item..."
+                                        className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none h-12 resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 block">Notes (Optional)</label>
+                                    <textarea
+                                        aria-label="Return notes"
+                                        value={notes}
+                                        maxLength={1000}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        placeholder="Internal notes, e.g. refunded at counter"
                                         className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none h-12 resize-none"
                                     />
                                 </div>

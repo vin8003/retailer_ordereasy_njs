@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote } from "lucide-react";
+import { ArrowLeft, MapPin, User, FileText, Phone, Mail, Loader2, MessageCircle, Star, UserCheck, RotateCcw, Calendar, History, Banknote, Truck } from "lucide-react";
 import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { OrderItems } from "@/components/orders/OrderItems";
+import { OrderDetailNotes } from "@/components/orders/OrderDetailNotes";
+import { OrderNotesEditor } from "@/components/orders/OrderNotesEditor";
+import { OrderCustomerPhone } from "@/components/orders/OrderCustomerPhone";
 import { OrderStatusUpdate } from "@/components/orders/OrderStatusUpdate";
+import { PaymentModeLabel } from "@/components/orders/PaymentModeLabel";
+import { getPaymentModeLabel } from "@/utils/orderPaymentMode";
+import { FulfillmentSlotReschedule } from "@/components/orders/FulfillmentSlotReschedule";
 
 import { orderService, customerService } from "@/services/api";
 import { toast } from "sonner";
@@ -92,7 +98,7 @@ function OrderDetailContent() {
             let id = Number(q.id);
             const orderNumber = q.number;
             if (!id && orderNumber) {
-                const listRes = await orderService.fetchOrders({ search: orderNumber });
+                const listRes = await orderService.fetchOrderList({ search: orderNumber });
                 const list = listRes.data.results || listRes.data || [];
                 const match = list.find((o: any) => String(o.order_number) === String(orderNumber)) || list[0];
                 id = Number(match?.id);
@@ -194,6 +200,9 @@ function OrderDetailContent() {
     if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading order details...</div>;
     if (error || !order) return <div className="p-8 text-center text-red-500">{error || "Order not found"}</div>;
 
+    const paymentModeLabel = getPaymentModeLabel(order);
+    const showUpiPaymentExtras = order.payment_mode === 'upi';
+
     const getStatusColor = (status: string) => {
         switch (status.toLowerCase()) {
             case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100';
@@ -231,6 +240,12 @@ function OrderDetailContent() {
                     <p className="text-muted-foreground">
                         Placed on {format(new Date(order.created_at), "MMM d, yyyy • h:mm a")}
                     </p>
+                    <OrderDetailNotes order={order} />
+                    <OrderNotesEditor
+                        orderId={order.id}
+                        notes={order.notes}
+                        onSaved={(notes) => setOrder((prev: any) => (prev ? { ...prev, notes } : prev))}
+                    />
                     {order.expected_processing_start && order.status === 'pending' && (
                         <div className="flex items-center gap-2 text-orange-600 bg-orange-50 border border-orange-200 px-3 py-2 rounded-md mt-1 w-fit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
@@ -405,6 +420,7 @@ function OrderDetailContent() {
                                     orderId={order.id}
                                     currentStatus={order.status}
                                     deliveryMode={order.delivery_mode}
+                                    customerId={typeof order.customer === 'number' ? order.customer : (order.user?.id ?? order.customer_id)}
                                     onStatusUpdate={fetchOrderDetails}
                                 />
                             </div>
@@ -430,86 +446,160 @@ function OrderDetailContent() {
                         </CardContent>
                     </Card>
 
-                    {/* Payment Details */}
-                    {order.payment_mode === 'upi' && (
-                        <Card className="border-primary/20 bg-primary/5 shadow-none">
+                    {/* Fulfillment slot */}
+                    {(order.fulfillment_slot_start || ['pickup', 'delivery'].includes(order.delivery_mode)) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Calendar className="h-5 w-5" /> Fulfillment slot
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <FulfillmentSlotReschedule
+                                    orderId={order.id}
+                                    retailerId={order.retailer}
+                                    deliveryMode={order.delivery_mode || 'delivery'}
+                                    currentSlotStart={order.fulfillment_slot_start}
+                                    currentSlotEnd={order.fulfillment_slot_end}
+                                    orderStatus={order.status}
+                                    onRescheduled={fetchOrderDetails}
+                                />
+                                {order.delivery_mode === 'pickup' && order.pickup_code && (
+                                    <div className="mt-4 p-3 rounded-md border bg-muted/40 text-sm">
+                                        <p className="font-medium mb-1">Pickup code</p>
+                                        <p className="font-mono text-lg tracking-widest">{order.pickup_code}</p>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Shown on order detail only — not included in inbox list.
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Delivery person info */}
+                    {order.delivery_info && (
+                        <Card className="border-purple-200 bg-purple-50/30">
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2 text-purple-800">
+                                    <Truck className="h-5 w-5" /> Delivery info
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3 text-sm">
+                                <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Courier</span>
+                                    <span className="font-medium text-right">{order.delivery_info.delivery_person_name}</span>
+                                </div>
+                                <div className="flex justify-between gap-4">
+                                    <span className="text-muted-foreground">Phone</span>
+                                    <a
+                                        href={`tel:${order.delivery_info.delivery_person_phone}`}
+                                        className="font-medium text-primary"
+                                    >
+                                        {order.delivery_info.delivery_person_phone}
+                                    </a>
+                                </div>
+                                {order.delivery_info.estimated_delivery_time && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-muted-foreground">ETA</span>
+                                        <span className="font-medium text-right">
+                                            {format(new Date(order.delivery_info.estimated_delivery_time), "MMM d, h:mm a")}
+                                        </span>
+                                    </div>
+                                )}
+                                {order.delivery_info.delivery_status && (
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-muted-foreground">Status</span>
+                                        <Badge variant="outline" className="font-bold">
+                                            {order.delivery_info.delivery_status.replace(/_/g, ' ').toUpperCase()}
+                                        </Badge>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Payment Details — optional payment_mode from payload; UPI extras unchanged */}
+                    {(paymentModeLabel || showUpiPaymentExtras) && (
+                        <Card className={cn(showUpiPaymentExtras && "border-primary/20 bg-primary/5 shadow-none")}>
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                                <CardTitle className={cn("text-lg flex items-center gap-2", showUpiPaymentExtras && "text-primary")}>
                                     <FileText className="h-5 w-5" /> Payment info
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-muted-foreground">Method:</span>
-                                        <Badge variant="outline" className="font-bold border-primary/30 text-primary">UPI</Badge>
-                                    </div>
+                                    <PaymentModeLabel order={order} />
 
-                                    {order.payment_edit_count > 1 && (
-                                        <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded w-fit animate-pulse">
-                                            CUSTOMER UPDATED TRANSACTION ID
-                                        </div>
+                                    {showUpiPaymentExtras && (
+                                        <>
+                                            {order.payment_edit_count > 1 && (
+                                                <div className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded w-fit animate-pulse">
+                                                    CUSTOMER UPDATED TRANSACTION ID
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-sm text-muted-foreground">Transaction ID:</span>
+                                                {order.payment_reference_id ? (
+                                                    <div className="flex items-center justify-between p-2 bg-white rounded border border-primary/20">
+                                                        <code className="text-sm font-bold text-primary break-all">{order.payment_reference_id}</code>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[10px] shrink-0"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(order.payment_reference_id);
+                                                                toast.success("Transaction ID copied!");
+                                                            }}
+                                                        >
+                                                            Copy
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm font-medium text-amber-600 italic bg-amber-50 p-2 rounded border border-amber-100">
+                                                        Pending Submission
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="pt-2 flex flex-col gap-2">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs text-muted-foreground font-bold uppercase">Status:</span>
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-[10px] font-bold",
+                                                        order.payment_status === 'verified' ? "bg-green-50 text-green-700 border-green-200" :
+                                                        order.payment_status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
+                                                        "bg-blue-50 text-blue-700 border-blue-200"
+                                                    )}>
+                                                        {(order.payment_status || 'pending').replace('_', ' ').toUpperCase()}
+                                                    </Badge>
+                                                </div>
+
+                                                {order.payment_status === 'pending_verification' && (
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
+                                                            onClick={() => handleVerifyPayment('verify')}
+                                                            disabled={isVerifyingPayment}
+                                                        >
+                                                            {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verify"}
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            className="h-8 text-xs"
+                                                            onClick={() => handleVerifyPayment('fail')}
+                                                            disabled={isVerifyingPayment}
+                                                        >
+                                                            {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Fail"}
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
                                     )}
-
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-sm text-muted-foreground">Transaction ID:</span>
-                                        {order.payment_reference_id ? (
-                                            <div className="flex items-center justify-between p-2 bg-white rounded border border-primary/20">
-                                                <code className="text-sm font-bold text-primary break-all">{order.payment_reference_id}</code>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="h-6 px-2 text-[10px] shrink-0"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(order.payment_reference_id);
-                                                        toast.success("Transaction ID copied!");
-                                                    }}
-                                                >
-                                                    Copy
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm font-medium text-amber-600 italic bg-amber-50 p-2 rounded border border-amber-100">
-                                                Pending Submission
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div className="pt-2 flex flex-col gap-2">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-xs text-muted-foreground font-bold uppercase">Status:</span>
-                                            <Badge variant="outline" className={cn(
-                                                "text-[10px] font-bold",
-                                                order.payment_status === 'verified' ? "bg-green-50 text-green-700 border-green-200" :
-                                                order.payment_status === 'failed' ? "bg-red-50 text-red-700 border-red-200" :
-                                                "bg-blue-50 text-blue-700 border-blue-200"
-                                            )}>
-                                                {(order.payment_status || 'pending').replace('_', ' ').toUpperCase()}
-                                            </Badge>
-                                        </div>
-
-                                        {order.payment_status === 'pending_verification' && (
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
-                                                    onClick={() => handleVerifyPayment('verify')}
-                                                    disabled={isVerifyingPayment}
-                                                >
-                                                    {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Verify"}
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="destructive" 
-                                                    className="h-8 text-xs"
-                                                    onClick={() => handleVerifyPayment('fail')}
-                                                    disabled={isVerifyingPayment}
-                                                >
-                                                    {isVerifyingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : "Fail"}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -544,12 +634,7 @@ function OrderDetailContent() {
                             </div>
                             <Separator />
                             <div className="space-y-2 text-sm">
-                                {order.customer_phone && (
-                                    <div className="flex items-center gap-2">
-                                        <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <span>{order.customer_phone}</span>
-                                    </div>
-                                )}
+                                <OrderCustomerPhone order={order} />
                                 {order.customer_email && (
                                     <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-muted-foreground" />
