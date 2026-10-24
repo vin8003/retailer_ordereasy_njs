@@ -981,7 +981,7 @@ export default function POSPage() {
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex flex-col h-[100dvh] md:static md:z-auto md:h-screen lg:flex-row bg-white md:pb-12 font-sans overflow-hidden">
+        <div className="fixed inset-x-0 top-0 bottom-[var(--bottom-nav-h)] z-[40] flex flex-col md:static md:z-auto md:h-screen lg:flex-row bg-white md:pb-12 font-sans overflow-hidden">
             <Toaster position={isMobileScreen ? 'top-center' : 'top-right'} />
 
             {/* Left Panel: Products & Search (50%) - FIXED / FLUSH */}
@@ -1246,7 +1246,7 @@ export default function POSPage() {
 
                 {/* Phone: sticky bar that opens the bill */}
                 {activeSession.cart.length > 0 && (
-                    <div className="md:hidden shrink-0 p-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                    <div className="md:hidden shrink-0 p-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] pb-3">
                         <button
                             onClick={() => setMobileView('cart')}
                             className="w-full h-14 px-5 rounded-2xl bg-primary text-white font-black text-base flex items-center justify-between active:scale-[0.98]"
@@ -1839,7 +1839,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Phone: total and the one button that finishes the bill stay in reach */}
-                <div className="md:hidden shrink-0 flex items-center gap-3 p-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="md:hidden shrink-0 flex items-center gap-3 p-3 bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] pb-3">
                     <div className="leading-tight">
                         <div className="text-[11px] font-bold text-gray-400 uppercase">Total</div>
                         <div className="text-2xl font-black text-primary">₹{total.toFixed(0)}</div>
