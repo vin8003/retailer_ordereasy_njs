@@ -13,6 +13,15 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Loader2, LogOut, Upload, User, MapPin, Store, CreditCard, ScanLine, CheckCircle, Smartphone, Printer } from 'lucide-react';
 import StoreLocationMap from '@/components/profile/StoreLocationMap';
+import DeliveryFeeSettings from '@/components/profile/DeliveryFeeSettings';
+import {
+    DeliveryFeeMode,
+    DeliveryFeeTierRow,
+    parseDeliveryFeeMode,
+    tiersFromApi,
+    tiersToPayload,
+    validateDeliveryFeeSettings,
+} from '@/lib/deliveryFees';
 import { toast } from 'sonner';
 import PhoneVerification from '@/components/auth/PhoneVerification';
 import {
@@ -61,6 +70,9 @@ interface RetailerProfile {
     minimumOrderAmount: number;
     deliveryCharge: number;
     freeDeliveryThreshold: number;
+    deliveryFeeMode: DeliveryFeeMode;
+    deliveryFeeTiers: DeliveryFeeTierRow[];
+    deliveryFeePerKm: number;
     serviceablePincodes: string[];
 
     // Images
@@ -137,6 +149,9 @@ export default function ProfilePage() {
                     minimumOrderAmount: data.minimum_order_amount,
                     deliveryCharge: data.delivery_charge || 0,
                     freeDeliveryThreshold: data.free_delivery_threshold || 0,
+                    deliveryFeeMode: parseDeliveryFeeMode(data.delivery_fee_mode),
+                    deliveryFeeTiers: tiersFromApi(data.delivery_fee_tiers),
+                    deliveryFeePerKm: Number(data.delivery_fee_per_km) || 0,
                     serviceablePincodes: data.serviceable_pincodes || [],
                     shopImage: data.shop_image,
                     receiptFooter: data.receipt_footer,
@@ -180,6 +195,15 @@ export default function ProfilePage() {
     };
 
     const handleSave = async () => {
+        const feeError = validateDeliveryFeeSettings(
+            formData.deliveryFeeMode ?? 'flat',
+            formData.deliveryFeeTiers ?? [],
+            Number(formData.deliveryFeePerKm) || 0,
+        );
+        if (feeError) {
+            toast.error(`Delivery Charges: ${feeError}`);
+            return;
+        }
         setSaving(true);
         try {
             const formDataToSend = new FormData();
@@ -191,7 +215,15 @@ export default function ProfilePage() {
                 const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 
                 if (key === 'serviceablePincodes' && Array.isArray(value)) {
-                    value.forEach(p => formDataToSend.append('serviceable_pincodes', p));
+                    (value as string[]).forEach(p => formDataToSend.append('serviceable_pincodes', p));
+                } else if (key === 'deliveryFeeTiers' && Array.isArray(value)) {
+                    // JSON in one field: multipart has no nested objects.
+                    formDataToSend.append('delivery_fee_tiers', tiersToPayload(value as DeliveryFeeTierRow[]));
+                } else if (key === 'deliveryRadius') {
+                    const radius = Math.round(Number(value));
+                    if (Number.isFinite(radius) && radius >= 0) formDataToSend.append('delivery_radius', String(radius));
+                } else if (typeof value === 'number' && !Number.isFinite(value)) {
+                    // A cleared number input is NaN; leave the saved value alone.
                 } else if ((key === 'latitude' || key === 'longitude') && asCoord(value) == null) {
                     // Do not persist 0,0 / near-null as a Gulf of Guinea pin.
                 } else if (!skipKeys.includes(key) && value !== undefined && value !== null) {
@@ -230,6 +262,9 @@ export default function ProfilePage() {
                 upi_id: 'UPI ID',
                 delivery_radius: 'Delivery Radius',
                 minimum_order_amount: 'Minimum Order Amount',
+                delivery_fee_tiers: 'Delivery Fee Tiers',
+                delivery_fee_per_km: 'Per-km Rate',
+                delivery_fee_mode: 'Delivery Fee Type',
             };
             const errData = error.response?.data;
             if (errData && typeof errData === 'object') {
@@ -600,10 +635,15 @@ export default function ProfilePage() {
                                     <Label>Delivery Radius (km)</Label>
                                     <Input
                                         type="number"
+                                        min={0}
+                                        step={1}
                                         disabled={!isEditing}
                                         value={formData.deliveryRadius}
-                                        onChange={e => setFormData({ ...formData, deliveryRadius: parseFloat(e.target.value) })}
+                                        onChange={e => setFormData({ ...formData, deliveryRadius: parseInt(e.target.value, 10) })}
                                     />
+                                    <p className="text-xs text-muted-foreground">
+                                        Customers who share their location see your shop and can get delivery within this distance of your map pin
+                                    </p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Min Order Amount</Label>
@@ -617,6 +657,9 @@ export default function ProfilePage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Serviceable Pincodes (Comma separated)</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    Only used to list your shop when a customer&apos;s location isn&apos;t known or your shop has no map pin
+                                </p>
                                 <Input
                                     disabled={!isEditing}
                                     value={Array.isArray(formData.serviceablePincodes) ? formData.serviceablePincodes.join(', ') : ''}
@@ -632,28 +675,24 @@ export default function ProfilePage() {
                             <CardDescription>Configure delivery fees and free delivery thresholds</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Delivery Charge</Label>
-                                    <Input
-                                        type="number"
-                                        disabled={!isEditing}
-                                        value={formData.deliveryCharge || 0}
-                                        onChange={e => setFormData({ ...formData, deliveryCharge: parseFloat(e.target.value) })}
-                                    />
-                                    <p className="text-xs text-muted-foreground">Standard delivery fee</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Free Delivery Above</Label>
-                                    <Input
-                                        type="number"
-                                        disabled={!isEditing}
-                                        value={formData.freeDeliveryThreshold || 0}
-                                        onChange={e => setFormData({ ...formData, freeDeliveryThreshold: parseFloat(e.target.value) })}
-                                    />
-                                    <p className="text-xs text-muted-foreground">Order amount to waive delivery fee</p>
-                                </div>
-                            </div>
+                            <DeliveryFeeSettings
+                                disabled={!isEditing}
+                                mode={formData.deliveryFeeMode ?? 'flat'}
+                                tiers={formData.deliveryFeeTiers ?? []}
+                                perKm={Number(formData.deliveryFeePerKm) || 0}
+                                flatCharge={Number(formData.deliveryCharge) || 0}
+                                freeDeliveryThreshold={Number(formData.freeDeliveryThreshold) || 0}
+                                radiusKm={Number(formData.deliveryRadius) || 0}
+                                hasMapPin={asCoord(formData.latitude) != null && asCoord(formData.longitude) != null}
+                                onChange={next => setFormData(prev => ({
+                                    ...prev,
+                                    ...(next.mode !== undefined ? { deliveryFeeMode: next.mode } : {}),
+                                    ...(next.tiers !== undefined ? { deliveryFeeTiers: next.tiers } : {}),
+                                    ...(next.perKm !== undefined ? { deliveryFeePerKm: next.perKm } : {}),
+                                    ...(next.flatCharge !== undefined ? { deliveryCharge: next.flatCharge } : {}),
+                                    ...(next.freeDeliveryThreshold !== undefined ? { freeDeliveryThreshold: next.freeDeliveryThreshold } : {}),
+                                }))}
+                            />
                         </CardContent>
                     </Card>
                     <Card>

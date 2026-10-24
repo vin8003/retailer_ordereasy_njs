@@ -143,7 +143,11 @@ function OrderEditContent() {
         // Dynamically calculate delivery fee from retailer's actual settings
         let deliveryFee = 0;
         if (deliveryMode === 'delivery') {
-            const retailerDeliveryCharge = Number(order?.retailer_delivery_charge || 0);
+            // Distance-priced fee for this order's address when the backend gives
+            // one (same value it re-prices with); else the shop's flat charge.
+            const retailerDeliveryCharge = Number(
+                order?.delivery_fee_before_free_delivery ?? order?.retailer_delivery_charge ?? 0
+            ) || 0;
             const freeDeliveryThreshold = Number(order?.retailer_free_delivery_threshold || 0);
             
             if (retailerDeliveryCharge > 0) {
