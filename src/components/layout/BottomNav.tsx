@@ -60,6 +60,9 @@ const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
         }
     };
 
+    // The POS fills the phone screen with its own back button and bill bar, so the tab bar would sit on top of them.
+    if (pathname.startsWith('/dashboard/pos')) return null;
+
     return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-border z-50 flex items-center justify-around pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
             {mainNavItems.map((item) => {
