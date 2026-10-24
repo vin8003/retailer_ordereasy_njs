@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/api';
+import { clearAllSessionCaches } from '@/services/sessionCache';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -173,6 +174,7 @@ export default function ProfilePage() {
     const handleLogout = () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        clearAllSessionCaches();
         router.push('/login');
         toast.success("Logged out successfully");
     };

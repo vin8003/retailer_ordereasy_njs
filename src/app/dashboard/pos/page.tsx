@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import api, { customerService, offerService } from '@/services/api';
+import api, { authService, customerService, offerService } from '@/services/api';
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
@@ -22,6 +22,8 @@ import { getBatchMrp, pickPosBatch } from '@/utils/posBatches';
 import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
 import { POS_DEFAULT_RATING, customerCheckUpdate } from '@/utils/posCustomer';
 import { billOversells } from '@/utils/posOversell';
+import { applySaleToProducts } from '@/utils/posStockAfterSale';
+import { posProductsCache } from '@/services/sessionCache';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
@@ -116,7 +118,7 @@ export default function POSPage() {
         return () => window.removeEventListener('resize', checkSize);
     }, []);
 
-    const [products, setProducts] = useState<Product[]>([]);
+    const [products, setProducts] = useState<Product[]>(() => (posProductsCache.peek() as Product[] | undefined) ?? []);
     const [categories, setCategories] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
@@ -190,7 +192,7 @@ export default function POSPage() {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-    const [isFetching, setIsFetching] = useState(true);
+    const [isFetching, setIsFetching] = useState(() => !posProductsCache.peek());
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -429,7 +431,7 @@ export default function POSPage() {
     
     const fetchProfile = async () => {
         try {
-            const response = await api.get('/retailer/profile/');
+            const response = await authService.fetchProfile();
             setRetailerProfile(response.data);
         } catch (error) {
             console.error("Failed to load retailer profile:", error);
@@ -479,18 +481,35 @@ export default function POSPage() {
         return () => clearTimeout(timer);
     }, [searchTerm, products]);
 
-    const fetchProducts = async () => {
-        setIsFetching(true);
+    const showProducts = (dataList: Product[]) => {
+        setProducts(dataList);
+        // Extract unique categories
+        const cats = Array.from(new Set(dataList.map((p: Product) => p.category_name || 'Uncategorized')));
+        setCategories(['All', ...cats as string[]]);
+    };
+
+    const loadProductList = async () => {
+        const response = await api.get('/products/?no_page=true&is_active=true');
+        return (response.data.results || response.data || []) as Product[];
+    };
+
+    // The list is kept for the page load (see sessionCache): coming back to the POS reuses it, and
+    // `reload` fetches it again after a change the POS cannot apply itself.
+    const fetchProducts = async ({ reload = false, quiet = false } = {}) => {
+        const cached = !reload && (posProductsCache.peek() as Product[] | undefined);
+        if (cached) {
+            showProducts(cached);
+            setIsFetching(false);
+            return;
+        }
+        if (!quiet) setIsFetching(true);
         try {
-            const response = await api.get('/products/?no_page=true&is_active=true');
-            const dataList = response.data.results || response.data;
-            setProducts(dataList || []);
-            
-            // Extract unique categories
-            const cats = Array.from(new Set(dataList.map((p: Product) => p.category_name || 'Uncategorized')));
-            setCategories(['All', ...cats as string[]]);
+            const request = reload ? posProductsCache.refresh(loadProductList) : posProductsCache.load(loadProductList);
+            const loaded = await request;
+            // A sale recorded while this was loading is in the cache, not in `loaded`.
+            showProducts(((posProductsCache.peek() ?? loaded) as Product[]));
         } catch (error) {
-            toast.error("Failed to load products for POS");
+            if (!quiet) toast.error("Failed to load products for POS");
             console.error(error);
         } finally {
             setIsFetching(false);
@@ -700,9 +719,15 @@ export default function POSPage() {
             toast.success(`Order ${response.data.order.order_number} created successfully!`);
             
             updateActiveSession({ completedOrder: response.data.order });
-            fetchProducts(); // Refresh stock
+            // Take the sold stock off the cached list instead of loading every product again.
+            const sold = applySaleToProducts((posProductsCache.peek() as Product[] | undefined) ?? products, activeSession.cart);
+            posProductsCache.set(sold);
+            showProducts(sold);
         } catch (error: any) {
             toast.error(error.response?.data?.error || "Checkout failed");
+            // A refusal (stock, oversell permission) means the shown stock may be out of date, and a
+            // timeout may still have saved the bill, so load the stock again in the background.
+            fetchProducts({ reload: true, quiet: true });
         } finally {
             setIsCheckoutLoading(false);
         }
@@ -889,7 +914,7 @@ export default function POSPage() {
 
     const handleQuickAddSuccess = (newProduct: any, linkedBarcode?: string) => {
         // Refresh local product list first
-        fetchProducts();
+        fetchProducts({ reload: true, quiet: true });
         // Add to cart with the linked barcode so the correct batch auto-selects
         handleAddToCart(newProduct, linkedBarcode);
         setSearchTerm('');
@@ -1609,7 +1634,7 @@ export default function POSPage() {
                 isOpen={isReturnModalOpen}
                 onClose={() => setIsReturnModalOpen(false)}
                 onSuccess={() => {
-                    fetchProducts(); // Refresh stock after return
+                    fetchProducts({ reload: true, quiet: true }); // Refresh stock after return
                 }}
             />
             
