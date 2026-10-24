@@ -114,6 +114,14 @@ api.interceptors.response.use(
 export const authService = {
   login: (data: any) => api.post('auth/retailer/login/', data),
   signup: (data: any) => api.post('auth/retailer/signup/', data),
+  forgotPassword: (identifier: string) =>
+    api.post('auth/retailer/password/forgot/', { identifier }),
+  resetPassword: (data: {
+    identifier: string;
+    otp_code: string;
+    new_password: string;
+    confirm_password: string;
+  }) => api.post('auth/retailer/password/reset/', data),
   fetchProfile: () => api.get('retailer/profile/'),
   fetchAuthProfile: () => api.get('auth/profile/'),
   registerDeviceToken: (token: string) => api.post('auth/device/register/', {
