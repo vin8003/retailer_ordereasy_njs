@@ -4,8 +4,10 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api, { authService } from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
-import { findProductByBarcode, loadRetailerProducts, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { findProductByBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { productService } from '@/services/api';
+import { mergeSuggestions } from '@/utils/purchaseRows';
+import { posProductsCache } from '@/services/sessionCache';
 import { calculatePurchaseTax, purchaseTaxSnapshot, resolvePurchaseTaxType } from '@/lib/purchaseTax';
 import {
     Plus, Trash2, ScanLine,
@@ -82,7 +84,10 @@ function EditPurchaseContent() {
     const invoiceId = invoiceIdParam || numberResolvedId;
 
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
+    // Only the POS list when the POS already loaded it. The invoice's own products are fetched by id
+    // and everything else comes from the search API, so opening a bill never pages the catalogue.
+    const [products, setProducts] = useState<Product[]>(() => (posProductsCache.peek() as Product[] | undefined) ?? []);
+    const [searchHits, setSearchHits] = useState<{ query: string; items: Product[] }>({ query: '', items: [] });
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -156,9 +161,8 @@ function EditPurchaseContent() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [suppliersResult, productsResult, profileResult] = await Promise.allSettled([
+                const [suppliersResult, profileResult] = await Promise.allSettled([
                     fetchAllPages('/products/erp/suppliers/', { is_active: true }),
-                    loadRetailerProducts(fetchAllPages),
                     authService.fetchProfile(),
                 ]);
                 let loadedSuppliers: Supplier[] =
@@ -167,13 +171,7 @@ function EditPurchaseContent() {
                     toast.error("Failed to load suppliers");
                 }
 
-                let fetchedProducts: Product[] = [];
-                if (productsResult.status === 'fulfilled') {
-                    fetchedProducts = productsResult.value;
-                    setProducts(fetchedProducts);
-                } else {
-                    toast.error("Failed to load products");
-                }
+                let fetchedProducts: Product[] = products;
                 if (profileResult.status === 'fulfilled') {
                     setRetailerGstin(profileResult.value.data?.gst_number || '');
                 }
@@ -210,6 +208,25 @@ function EditPurchaseContent() {
                     setExistingBillImage(inv.bill_image || null);
                     setBillImagePreview(inv.bill_image || null);
                     
+                    // Current prices come from the product itself, so fetch just the invoice's products
+                    // that the cached list lacks.
+                    const missingIds = Array.from(new Set<number>(
+                        (inv.items as InvoiceItem[])
+                            .map((item) => item.product)
+                            .filter((pid) => !fetchedProducts.some((p) => p.id === pid))
+                    ));
+                    if (missingIds.length) {
+                        const details = await Promise.allSettled(
+                            missingIds.map((pid) => productService.fetchProductDetails(pid))
+                        );
+                        const loaded = details.flatMap((r) => (r.status === 'fulfilled' ? [r.value.data as Product] : []));
+                        if (loaded.length < missingIds.length) {
+                            toast.error("Some product prices could not be loaded");
+                        }
+                        fetchedProducts = mergeProductsById(fetchedProducts, loaded);
+                        setProducts(fetchedProducts);
+                    }
+
                     // Map items to rows
                     const mappedRows: PurchaseRow[] = inv.items.map((item: InvoiceItem) => {
                         const prod = fetchedProducts.find((p) => p.id === item.product);
@@ -248,18 +265,26 @@ function EditPurchaseContent() {
     useEffect(() => {
         const q = searchTerm.trim();
         if (q.length < 2) return;
+        // Typing on cancels the pending request's result, so a slow answer for an older query
+        // never replaces the suggestions for the current one.
+        let current = true;
         const t = setTimeout(async () => {
             try {
                 const res = await productService.searchProducts(q);
-                const remote = unwrapProductList(res.data);
+                if (!current) return;
+                const remote = unwrapProductList(res.data) as Product[];
+                setSearchHits({ query: q, items: remote });
                 if (remote.length) {
                     setProducts((prev) => mergeProductsById(prev, remote));
                 }
             } catch {
-                // local catalog still filters
+                // the cached list (if any) still filters
             }
         }, 250);
-        return () => clearTimeout(t);
+        return () => {
+            current = false;
+            clearTimeout(t);
+        };
     }, [searchTerm]);
 
     const addProductToRows = (product: Product) => {
@@ -285,11 +310,23 @@ function EditPurchaseContent() {
         toast.success(`Added ${product.name}`, { icon: '📦', duration: 1500 });
     };
 
-    const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    const handleSearchKeyDown = async (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && searchTerm) {
             const cleanedTerm = searchTerm.trim();
-            // 1. Exact barcode match
-            const matched = findProductByBarcode(products, cleanedTerm);
+            // 1. Exact barcode match, asking the search API when the cached list lacks it
+            let matched = findProductByBarcode(products, cleanedTerm);
+            if (!matched) {
+                try {
+                    const res = await productService.searchProducts(cleanedTerm);
+                    const remote = unwrapProductList(res.data) as Product[];
+                    if (remote.length) {
+                        setProducts((prev) => mergeProductsById(prev, remote));
+                        matched = findProductByBarcode(remote, cleanedTerm);
+                    }
+                } catch {
+                    // fall through
+                }
+            }
             if (matched) {
                 e.preventDefault();
                 addProductToRows(matched);
@@ -392,7 +429,9 @@ function EditPurchaseContent() {
     const filteredSuggestions = (() => {
         const trimmed = searchTerm.trim().toLowerCase();
         if (trimmed.length <= 1) return [];
-        return products.filter(p => productMatchesQuery(p, trimmed));
+        const local = products.filter(p => productMatchesQuery(p, trimmed));
+        const remote = searchHits.query.toLowerCase() === trimmed ? searchHits.items : [];
+        return mergeSuggestions(remote, local);
     })();
 
     if (isLoading) return (
@@ -562,7 +601,7 @@ function EditPurchaseContent() {
                                         </div>
                                         <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/50">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                {filteredSuggestions.length} of {products.length} products
+                                                {filteredSuggestions.length} {filteredSuggestions.length === 1 ? 'product' : 'products'}
                                             </span>
                                         </div>
                                     </div>
