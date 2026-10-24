@@ -1,5 +1,6 @@
-import axios from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 import { toast } from 'sonner';
+import { authProfileCache, invalidateAfterMutation, profileCache } from './sessionCache';
 
 const BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://api.ordereasy.win/api/'
@@ -49,7 +50,10 @@ api.interceptors.request.use(
 
 // Response interceptor for token refresh
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    invalidateAfterMutation(response.config?.method, response.config?.url);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
@@ -111,6 +115,9 @@ api.interceptors.response.use(
   }
 );
 
+/** A caller may change `data` it got from a cache, so each one gets its own copy. */
+const copyResponse = (response: AxiosResponse) => ({ ...response, data: structuredClone(response.data) });
+
 export const authService = {
   login: (data: any) => api.post('auth/retailer/login/', data),
   signup: (data: any) => api.post('auth/retailer/signup/', data),
@@ -122,8 +129,9 @@ export const authService = {
     new_password: string;
     confirm_password: string;
   }) => api.post('auth/retailer/password/reset/', data),
-  fetchProfile: () => api.get('retailer/profile/'),
-  fetchAuthProfile: () => api.get('auth/profile/'),
+  // Loaded once per page load and shared by every screen; writes to the profile drop the cache.
+  fetchProfile: () => profileCache.load(() => api.get('retailer/profile/')).then(copyResponse),
+  fetchAuthProfile: () => authProfileCache.load(() => api.get('auth/profile/')).then(copyResponse),
   registerDeviceToken: (token: string) => api.post('auth/device/register/', {
     registration_id: token,
     type: 'web',
