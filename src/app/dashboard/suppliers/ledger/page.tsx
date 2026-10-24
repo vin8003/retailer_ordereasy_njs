@@ -12,6 +12,7 @@ import { toast, Toaster } from 'sonner';
 import Link from 'next/link';
 import { EMPTY_SUPPLIER_FORM, SupplierFormModal, SupplierFormValues } from '@/components/dashboard/SupplierFormModal';
 import { SupplierDetailScalars } from '@/components/suppliers/SupplierDetailScalars';
+import { purchaseDetailsHref } from '@/lib/purchaseLinks';
 import { SupplierDetailContact } from '@/components/suppliers/SupplierDetailContact';
 
 type FilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'custom';
@@ -58,6 +59,7 @@ interface LedgerEntry {
     date: string;
     amount: string;
     transaction_type: 'CREDIT' | 'DEBIT';
+    reference_invoice?: number | null;
     reference_invoice_number: string;
     payment_mode: string;
     notes: string;
@@ -372,9 +374,12 @@ function SupplierLedgerDetails() {
                                         </td>
                                         <td className="p-6 text-center">
                                             {entry.reference_invoice_number ? (
-                                                <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                                <Link
+                                                    href={purchaseDetailsHref({ id: entry.reference_invoice, invoiceNumber: entry.reference_invoice_number }) || '#'}
+                                                    className="bg-gray-100 text-primary hover:underline px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider"
+                                                >
                                                     #{entry.reference_invoice_number}
-                                                </span>
+                                                </Link>
                                             ) : '-'}
                                         </td>
                                         <td className="p-6 text-right">
@@ -432,9 +437,12 @@ function SupplierLedgerDetails() {
                                             <Receipt size={12} className="text-gray-400" />
                                             <span className="font-medium">Ref Invoice</span>
                                         </div>
-                                        <span className="bg-white text-gray-600 px-2 py-0.5 rounded border border-gray-200 text-[10px] font-black uppercase tracking-wider">
+                                        <Link
+                                            href={purchaseDetailsHref({ id: entry.reference_invoice, invoiceNumber: entry.reference_invoice_number }) || '#'}
+                                            className="bg-white text-primary hover:underline px-2 py-0.5 rounded border border-gray-200 text-[10px] font-black uppercase tracking-wider"
+                                        >
                                             #{entry.reference_invoice_number}
-                                        </span>
+                                        </Link>
                                     </div>
                                 )}
                             </div>
