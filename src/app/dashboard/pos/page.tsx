@@ -924,20 +924,24 @@ export default function POSPage() {
         products.filter(p => p.barcode === code || (p.batches && p.batches.some(b => b.barcode === code)));
 
     // Phone camera scan: same lookup as a scanner typing into the search box.
+    // The scanner stays open, so each code adds to the bill until the cashier closes it.
     const handleCameraScan = (code: string) => {
-        setIsCameraScanOpen(false);
         const scanned = code.trim();
         if (!scanned) return;
         const matches = findProductsByBarcode(scanned);
         if (matches.length > 0) {
             handleAddToCart(matches[0], scanned);
+            toast.success(`Added ${matches[0].name}`, { duration: 1200 });
             return;
         }
-        toast.error(`No product has barcode ${scanned}`);
         if (/^\d+$/.test(scanned) || scanned.length > 5) {
+            // Quick add needs the screen, so close the camera for it.
+            setIsCameraScanOpen(false);
             setUnknownBarcode(scanned);
             setIsQuickAddOpen(true);
+            return;
         }
+        toast.error(`No product found for ${scanned}`);
     };
 
     const handleQuickAddSuccess = (newProduct: any, linkedBarcode?: string) => {
