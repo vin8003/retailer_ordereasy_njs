@@ -5,7 +5,7 @@ import api, { authService, customerService, offerService } from '@/services/api'
 import { 
     Search, Plus, Minus, X, CreditCard, Banknote, 
     ShoppingCart, Loader2, MonitorCheck, ScanLine, AlertCircle, Printer, RefreshCcw, Star,
-    MessageSquare, Check, Keyboard, Users, Tag, Barcode, ArrowLeft, ChevronRight, Trash2
+    MessageSquare, Check, Keyboard, Users, Tag, Barcode, ArrowLeft, ChevronRight, Trash2, Camera
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
@@ -16,6 +16,7 @@ import KeyboardShortcutPanel from '@/components/pos/KeyboardShortcutPanel';
 import POSOnboardingTour from '@/components/pos/POSOnboardingTour';
 import POSStatusBar from '@/components/pos/POSStatusBar';
 import { POSCartLineDetails } from '@/components/pos/POSCartLineDetails';
+import { BarcodeScanner } from '@/components/products/BarcodeScanner';
 import { UpiQrPanel } from '@/components/pos/UpiQrPanel';
 import { getDisplayStockQuantity } from '@/utils/saleableQuantity';
 import { getBatchMrp, pickPosBatch } from '@/utils/posBatches';
@@ -111,6 +112,7 @@ export default function POSPage() {
     // Phones get the single-column POS: an items screen and a bill screen, with a sticky bar between them.
     const [isMobileScreen, setIsMobileScreen] = useState(false);
     const [mobileView, setMobileView] = useState<'items' | 'cart'>('items');
+    const [isCameraScanOpen, setIsCameraScanOpen] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -882,7 +884,7 @@ export default function POSPage() {
             }
 
             // 1. Check for exact barcode match first (High Priority for Scanners)
-            const matches = products.filter(p => p.barcode === actualBarcode || (p.batches && p.batches.some(b => b.barcode === actualBarcode)));
+            const matches = findProductsByBarcode(actualBarcode);
             if (matches.length > 0) {
                 e.preventDefault();
                 let added = true;
@@ -915,6 +917,26 @@ export default function POSPage() {
         } else if (e.key === 'Escape') {
             setActiveGridIndex(-1);
             setSearchTerm('');
+        }
+    };
+
+    const findProductsByBarcode = (code: string) =>
+        products.filter(p => p.barcode === code || (p.batches && p.batches.some(b => b.barcode === code)));
+
+    // Phone camera scan: same lookup as a scanner typing into the search box.
+    const handleCameraScan = (code: string) => {
+        setIsCameraScanOpen(false);
+        const scanned = code.trim();
+        if (!scanned) return;
+        const matches = findProductsByBarcode(scanned);
+        if (matches.length > 0) {
+            handleAddToCart(matches[0], scanned);
+            return;
+        }
+        toast.error(`No product has barcode ${scanned}`);
+        if (/^\d+$/.test(scanned) || scanned.length > 5) {
+            setUnknownBarcode(scanned);
+            setIsQuickAddOpen(true);
         }
     };
 
@@ -1043,8 +1065,18 @@ export default function POSPage() {
                             onChange={(e) => onSearchChange(e.target.value)}
                             onKeyDown={handleSearchKeyDown}
                             onFocus={() => setCurrentFocus('search')}
-                            className="w-full pl-12 pr-4 py-3.5 md:py-4 text-base bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-inner text-gray-800"
+                            className="w-full pl-12 pr-14 md:pr-4 py-3.5 md:py-4 text-base bg-gray-50 border-transparent rounded-2xl focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-inner text-gray-800"
                         />
+                        {isMobileScreen && (
+                            <button
+                                type="button"
+                                onClick={() => setIsCameraScanOpen(true)}
+                                aria-label="Scan barcode with camera"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-xl text-primary active:bg-primary/10"
+                            >
+                                <Camera size={22} />
+                            </button>
+                        )}
                     </div>
                     
                     {/* Category Pills */}
@@ -1913,6 +1945,10 @@ export default function POSPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isCameraScanOpen && (
+                <BarcodeScanner onScanSuccess={handleCameraScan} onClose={() => setIsCameraScanOpen(false)} />
             )}
 
             {/* Rating Modal */}

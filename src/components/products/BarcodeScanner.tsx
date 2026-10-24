@@ -13,6 +13,9 @@ interface BarcodeScannerProps {
 export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) {
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
     const [hasCameraError, setHasCameraError] = useState(false);
+    // The camera starts once on mount; a parent passing a new callback must not restart it.
+    const onScanSuccessRef = useRef(onScanSuccess);
+    onScanSuccessRef.current = onScanSuccess;
 
     useEffect(() => {
         // Run only on client side
@@ -47,7 +50,7 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
         scanner.render(
             (decodedText) => {
                 scanner.pause(true); // Pause scanning on success
-                onScanSuccess(decodedText);
+                onScanSuccessRef.current(decodedText);
             },
             (error) => {
                 // Ignore scanning errors (happens constantly while trying to find code)
@@ -61,7 +64,7 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
                 scannerRef.current.clear().catch(console.error);
             }
         };
-    }, [onScanSuccess]);
+    }, []);
 
     return (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
@@ -77,7 +80,7 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
                 </div>
 
                 <div className="p-4 flex flex-col items-center">
-                    <div id="reader" className="w-full bg-black rounded-lg overflow-hidden min-h-[300px]"></div>
+                    <div id="reader" className="w-full bg-black text-white rounded-lg overflow-hidden min-h-[300px]"></div>
                     <p className="text-xs text-muted-foreground mt-4 text-center">
                         Position the barcode inside the frame to scan automatically.
                     </p>
