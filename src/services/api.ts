@@ -121,6 +121,14 @@ const copyResponse = (response: AxiosResponse) => ({ ...response, data: structur
 export const authService = {
   login: (data: any) => api.post('auth/retailer/login/', data),
   signup: (data: any) => api.post('auth/retailer/signup/', data),
+  forgotPassword: (identifier: string) =>
+    api.post('auth/retailer/password/forgot/', { identifier }),
+  resetPassword: (data: {
+    identifier: string;
+    otp_code: string;
+    new_password: string;
+    confirm_password: string;
+  }) => api.post('auth/retailer/password/reset/', data),
   // Loaded once per page load and shared by every screen; writes to the profile drop the cache.
   fetchProfile: () => profileCache.load(() => api.get('retailer/profile/')).then(copyResponse),
   fetchAuthProfile: () => authProfileCache.load(() => api.get('auth/profile/')).then(copyResponse),
