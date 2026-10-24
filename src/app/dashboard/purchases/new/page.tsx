@@ -4,7 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api, { authService } from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
-import { findProductByBarcode, loadRetailerProducts, looksLikeBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { findProductByBarcode, looksLikeBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
+import { addOrBumpRow, mergeSuggestions } from '@/utils/purchaseRows';
+import { posProductsCache } from '@/services/sessionCache';
 import { productService } from '@/services/api';
 import { calculatePurchaseTax, resolvePurchaseTaxType } from '@/lib/purchaseTax';
 import {
@@ -36,6 +38,7 @@ interface Product {
     batches?: { id?: number; barcode?: string; batch_number?: string }[];
     hsn_code?: string;
     gst_rate?: number | string;
+    quantity?: number | string;
 }
 
 interface PurchaseRow {
@@ -65,7 +68,11 @@ const getApiError = (error: unknown, fallback: string) => {
 export default function NewPurchasePage() {
     const router = useRouter();
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
+    // Only the POS list when the POS already loaded it. Everything else comes from the search API
+    // as the user types, so opening this page never loads the whole catalogue.
+    const [products, setProducts] = useState<Product[]>(() => (posProductsCache.peek() as Product[] | undefined) ?? []);
+    const [searchHits, setSearchHits] = useState<{ query: string; items: Product[] }>({ query: '', items: [] });
+    const [isSearching, setIsSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -124,20 +131,14 @@ export default function NewPurchasePage() {
 
     useEffect(() => {
         const fetchData = async () => {
-            const [suppliersResult, productsResult, profileResult] = await Promise.allSettled([
+            const [suppliersResult, profileResult] = await Promise.allSettled([
                 fetchAllPages('/products/erp/suppliers/', { is_active: true }),
-                loadRetailerProducts(fetchAllPages),
                 authService.fetchProfile(),
             ]);
             if (suppliersResult.status === 'fulfilled') {
                 setSuppliers(suppliersResult.value);
             } else {
                 toast.error("Failed to load suppliers");
-            }
-            if (productsResult.status === 'fulfilled') {
-                setProducts(productsResult.value);
-            } else {
-                toast.error("Failed to load products");
             }
             if (profileResult.status === 'fulfilled') {
                 setRetailerGstin(profileResult.value.data?.gst_number || '');
@@ -159,19 +160,33 @@ export default function NewPurchasePage() {
 
     useEffect(() => {
         const q = searchTerm.trim();
-        if (q.length < 2) return;
+        if (q.length < 2) {
+            setIsSearching(false);
+            return;
+        }
+        // Typing on cancels the pending request's result, so a slow answer for an older query
+        // never replaces the suggestions for the current one.
+        let current = true;
+        setIsSearching(true);
         const t = setTimeout(async () => {
             try {
                 const res = await productService.searchProducts(q);
-                const remote = unwrapProductList(res.data);
+                if (!current) return;
+                const remote = unwrapProductList(res.data) as Product[];
+                setSearchHits({ query: q, items: remote });
                 if (remote.length) {
                     setProducts((prev) => mergeProductsById(prev, remote));
                 }
             } catch {
-                // local catalog (if any) still filters
+                // the cached list (if any) still filters
+            } finally {
+                if (current) setIsSearching(false);
             }
         }, 250);
-        return () => clearTimeout(t);
+        return () => {
+            current = false;
+            clearTimeout(t);
+        };
     }, [searchTerm]);
 
     const loadLastSupplierCosts = async (productId: number) => {
@@ -192,22 +207,15 @@ export default function NewPurchasePage() {
     };
 
     const addProductToRows = (product: Product) => {
-        const existingIdx = rows.findIndex(r => r.product.id === product.id);
-        if (existingIdx > -1) {
-            const newRows = [...rows];
-            newRows[existingIdx].quantity += 1;
-            newRows[existingIdx].total = newRows[existingIdx].quantity * newRows[existingIdx].purchase_price;
-            setRows(newRows);
-        } else {
-            setRows([...rows, {
-                product,
-                quantity: 1,
-                purchase_price: Number(product.purchase_price) || 0,
-                new_price: Number(product.price) || 0,
-                new_original_price: Number(product.original_price) || 0,
-                total: Number(product.purchase_price) || 0
-            }]);
-        }
+        // The newest or latest re-added product goes to the top of the list.
+        setRows((prev) => addOrBumpRow(prev, product.id, () => ({
+            product,
+            quantity: 1,
+            purchase_price: Number(product.purchase_price) || 0,
+            new_price: Number(product.price) || 0,
+            new_original_price: Number(product.original_price) || 0,
+            total: Number(product.purchase_price) || 0
+        })));
         setSearchTerm('');
         toast.success(`Added ${product.name}`, { icon: '📦', duration: 1500 });
         void loadLastSupplierCosts(product.id);
@@ -235,15 +243,6 @@ export default function NewPurchasePage() {
                 // fall through
             }
         }
-        if (!matched && products.length === 0) {
-            try {
-                const again = await loadRetailerProducts(fetchAllPages);
-                setProducts(again);
-                matched = pick(again);
-            } catch {
-                // fall through
-            }
-        }
         if (matched) {
             e.preventDefault();
             addProductToRows(matched);
@@ -266,12 +265,14 @@ export default function NewPurchasePage() {
         field: Exclude<keyof PurchaseRow, 'product'>,
         value: number,
     ) => {
-        const newRows = [...rows];
-        newRows[index][field] = value;
-        if (field === 'quantity' || field === 'purchase_price') {
-            newRows[index].total = newRows[index].quantity * newRows[index].purchase_price;
-        }
-        setRows(newRows);
+        setRows((prev) => prev.map((row, i) => {
+            if (i !== index) return row;
+            const next = { ...row, [field]: value };
+            if (field === 'quantity' || field === 'purchase_price') {
+                next.total = next.quantity * next.purchase_price;
+            }
+            return next;
+        }));
     };
 
     const removeRow = (index: number) => {
@@ -348,7 +349,9 @@ export default function NewPurchasePage() {
     const filteredSuggestions = (() => {
         const trimmed = searchTerm.trim().toLowerCase();
         if (trimmed.length <= 1) return [];
-        return products.filter(p => productMatchesQuery(p, trimmed));
+        const local = products.filter(p => productMatchesQuery(p, trimmed));
+        const remote = searchHits.query.toLowerCase() === trimmed ? searchHits.items : [];
+        return mergeSuggestions(remote, local);
     })();
 
     if (isLoading) return (
@@ -468,8 +471,11 @@ export default function NewPurchasePage() {
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={handleSearchKeyDown}
-                                    className="w-full pl-14 pr-6 py-5 bg-white border-none rounded-2xl shadow-inner focus:ring-4 focus:ring-primary/5 text-lg font-medium transition-all"
+                                    className="w-full pl-14 pr-14 py-5 bg-white border-none rounded-2xl shadow-inner focus:ring-4 focus:ring-primary/5 text-lg font-medium transition-all"
                                 />
+                                {isSearching && (
+                                    <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 animate-spin text-gray-400" size={22} />
+                                )}
                                 
                                 {filteredSuggestions.length > 0 && (
                                     <div className="absolute z-20 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
@@ -487,7 +493,7 @@ export default function NewPurchasePage() {
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="font-bold text-gray-900">{p.name}</div>
-                                                    <div className="text-xs text-gray-500 font-medium">PKR: {p.price} • Barcode: {p.barcode || 'N/A'}</div>
+                                                    <div className="text-xs text-gray-500 font-medium">Cost ₹{Number(p.purchase_price) || 0} • Stock {Number(p.quantity) || 0} • Barcode: {p.barcode || 'N/A'}</div>
                                                 </div>
                                                 <Plus className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" size={20} />
                                             </button>
@@ -495,7 +501,7 @@ export default function NewPurchasePage() {
                                         </div>
                                         <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/50">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                {filteredSuggestions.length} of {products.length} products
+                                                {filteredSuggestions.length} {filteredSuggestions.length === 1 ? 'product' : 'products'}{isSearching ? ' • searching…' : ''}
                                             </span>
                                         </div>
                                     </div>
@@ -504,7 +510,7 @@ export default function NewPurchasePage() {
                         </div>
 
                         <div className="flex-1 overflow-x-auto p-4">
-                            <table className="w-full text-left">
+                            <table className="w-full min-w-[1000px] text-left">
                                 <thead>
                                     <tr className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-black border-b border-gray-50">
                                         <th className="p-4 px-6">Product</th>
@@ -537,22 +543,28 @@ export default function NewPurchasePage() {
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="p-4 w-36">
+                                                <td className="p-3 w-32">
                                                     <input 
                                                         type="number"
+                                                        step="any"
+                                                        inputMode="decimal"
+                                                        onFocus={(e) => e.target.select()}
                                                         value={row.quantity}
                                                         onChange={(e) => updateRow(idx, 'quantity', Number(e.target.value))}
-                                                        className="w-full bg-white border border-gray-100 rounded-lg py-2 px-3 text-center font-black focus:ring-2 focus:ring-primary/20 text-primary"
+                                                        className="w-full min-w-[5rem] bg-white border border-gray-200 rounded-xl py-3 px-3 text-center text-lg font-black focus:ring-2 focus:ring-primary/20 text-primary"
                                                     />
                                                 </td>
-                                                <td className="p-4 w-40">
+                                                <td className="p-3 w-48">
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs text-primary font-bold">₹</span>
                                                         <input 
                                                             type="number"
+                                                            step="any"
+                                                            inputMode="decimal"
+                                                            onFocus={(e) => e.target.select()}
                                                             value={row.purchase_price}
                                                             onChange={(e) => updateRow(idx, 'purchase_price', Number(e.target.value))}
-                                                            className="w-full bg-blue-50/30 border border-blue-100 rounded-lg py-2 pl-6 pr-3 text-center font-bold focus:ring-2 focus:ring-blue-100"
+                                                            className="w-full min-w-[10rem] bg-blue-50/30 border border-blue-100 rounded-xl py-3 pl-8 pr-3 text-center text-lg font-bold focus:ring-2 focus:ring-blue-100"
                                                         />
                                                     </div>
                                                     <LastSupplierCostHint
@@ -561,25 +573,31 @@ export default function NewPurchasePage() {
                                                         className="mt-1 text-center"
                                                     />
                                                 </td>
-                                                <td className="p-4 w-40">
+                                                <td className="p-3 w-48">
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-bold">₹</span>
                                                         <input 
                                                             type="number"
+                                                            step="any"
+                                                            inputMode="decimal"
+                                                            onFocus={(e) => e.target.select()}
                                                             value={row.new_original_price}
                                                             onChange={(e) => updateRow(idx, 'new_original_price', Number(e.target.value))}
-                                                            className="w-full bg-gray-50 border border-gray-100 rounded-lg py-2 pl-6 pr-3 text-center font-bold text-gray-600 focus:ring-2 focus:ring-gray-200"
+                                                            className="w-full min-w-[10rem] bg-gray-50 border border-gray-200 rounded-xl py-3 pl-8 pr-3 text-center text-lg font-bold text-gray-600 focus:ring-2 focus:ring-gray-200"
                                                         />
                                                     </div>
                                                 </td>
-                                                <td className="p-4 w-40">
+                                                <td className="p-3 w-48">
                                                     <div className="relative">
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary text-xs font-bold">₹</span>
                                                         <input 
                                                             type="number"
+                                                            step="any"
+                                                            inputMode="decimal"
+                                                            onFocus={(e) => e.target.select()}
                                                             value={row.new_price}
                                                             onChange={(e) => updateRow(idx, 'new_price', Number(e.target.value))}
-                                                            className="w-full bg-green-50/30 border border-green-100 rounded-lg py-2 pl-6 pr-3 text-center font-bold text-green-700 focus:ring-2 focus:ring-green-100"
+                                                            className="w-full min-w-[10rem] bg-green-50/30 border border-green-100 rounded-xl py-3 pl-8 pr-3 text-center text-lg font-bold text-green-700 focus:ring-2 focus:ring-green-100"
                                                         />
                                                     </div>
                                                 </td>
@@ -639,6 +657,9 @@ export default function NewPurchasePage() {
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-black text-2xl">₹</span>
                                 <input 
                                     type="number"
+                                    step="any"
+                                    inputMode="decimal"
+                                    onFocus={(e) => e.target.select()}
                                     value={paidAmount}
                                     onChange={(e) => setPaidAmount(Number(e.target.value))}
                                     className="w-full bg-white border-transparent rounded-2xl py-4 pl-10 pr-4 text-3xl font-black text-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-primary/20"
@@ -781,7 +802,7 @@ export default function NewPurchasePage() {
                 onClose={() => setIsQuickAddOpen(false)}
                 onSuccess={(newProduct) => {
                     // Update products list and add to rows
-                    setProducts(prev => [...prev, newProduct]);
+                    setProducts(prev => mergeProductsById(prev, [newProduct]));
                     addProductToRows(newProduct);
                 }}
             />
