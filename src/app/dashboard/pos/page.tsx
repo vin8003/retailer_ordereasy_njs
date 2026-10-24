@@ -924,7 +924,7 @@ export default function POSPage() {
         products.filter(p => p.barcode === code || (p.batches && p.batches.some(b => b.barcode === code)));
 
     // Phone camera scan: same lookup as a scanner typing into the search box.
-    // The scanner stays open, so each code adds to the bill until the cashier closes it.
+    // The scanner stays open and reads a code each time the cashier taps Scan, until they close it.
     const handleCameraScan = (code: string) => {
         const scanned = code.trim();
         if (!scanned) return;
@@ -1952,7 +1952,7 @@ export default function POSPage() {
             )}
 
             {isCameraScanOpen && (
-                <BarcodeScanner onScanSuccess={handleCameraScan} onClose={() => setIsCameraScanOpen(false)} />
+                <BarcodeScanner tapToScan onScanSuccess={handleCameraScan} onClose={() => setIsCameraScanOpen(false)} />
             )}
 
             {/* Rating Modal */}

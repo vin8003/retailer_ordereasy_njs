@@ -2,12 +2,18 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { X, Camera, RefreshCw } from "lucide-react";
+import { X, Camera, RefreshCw, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { playScanBeep } from "@/lib/beep";
+import { pickDetectedCode, type Detection } from "@/lib/scanPick";
 
 interface BarcodeScannerProps {
     onScanSuccess: (decodedText: string) => void;
     onClose: () => void;
+    /** Read a code only when the cashier taps the Scan button or the camera view, like a counter scanner's trigger. */
+    tapToScan?: boolean;
+    /** Called when tapping finds no barcode in view. */
+    onNothingInView?: () => void;
 }
 
 const READER_ID = "reader";
@@ -26,13 +32,19 @@ function scanErrorMessage(error: unknown): string {
     return "Could not start the camera. Search for the product or use a barcode scanner instead.";
 }
 
-export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) {
+export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNothingInView }: BarcodeScannerProps) {
     // Read through a ref so a parent passing a new callback does not restart the camera.
     const onScanSuccessRef = useRef(onScanSuccess);
     useEffect(() => {
         onScanSuccessRef.current = onScanSuccess;
     }, [onScanSuccess]);
+    const tapToScanRef = useRef(tapToScan);
+    useEffect(() => {
+        tapToScanRef.current = tapToScan;
+    }, [tapToScan]);
+    const lastDetection = useRef<Detection | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [hint, setHint] = useState<string | null>(null);
     const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
@@ -63,11 +75,17 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
             { facingMode: "environment" },
             { fps: 10, qrbox: barcodeBox },
             (decodedText) => {
-                // The camera stays open: each new code is reported, and the parent decides whether to close.
                 const now = Date.now();
+                if (tapToScanRef.current) {
+                    // Only remember what is in view; the Scan button reports it.
+                    lastDetection.current = { code: decodedText, at: now };
+                    return;
+                }
+                // The camera stays open: each new code is reported, and the parent decides whether to close.
                 if (closing || (decodedText === lastCode && now - lastAt < REPEAT_WINDOW_MS)) return;
                 lastCode = decodedText;
                 lastAt = now;
+                playScanBeep();
                 onScanSuccessRef.current(decodedText);
             },
             () => {} // Scan misses happen on every frame without a code; ignore them.
@@ -83,8 +101,22 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
         };
     }, [attempt]);
 
+    // A tap is a user gesture, so the beep is allowed to play even where autoplay is blocked.
+    const scanNow = () => {
+        const code = pickDetectedCode(lastDetection.current, Date.now());
+        if (!code) {
+            setHint("No barcode in view. Line it up inside the frame and tap again.");
+            onNothingInView?.();
+            return;
+        }
+        setHint(null);
+        lastDetection.current = null;
+        playScanBeep();
+        onScanSuccessRef.current(code);
+    };
+
     return (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-stretch sm:items-center sm:justify-center sm:p-4">
+        <div className="fixed inset-x-0 top-0 bottom-[var(--bottom-nav-h,0px)] md:bottom-0 z-[70] bg-background/80 backdrop-blur-sm flex flex-col items-stretch sm:items-center sm:justify-center sm:p-4">
             <div className="bg-card w-full h-full sm:h-auto sm:max-w-md sm:rounded-lg shadow-lg border-0 sm:border overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between p-4 border-b bg-muted/50">
                     <h3 className="font-semibold flex items-center gap-2">
@@ -97,7 +129,11 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
                 </div>
 
                 <div className="p-4 flex flex-col flex-1 min-h-0 items-center">
-                    <div id={READER_ID} className="w-full flex-1 sm:flex-none bg-black text-white rounded-lg overflow-hidden min-h-[60vh] sm:min-h-[320px]"></div>
+                    <div
+                        id={READER_ID}
+                        onClick={tapToScan ? scanNow : undefined}
+                        className="w-full flex-1 sm:flex-none bg-black text-white rounded-lg overflow-hidden min-h-[60vh] sm:min-h-[320px]"
+                    ></div>
                     {error ? (
                         <div className="mt-4 flex flex-col items-center gap-3 text-center">
                             <p className="text-sm text-destructive">{error}</p>
@@ -105,6 +141,16 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
                                 <RefreshCw className="w-4 h-4 mr-2" />
                                 Try again
                             </Button>
+                        </div>
+                    ) : tapToScan ? (
+                        <div className="mt-4 w-full flex flex-col items-center gap-2">
+                            <Button onClick={scanNow} className="w-full h-14 text-base font-bold rounded-xl">
+                                <ScanLine className="w-5 h-5 mr-2" />
+                                Scan
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                                {hint ?? "Line the barcode up inside the frame, then tap Scan or the camera view."}
+                            </p>
                         </div>
                     ) : (
                         <p className="text-xs text-muted-foreground mt-4 text-center">
