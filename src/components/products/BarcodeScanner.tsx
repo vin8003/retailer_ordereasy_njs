@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { X, Camera, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,22 +10,33 @@ interface BarcodeScannerProps {
     onClose: () => void;
 }
 
+const READER_ID = "reader";
+// The same code held in view is read on many frames; one tap should count once.
+const REPEAT_WINDOW_MS = 1500;
+
+function scanErrorMessage(error: unknown): string {
+    const name = error instanceof DOMException ? error.name : "";
+    const text = String(error);
+    if (name === "NotAllowedError" || /permission|denied/i.test(text)) {
+        return "Camera access is blocked. Allow the camera for this site in your browser settings, then try again.";
+    }
+    if (name === "NotFoundError" || name === "OverconstrainedError") {
+        return "No camera was found on this device.";
+    }
+    return "Could not start the camera. Search for the product or use a barcode scanner instead.";
+}
+
 export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) {
-    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
-    const [hasCameraError, setHasCameraError] = useState(false);
+    // Read through a ref so a parent passing a new callback does not restart the camera.
+    const onScanSuccessRef = useRef(onScanSuccess);
+    useEffect(() => {
+        onScanSuccessRef.current = onScanSuccess;
+    }, [onScanSuccess]);
+    const [error, setError] = useState<string | null>(null);
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
-        // Run only on client side
-        if (typeof window === "undefined") return;
-
-        // Clean up previous instance if needed
-        if (scannerRef.current) {
-            scannerRef.current.clear().catch(console.error);
-        }
-
-        const config = {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+        const scanner = new Html5Qrcode(READER_ID, {
             formatsToSupport: [
                 Html5QrcodeSupportedFormats.EAN_13,
                 Html5QrcodeSupportedFormats.EAN_8,
@@ -34,53 +45,72 @@ export function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScannerProps) 
                 Html5QrcodeSupportedFormats.QR_CODE,
                 Html5QrcodeSupportedFormats.CODE_128,
             ],
-            aspectRatio: 1.0,
-            disableFlip: false,
+            verbose: false,
+        });
+        let closing = false;
+        let lastCode = "";
+        let lastAt = 0;
+
+        // A wide box that fills most of the viewfinder, so the barcode is easy to line up on a phone.
+        const barcodeBox = (viewfinderWidth: number, viewfinderHeight: number) => {
+            const width = Math.min(Math.floor(viewfinderWidth * 0.9), 520);
+            const height = Math.min(Math.floor(viewfinderHeight * 0.5), Math.floor(width * 0.6));
+            return { width, height };
         };
 
-        const scanner = new Html5QrcodeScanner(
-            "reader",
-            config,
-            false // verbose
-        );
-
-        scanner.render(
+        const starting = scanner.start(
+            // The back camera; falls back to whichever camera the browser has if there is no back one.
+            { facingMode: "environment" },
+            { fps: 10, qrbox: barcodeBox },
             (decodedText) => {
-                scanner.pause(true); // Pause scanning on success
-                onScanSuccess(decodedText);
+                // The camera stays open: each new code is reported, and the parent decides whether to close.
+                const now = Date.now();
+                if (closing || (decodedText === lastCode && now - lastAt < REPEAT_WINDOW_MS)) return;
+                lastCode = decodedText;
+                lastAt = now;
+                onScanSuccessRef.current(decodedText);
             },
-            (error) => {
-                // Ignore scanning errors (happens constantly while trying to find code)
-            }
+            () => {} // Scan misses happen on every frame without a code; ignore them.
         );
-
-        scannerRef.current = scanner;
+        starting.catch((err) => {
+            if (!closing) setError(scanErrorMessage(err));
+        });
 
         return () => {
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(console.error);
-            }
+            closing = true;
+            // Stop the camera once it has started, even if the component closed while starting.
+            starting.then(() => (scanner.isScanning ? scanner.stop() : undefined)).catch(() => {});
         };
-    }, [onScanSuccess]);
+    }, [attempt]);
 
     return (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-            <div className="bg-card w-full max-w-sm rounded-lg shadow-lg border overflow-hidden relative">
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-stretch sm:items-center sm:justify-center sm:p-4">
+            <div className="bg-card w-full h-full sm:h-auto sm:max-w-md sm:rounded-lg shadow-lg border-0 sm:border overflow-hidden flex flex-col">
                 <div className="flex items-center justify-between p-4 border-b bg-muted/50">
                     <h3 className="font-semibold flex items-center gap-2">
                         <Camera className="w-5 h-5" />
                         Scan Product
                     </h3>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8">
-                        <X className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close scanner" className="rounded-full h-10 w-10">
+                        <X className="w-5 h-5" />
                     </Button>
                 </div>
 
-                <div className="p-4 flex flex-col items-center">
-                    <div id="reader" className="w-full bg-black rounded-lg overflow-hidden min-h-[300px]"></div>
-                    <p className="text-xs text-muted-foreground mt-4 text-center">
-                        Position the barcode inside the frame to scan automatically.
-                    </p>
+                <div className="p-4 flex flex-col flex-1 min-h-0 items-center">
+                    <div id={READER_ID} className="w-full flex-1 sm:flex-none bg-black text-white rounded-lg overflow-hidden min-h-[60vh] sm:min-h-[320px]"></div>
+                    {error ? (
+                        <div className="mt-4 flex flex-col items-center gap-3 text-center">
+                            <p className="text-sm text-destructive">{error}</p>
+                            <Button variant="outline" onClick={() => setAttempt((n) => n + 1)} className="h-11 px-5">
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Try again
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-muted-foreground mt-4 text-center">
+                            Hold the barcode inside the frame. It is read automatically.
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
