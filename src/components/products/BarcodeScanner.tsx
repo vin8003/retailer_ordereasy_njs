@@ -6,6 +6,7 @@ import { X, Camera, RefreshCw, ScanLine, SwitchCamera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playScanBeep } from "@/lib/beep";
 import { pickDetectedCode, type Detection } from "@/lib/scanPick";
+import { nextCamera, type CameraInfo } from "@/lib/cameraPick";
 
 interface BarcodeScannerProps {
     onScanSuccess: (decodedText: string) => void;
@@ -46,9 +47,12 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
     const [error, setError] = useState<string | null>(null);
     const [hint, setHint] = useState<string | null>(null);
     const [attempt, setAttempt] = useState(0);
-    // Cameras the browser lists, and which one is open. Null opens the back camera, then lists them.
-    const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
-    const [cameraId, setCameraId] = useState<string | null>(null);
+    // What to open: the back camera by default, a listed camera by id, or the other facing when the browser lists none.
+    const [choice, setChoice] = useState<{ deviceId?: string; facing: "environment" | "user" }>({ facing: "environment" });
+    // Cameras the browser lists and the one actually running, known once the camera has started.
+    const [cameras, setCameras] = useState<CameraInfo[]>([]);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [activeLabel, setActiveLabel] = useState<string>("");
     // In tap mode the first code is read on its own; every later code needs a tap.
     const firstCodeTaken = useRef(false);
 
@@ -75,10 +79,15 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
             return { width, height };
         };
 
+        // Barcodes need a sharp picture: ask for a good size and, below, for continuous focus.
+        const video: MediaTrackConstraints = {
+            ...(choice.deviceId ? { deviceId: { exact: choice.deviceId } } : { facingMode: choice.facing }),
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+        };
         const starting = scanner.start(
-            // The back camera; falls back to whichever camera the browser has if there is no back one.
-            cameraId ? { deviceId: { exact: cameraId } } : { facingMode: "environment" },
-            { fps: 10, qrbox: barcodeBox },
+            video,
+            { fps: 10, qrbox: barcodeBox, videoConstraints: video },
             (decodedText) => {
                 const now = Date.now();
                 if (tapToScanRef.current && firstCodeTaken.current) {
@@ -96,11 +105,23 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
             },
             () => {} // Scan misses happen on every frame without a code; ignore them.
         );
-        // Camera names are only listed once the browser has allowed the camera.
         starting
-            .then(() => Html5Qrcode.getCameras())
-            .then((list) => {
-                if (!closing) setCameras(list.map((c) => ({ id: c.id, label: c.label })));
+            .then(async () => {
+                if (closing) return;
+                // Keep the lens focusing on its own; not every camera supports it.
+                try {
+                    await scanner.applyVideoConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] });
+                } catch {
+                    // The camera keeps its default focus.
+                }
+                const settings = scanner.getRunningTrackSettings();
+                // Camera names are only listed once the browser has allowed the camera. Listing them
+                // does not open a second stream, which some phones do not allow.
+                const devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+                if (closing) return;
+                setCameras(devices.map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` })));
+                setActiveId(settings.deviceId ?? null);
+                setActiveLabel(devices.find((d) => d.deviceId === settings.deviceId)?.label ?? "");
             })
             .catch(() => {});
         starting.catch((err) => {
@@ -112,7 +133,7 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
             // Stop the camera once it has started, even if the component closed while starting.
             starting.then(() => (scanner.isScanning ? scanner.stop() : undefined)).catch(() => {});
         };
-    }, [attempt, cameraId]);
+    }, [attempt, choice]);
 
     // A tap is a user gesture, so the beep is allowed to play even where autoplay is blocked.
     const scanNow = () => {
@@ -129,12 +150,15 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
     };
 
     const switchCamera = () => {
-        if (cameras.length < 2) return;
-        const current = cameraId ? cameras.findIndex((c) => c.id === cameraId) : -1;
-        // From the default back camera, go to the first listed camera that is not obviously the same one.
-        const next = cameras[(current + 1) % cameras.length];
         lastDetection.current = null;
-        setCameraId(next.id);
+        setHint(null);
+        const next = nextCamera(cameras, activeId);
+        if (next) {
+            setChoice({ deviceId: next.id, facing: "environment" });
+        } else {
+            // The browser lists fewer than two cameras, so flip between the back and front facing.
+            setChoice((current) => ({ facing: current.facing === "environment" ? "user" : "environment" }));
+        }
     };
 
     return (
@@ -146,11 +170,10 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
                         Scan Product
                     </h3>
                     <div className="flex items-center gap-1">
-                    {cameras.length > 1 && (
-                        <Button variant="ghost" size="icon" onClick={switchCamera} aria-label="Switch camera" className="rounded-full h-10 w-10">
-                            <SwitchCamera className="w-5 h-5" />
-                        </Button>
-                    )}
+                    <Button variant="outline" onClick={switchCamera} aria-label="Switch camera" className="h-10 rounded-full px-3 gap-1.5">
+                        <SwitchCamera className="w-5 h-5" />
+                        <span className="text-xs font-semibold">Switch</span>
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close scanner" className="rounded-full h-10 w-10">
                         <X className="w-5 h-5" />
                     </Button>
@@ -179,6 +202,9 @@ export function BarcodeScanner({ onScanSuccess, onClose, tapToScan = false, onNo
                             </Button>
                             <p className="text-xs text-muted-foreground text-center">
                                 {hint ?? "The first barcode is read automatically. After that, line one up and tap Scan or the camera view."}
+                            </p>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Picture blurry? Tap Switch at the top to try another camera{activeLabel ? ` (now: ${activeLabel})` : ""}.
                             </p>
                         </div>
                     ) : (
