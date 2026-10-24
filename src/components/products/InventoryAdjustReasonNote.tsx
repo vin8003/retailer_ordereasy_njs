@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parsePurchaseInvoiceNumberFromText, purchaseDetailsHref } from "@/lib/purchaseLinks";
 import { orderDetailsHref, parseOrderNumberFromText } from "@/lib/orderLinks";
 import {
     getInventoryAdjustReasonLabel,
@@ -21,7 +22,10 @@ export function InventoryAdjustReasonNote({
     if (!reason) return null;
 
     const orderNumber = parseOrderNumberFromText(reason);
-    const href = orderNumber ? orderDetailsHref({ orderNumber }) : null;
+    const invoiceNumber = parsePurchaseInvoiceNumberFromText(reason);
+    const href = orderNumber
+        ? orderDetailsHref({ orderNumber })
+        : purchaseDetailsHref({ invoiceNumber });
 
     return (
         <div className={cn("flex items-center gap-2 font-bold text-gray-900", className)}>

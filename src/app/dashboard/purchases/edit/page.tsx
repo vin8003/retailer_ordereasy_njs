@@ -75,7 +75,11 @@ const getApiError = (error: unknown, fallback: string) => {
 function EditPurchaseContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const invoiceId = searchParams.get('id');
+    const invoiceIdParam = searchParams.get('id');
+    const invoiceNumberParam = searchParams.get('number');
+    // Product history rows only carry the invoice number, so resolve it to an id.
+    const [numberResolvedId, setNumberResolvedId] = useState<string | null>(null);
+    const invoiceId = invoiceIdParam || numberResolvedId;
 
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -130,6 +134,24 @@ function EditPurchaseContent() {
             toast.error("Failed to add supplier");
         }
     };
+
+    useEffect(() => {
+        if (invoiceIdParam || !invoiceNumberParam) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await api.get('/products/erp/purchase-invoices/', { params: { search: invoiceNumberParam } });
+                const list = res.data?.results || res.data || [];
+                const match = list.find((i: { invoice_number?: string }) => String(i.invoice_number) === invoiceNumberParam);
+                if (cancelled) return;
+                if (match) setNumberResolvedId(String(match.id));
+                else toast.error("Purchase invoice not found");
+            } catch {
+                if (!cancelled) toast.error("Failed to look up purchase invoice");
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [invoiceIdParam, invoiceNumberParam]);
 
     useEffect(() => {
         const fetchData = async () => {
