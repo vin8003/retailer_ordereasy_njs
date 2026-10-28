@@ -1063,6 +1063,7 @@ export default function POSPage() {
                         <ScanLine className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                         <input
                             ref={searchInputRef}
+                            data-testid="pos-search"
                             type="text"
                             placeholder={isMobileScreen ? 'Search or scan an item' : 'Scan barcode or search... (Alt+S)  •  Use barcode*qty for bulk'}
                             value={searchTerm}
@@ -1343,12 +1344,12 @@ export default function POSPage() {
                         <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-inner ring-4 ring-green-50">
                             <MonitorCheck size={40} strokeWidth={2.5} />
                         </div>
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">Checkout Complete!</h2>
+                        <h2 data-testid="pos-checkout-complete" className="text-2xl font-black text-gray-900 mb-2">Checkout Complete!</h2>
                         <p className="text-gray-500 mb-8">Order <span className="font-bold text-gray-900">#{activeSession.completedOrder.order_number}</span> confirmed.</p>
                         
                         <div className="bg-gray-50 rounded-2xl p-6 w-full mb-8 border border-gray-100">
                             <div className="text-sm text-gray-500 mb-1">Total Paid ({activeSession.completedOrder.payment_mode.toUpperCase()})</div>
-                            <div className="text-4xl font-black text-primary">₹{Number(activeSession.completedOrder.total_amount).toFixed(0)}</div>
+                            <div data-testid="pos-paid-total" className="text-4xl font-black text-primary">₹{Number(activeSession.completedOrder.total_amount).toFixed(0)}</div>
                         </div>
 
                         <div className="flex flex-col w-full gap-3">
@@ -1359,6 +1360,7 @@ export default function POSPage() {
                                 <Printer size={20} /> Print Receipt <kbd className="hidden md:inline ml-2 px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-[10px] font-mono font-bold border border-gray-600">Ctrl+P</kbd>
                             </button>
                             <button
+                                data-testid="pos-new-bill"
                                 onClick={handleNewBill}
                                 className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:bg-gray-100"
                             >
@@ -1485,6 +1487,8 @@ export default function POSPage() {
                                     const isCartActive = cartIdx === activeCartIndex && currentFocus === 'cart';
                                     return (
                                         <tr 
+                                            data-testid="pos-cart-line"
+                                            data-barcode={item.barcode}
                                             key={`${item.id}-${item.batch_id}`} 
                                             className={`group transition-all ${isCartActive ? 'bg-primary/5' : 'bg-white hover:bg-gray-50/50'}`}
                                         >
@@ -1497,6 +1501,7 @@ export default function POSPage() {
                                                         <Minus size={10} />
                                                     </button>
                                                     <input 
+                                                        data-testid="pos-cart-line-qty"
                                                         type="number" 
                                                         step="any"
                                                         value={item.cart_quantity} 
@@ -1599,7 +1604,7 @@ export default function POSPage() {
 
                         <div className="pt-4 border-t-2 border-dashed border-gray-200 flex justify-between items-center">
                             <span className="text-xl font-black text-gray-900 uppercase tracking-tighter">Total</span>
-                            <span className="text-4xl md:text-5xl font-black text-primary tracking-tighter">₹{total.toFixed(0)}</span>
+                            <span data-testid="pos-total" className="text-4xl md:text-5xl font-black text-primary tracking-tighter">₹{total.toFixed(0)}</span>
                         </div>
                     </div>
 
@@ -1611,6 +1616,7 @@ export default function POSPage() {
                             <div className="relative">
                                 <input
                                     ref={mobileInputRef}
+                                    data-testid="pos-customer-mobile"
                                     type="tel"
                                     placeholder={isMobileScreen ? 'Customer mobile number' : 'Mobile Number (Alt+M)'}
                                     value={activeSession.customerMobile}
@@ -1692,6 +1698,7 @@ export default function POSPage() {
 
                             <input
                                 type="text"
+                                data-testid="pos-customer-name"
                                 placeholder={isMobileScreen ? 'Customer name' : 'Customer Name'}
                                 value={activeSession.customerName}
                                 onChange={(e) => updateActiveSession({ customerName: e.target.value })}
@@ -1705,6 +1712,7 @@ export default function POSPage() {
                         <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment Mode</p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             <button 
+                                data-testid="pos-pay-cash"
                                 onClick={() => updateActiveSession({ paymentMode: 'cash' })}
                                 className={`flex items-center justify-center gap-2 py-3.5 md:py-3 rounded-xl border-2 font-bold transition-all ${
                                     activeSession.paymentMode === 'cash' 
@@ -1716,6 +1724,7 @@ export default function POSPage() {
                                 <kbd className="hidden md:inline px-1 py-0.5 bg-green-100 text-green-600 rounded text-[9px] font-mono font-bold border border-green-200">Alt+1</kbd>
                             </button>
                             <button 
+                                data-testid="pos-pay-upi"
                                 onClick={() => updateActiveSession({ paymentMode: 'upi' })}
                                 className={`flex items-center justify-center gap-2 py-3.5 md:py-3 rounded-xl border-2 font-bold transition-all ${
                                     activeSession.paymentMode === 'upi' 
@@ -1727,6 +1736,7 @@ export default function POSPage() {
                                 <kbd className="hidden md:inline px-1 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-mono font-bold border border-primary/20">Alt+2</kbd>
                             </button>
                             <button 
+                                data-testid="pos-pay-credit"
                                 onClick={() => updateActiveSession({ paymentMode: 'credit' })}
                                 className={`flex items-center justify-center gap-2 py-3.5 md:py-3 rounded-xl border-2 font-bold transition-all ${
                                     activeSession.paymentMode === 'credit' 
@@ -1738,6 +1748,7 @@ export default function POSPage() {
                                 <kbd className="hidden md:inline px-1 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] font-mono font-bold border border-orange-200">Alt+3</kbd>
                             </button>
                             <button 
+                                data-testid="pos-pay-split"
                                 onClick={() => updateActiveSession({ 
                                     paymentMode: 'split',
                                     paymentSplit: { cash: total, upi: 0, credit: 0 } 
@@ -1765,6 +1776,7 @@ export default function POSPage() {
                                         <input 
                                             type="number"
                                             inputMode="decimal"
+                                            data-testid="pos-split-cash"
                                             value={activeSession.paymentSplit.cash || ''}
                                             onChange={(e) => {
                                                 const val = parseFloat(e.target.value) || 0;
@@ -1779,6 +1791,7 @@ export default function POSPage() {
                                         <input 
                                             type="number"
                                             inputMode="decimal"
+                                            data-testid="pos-split-upi"
                                             value={activeSession.paymentSplit.upi || ''}
                                             onChange={(e) => {
                                                 const val = parseFloat(e.target.value) || 0;
@@ -1793,6 +1806,7 @@ export default function POSPage() {
                                         <input 
                                             type="number"
                                             inputMode="decimal"
+                                            data-testid="pos-split-credit"
                                             value={activeSession.paymentSplit.credit || ''}
                                             onChange={(e) => {
                                                 const val = parseFloat(e.target.value) || 0;
@@ -1804,7 +1818,7 @@ export default function POSPage() {
                                     </div>
                                 </div>
                                 {Math.abs((activeSession.paymentSplit.cash + activeSession.paymentSplit.upi + activeSession.paymentSplit.credit) - total) > 1 && (
-                                    <p className="text-[10px] font-bold text-red-500 mt-1 animate-pulse text-center">
+                                    <p data-testid="pos-split-mismatch" className="text-[10px] font-bold text-red-500 mt-1 animate-pulse text-center">
                                         Sum (₹{activeSession.paymentSplit.cash + activeSession.paymentSplit.upi + activeSession.paymentSplit.credit}) must be ₹{total}
                                     </p>
                                 )}
@@ -1822,6 +1836,7 @@ export default function POSPage() {
                     </div>
 
                     <button
+                        data-testid="pos-complete-bill"
                         onClick={handleCheckout}
                         disabled={activeSession.cart.length === 0 || isCheckoutLoading}
                         className="hidden md:flex w-full bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/40 disabled:shadow-none disabled:bg-gray-300 disabled:text-gray-500 py-5 rounded-2xl font-black text-xl flex justify-center items-center gap-3 transition-all active:scale-[0.98] border-b-4 border-primary/20"

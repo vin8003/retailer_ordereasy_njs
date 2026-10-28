@@ -107,7 +107,7 @@ export function FulfillmentSlotReschedule({
                     <p className="font-medium">
                         {deliveryMode === 'pickup' ? 'Pickup window' : 'Delivery window'}
                     </p>
-                    <p className="text-muted-foreground">
+                    <p data-testid="order-slot" className="text-muted-foreground">
                         {slotLabel || "No slot scheduled"}
                     </p>
                     {currentSlotStart && (

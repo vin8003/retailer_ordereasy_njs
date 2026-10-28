@@ -102,7 +102,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, b
                 {/* Header */}
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">Unknown Barcode</h2>
+                        <h2 data-testid="pos-unknown-barcode" className="text-xl font-bold text-gray-900">Unknown Barcode</h2>
                         <p className="text-sm text-primary font-mono font-bold mt-1">[{barcode}]</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors text-gray-400">

@@ -227,7 +227,7 @@ function OrderDetailContent() {
                     </Button>
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-3xl font-bold tracking-tight">Order #{order.order_number}</h1>
-                        <Badge variant="outline" className={cn("font-bold border shadow-none", getStatusColor(order.status))}>{order.status.toUpperCase()}</Badge>
+                        <Badge data-testid="order-status" variant="outline" className={cn("font-bold border shadow-none", getStatusColor(order.status))}>{order.status.toUpperCase()}</Badge>
                         <Badge variant="outline" className={cn("font-bold border shadow-none", order.source === 'pos' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-primary/10 text-primary border-primary/20')}>
                             {order.source === 'pos' ? 'STORE ORDER' : 'ONLINE ORDER'}
                         </Badge>
@@ -400,7 +400,7 @@ function OrderDetailContent() {
                             <Separator />
                             <div className="flex justify-between font-bold text-lg">
                                 <span>Total Amount</span>
-                                <span>₹{Number(order.total_amount).toFixed(2)}</span>
+                                <span data-testid="order-total">₹{Number(order.total_amount).toFixed(2)}</span>
                             </div>
                         </CardContent>
                     </Card>
