@@ -161,6 +161,7 @@ export function OrderStatusUpdate({
                 return (
                     <Button
                         key={status}
+                        data-testid={`order-status-next-${status}`}
                         onClick={() => handleStatusClick(status)}
                         disabled={isUpdating}
                     >
@@ -206,6 +207,7 @@ export function OrderStatusUpdate({
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                         <Button
                             disabled={isUpdating || !prepTime || parseInt(prepTime) <= 0}
+                            data-testid="order-confirm-submit"
                             onClick={() => handleUpdate(selectedStatus, parseInt(prepTime))}
                         >
                             Confirm Order
@@ -255,6 +257,7 @@ export function OrderStatusUpdate({
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDispatchDialogOpen(false)}>Cancel</Button>
                         <Button
+                            data-testid="order-dispatch-submit"
                             disabled={isUpdating || !isDispatchValid}
                             onClick={() =>
                                 handleUpdate('out_for_delivery', undefined, {

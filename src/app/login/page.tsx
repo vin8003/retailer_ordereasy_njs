@@ -109,7 +109,7 @@ export default function LoginPage() {
                                     <FormItem>
                                         <FormLabel>Username</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter your username" {...field} />
+                                            <Input data-testid="login-username" placeholder="Enter your username" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -125,6 +125,7 @@ export default function LoginPage() {
                                             <div className="relative">
                                                 <Input
                                                     type={showPassword ? "text" : "password"}
+                                                    data-testid="login-password"
                                                     placeholder="Enter your password"
                                                     {...field}
                                                 />
@@ -147,7 +148,7 @@ export default function LoginPage() {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            <Button data-testid="login-submit" type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

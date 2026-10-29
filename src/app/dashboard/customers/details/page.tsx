@@ -378,14 +378,16 @@ function CustomerDetailContent() {
                                 icon={IndianRupee} 
                                 label="Current Balance" 
                                 value={formatCurrency(customer.currentBalance)} 
+                                testId="customer-current-balance"
                                 valueClassName={customer.currentBalance > 0 ? "text-red-600" : "text-green-600"}
                             />
-                            <StatRow icon={CreditCard} label="Credit Limit" value={formatCurrency(customer.creditLimit)} />
+                            <StatRow icon={CreditCard} label="Credit Limit" value={formatCurrency(customer.creditLimit)} testId="customer-credit-limit" />
                             <StatRow icon={ShoppingBag} label="Total Orders" value={customer.customerName === "Walking Customer" ? "POS Only" : customer.totalOrders.toString()} />
                             <StatRow icon={Star} label="Avg Rating" value={(customer.averageRating || 0).toFixed(1)} />
 
                             <div className="pt-4 space-y-3">
                                 <Button
+                                    data-testid="record-payment-open"
                                     className="w-full gap-2"
                                     onClick={() => setShowPaymentDialog(true)}
                                 >
@@ -720,6 +722,7 @@ function CustomerDetailContent() {
                             <Label htmlFor="pay-amount">Payment Amount (₹) *</Label>
                             <Input
                                 id="pay-amount"
+                                data-testid="record-payment-amount"
                                 type="number"
                                 value={paymentAmount}
                                 onChange={(e) => setPaymentAmount(e.target.value)}
@@ -754,6 +757,7 @@ function CustomerDetailContent() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
                         <Button 
+                            data-testid="record-payment-submit"
                             onClick={handleRecordPayment} 
                             disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || actionLoading}
                             className="bg-green-600 hover:bg-green-700"
@@ -814,7 +818,7 @@ export default function CustomerDetailPage() {
     );
 }
 
-function StatRow({ icon: Icon, label, value, valueClassName }: { icon: any, label: string, value: string, valueClassName?: string }) {
+function StatRow({ icon: Icon, label, value, valueClassName, testId }: { icon: any, label: string, value: string, valueClassName?: string, testId?: string }) {
     return (
         <div className="flex items-center gap-4">
             <div className="bg-slate-100 p-2.5 rounded-lg">
@@ -822,7 +826,7 @@ function StatRow({ icon: Icon, label, value, valueClassName }: { icon: any, labe
             </div>
             <div className="flex-1">
                 <p className="text-sm text-muted-foreground">{label}</p>
-                <p className={`font-semibold ${valueClassName || ''}`}>{value}</p>
+                <p data-testid={testId} className={`font-semibold ${valueClassName || ''}`}>{value}</p>
             </div>
         </div>
     )
