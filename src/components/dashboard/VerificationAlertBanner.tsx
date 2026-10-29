@@ -44,7 +44,7 @@ export default function VerificationAlertBanner() {
 
   if (isRejected) {
     return (
-      <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm text-red-900 dark:bg-red-950/40 dark:border-red-900/60 dark:text-red-200">
+      <div data-testid="verification-banner" data-status="rejected" className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 shadow-sm text-red-900 dark:bg-red-950/40 dark:border-red-900/60 dark:text-red-200">
         <div className="flex items-start gap-3">
           <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
           <div className="space-y-1 text-sm">
@@ -67,7 +67,7 @@ export default function VerificationAlertBanner() {
 
   // Pending verification banner (User's approved text)
   return (
-    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm text-amber-950 dark:bg-amber-950/30 dark:border-amber-800/60 dark:text-amber-200">
+    <div data-testid="verification-banner" data-status="pending" className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm text-amber-950 dark:bg-amber-950/30 dark:border-amber-800/60 dark:text-amber-200">
       <div className="flex items-start gap-3">
         <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0 animate-pulse" />
         <div className="space-y-1.5 text-sm">

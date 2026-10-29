@@ -2,8 +2,11 @@ import axios, { type AxiosResponse } from 'axios';
 import { toast } from 'sonner';
 import { authProfileCache, invalidateAfterMutation, profileCache } from './sessionCache';
 
+/** API host (also serves /media). Override with NEXT_PUBLIC_API_BASE_URL, e.g. for CI builds; defaults to live. */
+export const API_ORIGIN = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.ordereasy.win').replace(/\/$/, '');
+
 const BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://api.ordereasy.win/api/'
+  ? `${API_ORIGIN}/api/`
   : (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/');
 // const BASE_URL = 'http://127.0.0.1:8000/api/';
 

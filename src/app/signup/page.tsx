@@ -139,7 +139,7 @@ export default function SignupPage() {
                                     <FormItem>
                                         <FormLabel>Username</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter username" {...field} />
+                                            <Input data-testid="signup-username" placeholder="Enter username" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -152,7 +152,7 @@ export default function SignupPage() {
                                     <FormItem>
                                         <FormLabel>Email</FormLabel>
                                         <FormControl>
-                                            <Input type="email" placeholder="Enter email" {...field} />
+                                            <Input data-testid="signup-email" type="email" placeholder="Enter email" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -170,6 +170,7 @@ export default function SignupPage() {
                                                     +91
                                                 </div>
                                                 <Input
+                                                    data-testid="signup-phone"
                                                     placeholder="Enter 10-digit number"
                                                     className="rounded-l-none"
                                                     {...field}
@@ -192,6 +193,7 @@ export default function SignupPage() {
                                             <div className="relative">
                                                 <Input
                                                     type={showPassword ? "text" : "password"}
+                                                    data-testid="signup-password"
                                                     placeholder="Create password"
                                                     {...field}
                                                 />
@@ -224,6 +226,7 @@ export default function SignupPage() {
                                             <div className="relative">
                                                 <Input
                                                     type={showConfirmPassword ? "text" : "password"}
+                                                    data-testid="signup-confirm-password"
                                                     placeholder="Confirm password"
                                                     {...field}
                                                 />
@@ -246,7 +249,7 @@ export default function SignupPage() {
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full" disabled={isLoading}>
+                            <Button data-testid="signup-submit" type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
