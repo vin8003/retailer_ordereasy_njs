@@ -339,6 +339,8 @@ export default function AdminVerificationsPage() {
             return (
               <Card
                 key={retailer.id}
+                data-testid="verification-card"
+                data-username={retailer.username}
                 className={`transition-all hover:shadow-md ${
                   isPending
                     ? 'border-amber-300/80 bg-amber-50/10 dark:border-amber-900/60'
@@ -412,6 +414,7 @@ export default function AdminVerificationsPage() {
                       {isPending ? (
                         <>
                           <Button
+                            data-testid="verification-approve"
                             size="sm"
                             className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 flex-1 sm:flex-none"
                             onClick={() => handleApprove(retailer)}

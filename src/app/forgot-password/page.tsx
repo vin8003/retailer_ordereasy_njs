@@ -133,13 +133,13 @@ export default function ForgotPasswordPage() {
                                         <FormItem>
                                             <FormLabel>Username, phone or email</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter your username, phone or email" autoComplete="username" {...field} />
+                                                <Input data-testid="forgot-identifier" placeholder="Enter your username, phone or email" autoComplete="username" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                <Button type="submit" className="w-full" disabled={isLoading}>
+                                <Button data-testid="forgot-send" type="submit" className="w-full" disabled={isLoading}>
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -162,6 +162,7 @@ export default function ForgotPasswordPage() {
                                             <FormLabel>Code</FormLabel>
                                             <FormControl>
                                                 <Input
+                                                    data-testid="reset-code"
                                                     inputMode="numeric"
                                                     autoComplete="one-time-code"
                                                     maxLength={OTP_LENGTH}
@@ -188,6 +189,7 @@ export default function ForgotPasswordPage() {
                                                     <Input
                                                         type={showPassword ? "text" : "password"}
                                                         autoComplete="new-password"
+                                                        data-testid="reset-new-password"
                                                         placeholder="Enter a new password"
                                                         {...field}
                                                     />
@@ -220,6 +222,7 @@ export default function ForgotPasswordPage() {
                                                 <Input
                                                     type={showPassword ? "text" : "password"}
                                                     autoComplete="new-password"
+                                                    data-testid="reset-confirm-password"
                                                     placeholder="Re-enter the new password"
                                                     {...field}
                                                 />
@@ -228,7 +231,7 @@ export default function ForgotPasswordPage() {
                                         </FormItem>
                                     )}
                                 />
-                                <Button type="submit" className="w-full" disabled={isLoading}>
+                                <Button data-testid="reset-submit" type="submit" className="w-full" disabled={isLoading}>
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

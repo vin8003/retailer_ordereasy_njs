@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/services/api';
+import { API_ORIGIN, authService } from '@/services/api';
 import { clearAllSessionCaches } from '@/services/sessionCache';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -285,7 +285,7 @@ export default function ProfilePage() {
     const formatImageUrl = (path?: string) => {
         if (!path) return '';
         if (path.startsWith('http')) return path;
-        const baseUrl = 'https://api.ordereasy.win';
+        const baseUrl = API_ORIGIN;
         return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
     };
 
@@ -315,10 +315,10 @@ export default function ProfilePage() {
                 <h1 className="text-3xl font-bold tracking-tight">Store Profile</h1>
                 {!isEditing && (
                     <div className="flex gap-2">
-                        <Button variant="destructive" onClick={handleLogout}>
+                        <Button data-testid="profile-logout" variant="destructive" onClick={handleLogout}>
                             <LogOut className="mr-2 h-4 w-4" /> Logout
                         </Button>
-                        <Button onClick={() => setIsEditing(true)}>
+                        <Button data-testid="profile-edit" onClick={() => setIsEditing(true)}>
                             Edit Profile
                         </Button>
                     </div>
@@ -326,7 +326,7 @@ export default function ProfilePage() {
                 {isEditing && (
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => { setIsEditing(false); setFormData(profile); }}>Cancel</Button>
-                        <Button onClick={handleSave} disabled={saving}>
+                        <Button data-testid="profile-save" onClick={handleSave} disabled={saving}>
                             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Save Changes
                         </Button>
@@ -419,7 +419,7 @@ export default function ProfilePage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label>Shop Name</Label>
-                                <Input disabled={!isEditing} value={formData.shopName} onChange={e => setFormData({ ...formData, shopName: e.target.value })} />
+                                <Input data-testid="profile-shop-name" disabled={!isEditing} value={formData.shopName} onChange={e => setFormData({ ...formData, shopName: e.target.value })} />
                             </div>
                             <div className="space-y-2">
                                 <Label>Description</Label>
@@ -484,7 +484,7 @@ export default function ProfilePage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>City</Label>
-                                    <Input disabled={!isEditing} value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} />
+                                    <Input data-testid="profile-city" disabled={!isEditing} value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>State</Label>

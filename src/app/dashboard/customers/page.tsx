@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { customerService } from '@/services/api';
+import { API_ORIGIN, customerService } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -216,7 +216,7 @@ export default function CustomersPage() {
     const formatImageUrl = (path?: string) => {
         if (!path) return '';
         if (path.startsWith('http')) return path;
-        const baseUrl = 'https://api.ordereasy.win';
+        const baseUrl = API_ORIGIN;
         return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
     };
 

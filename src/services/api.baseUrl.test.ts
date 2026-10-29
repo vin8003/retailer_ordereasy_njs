@@ -26,6 +26,13 @@ describe("api BASE_URL", () => {
     expect(await loadBaseUrl()).toBe("https://api.ordereasy.win/api/");
   });
 
+  it("uses NEXT_PUBLIC_API_BASE_URL in production builds when set", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://127.0.0.1:8100/");
+
+    expect(await loadBaseUrl()).toBe("http://127.0.0.1:8100/api/");
+  });
+
   it("uses NEXT_PUBLIC_API_URL outside production", async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:9000/api/");

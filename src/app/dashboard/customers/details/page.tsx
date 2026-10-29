@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { orderDetailsHref } from '@/lib/orderLinks';
-import api, { customerService } from '@/services/api';
+import api, { API_ORIGIN, customerService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -310,7 +310,7 @@ function CustomerDetailContent() {
     const formatImageUrl = (path?: string) => {
         if (!path) return '';
         if (path.startsWith('http')) return path;
-        const baseUrl = 'https://api.ordereasy.win';
+        const baseUrl = API_ORIGIN;
         return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
     };
 
@@ -368,7 +368,7 @@ function CustomerDetailContent() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Left Sidebar: Stats & Actions */}
                 <div className="md:col-span-1 space-y-6">
-                    <Card>
+                    <Card data-testid="khata-panel">
                         <CardHeader>
                             <CardTitle className="text-lg">Stats Overview</CardTitle>
                         </CardHeader>
