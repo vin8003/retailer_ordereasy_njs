@@ -76,19 +76,12 @@ export function clearAllSessionCaches() {
 /** Responses of GET retailer/profile/ and GET auth/profile/. */
 export const profileCache = createSessionCache<AxiosResponse>();
 export const authProfileCache = createSessionCache<AxiosResponse>();
-/** The POS product list (GET products/?no_page=true&is_active=true). */
-export const posProductsCache = createSessionCache<unknown[]>();
 
 const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
 
-// The POS updates its own stock after a checkout, and these change nothing in the catalog or stock.
-const POS_STOCK_UNCHANGED =
-    /^(products\/erp\/(pos-checkout|suppliers|supplier-ledger)|orders\/[^/]+\/(chat|rate-customer|notes|estimated-time|verify_payment)|orders\/inbox\/[^/]+\/fulfillment-slot)\b/;
-
 /**
  * Drops cached data that a successful write may have changed, so the next screen to need it
- * fetches it again: everything on login or signup, the profiles for retailer/ and auth/ writes,
- * the POS product list for catalog, purchase, return and order writes.
+ * fetches it again: everything on login or signup, the profiles for retailer/ and auth/ writes.
  */
 export function invalidateAfterMutation(method: string | undefined, url: string | undefined) {
     if (!method || !url || !MUTATING_METHODS.has(method.toLowerCase())) return;
@@ -101,8 +94,5 @@ export function invalidateAfterMutation(method: string | undefined, url: string 
     if (/^retailer\//.test(path) || (/^auth\//.test(path) && !/^auth\/device\//.test(path))) {
         profileCache.clear();
         authProfileCache.clear();
-    }
-    if (/^(products|returns|orders)\//.test(path) && !POS_STOCK_UNCHANGED.test(path)) {
-        posProductsCache.clear();
     }
 }

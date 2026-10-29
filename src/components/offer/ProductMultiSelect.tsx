@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Search, Check, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { productService } from '@/services/api';
+import { findCatalogProducts } from '@/services/posCatalog';
 // import { useDebounce } from '@/hooks/use-debounce'; 
 
 
@@ -62,13 +62,16 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, initialProd
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Fetch products based on search
+    // The server searches; the list never holds the whole catalog. A late answer for an earlier
+    // keystroke is dropped.
     useEffect(() => {
-        const fetchAll = async () => {
+        if (!open) return;
+        let stale = false;
+        const timer = setTimeout(async () => {
             setLoading(true);
             try {
-                const response = await productService.fetchProducts({ no_page: 'true', is_active: 'true' });
-                const productsList: Product[] = response.data.results || response.data || [];
+                const productsList = await findCatalogProducts<Product>(searchTerm);
+                if (stale) return;
                 setAllProducts(productsList);
 
                 // Update cache
@@ -80,26 +83,17 @@ export function ProductMultiSelect({ selectedIds, onSelectionChange, initialProd
             } catch (error) {
                 console.error("Search failed", error);
             } finally {
-                setLoading(false);
+                if (!stale) setLoading(false);
             }
+        }, searchTerm.trim() ? 250 : 0);
+
+        return () => {
+            stale = true;
+            clearTimeout(timer);
         };
+    }, [open, searchTerm]);
 
-        if (open) {
-            fetchAll();
-        }
-    }, [open]);
-
-    const results = (() => {
-        const searchLower = searchTerm.toLowerCase().trim();
-        if (!searchLower) return allProducts;
-        const words = searchLower.split(/\s+/).filter(Boolean);
-        return allProducts.filter(p => 
-            words.every(word => 
-                p.name.toLowerCase().includes(word) || 
-                (p.barcode && p.barcode.includes(word))
-            )
-        );
-    })();
+    const results = allProducts;
 
     // Cleanup or specialized fetch logic - removed empty useEffect
 

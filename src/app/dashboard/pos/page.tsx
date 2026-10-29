@@ -24,7 +24,8 @@ import { pickPosCartLineBrandName } from '@/utils/posCartLineBrand';
 import { POS_DEFAULT_RATING, customerCheckUpdate } from '@/utils/posCustomer';
 import { billOversells } from '@/utils/posOversell';
 import { applySaleToProducts } from '@/utils/posStockAfterSale';
-import { posProductsCache } from '@/services/sessionCache';
+import { browseCatalog, searchCatalog, lookupBarcode, fetchCatalogCategories, type CatalogCategory } from '@/services/posCatalog';
+import { POS_MIN_SEARCH_LENGTH, POS_SEARCH_STEP, nextSearchLimit, parseScanInput, isUnknownBarcodeCandidate, rowsWithBarcode } from '@/utils/posCatalog';
 import { BarcodeLabel } from '@/components/products/BarcodeLabel';
 import { BrandNameLabel } from '@/components/products/BrandNameLabel';
 import { AvailabilityBadges } from '@/components/products/AvailabilityBadges';
@@ -124,10 +125,17 @@ export default function POSPage() {
         return () => window.removeEventListener('resize', checkSize);
     }, []);
 
-    const [products, setProducts] = useState<Product[]>(() => (posProductsCache.peek() as Product[] | undefined) ?? []);
-    const [categories, setCategories] = useState<string[]>([]);
+    // The rows on screen: one page of the catalog, or the best matches for the search box. The POS
+    // never holds the whole product list.
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<CatalogCategory[]>([]);
+    const [hasMoreProducts, setHasMoreProducts] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const viewSeq = useRef(0);
+    const browsePageRef = useRef(1);
+    const searchLimitRef = useRef(POS_SEARCH_STEP);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeCategory, setActiveCategory] = useState('All');
+    const [activeCategory, setActiveCategory] = useState<number | null>(null);
     const [retailerProfile, setRetailerProfile] = useState<RetailerProfile | null>(null);
     
     // Multi-Session State
@@ -198,7 +206,7 @@ export default function POSPage() {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-    const [isFetching, setIsFetching] = useState(() => !posProductsCache.peek());
+    const [isFetching, setIsFetching] = useState(true);
 
     // Rating State
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -222,7 +230,6 @@ export default function POSPage() {
     const [activeGridIndex, setActiveGridIndex] = useState(-1);
     const [activeCartIndex, setActiveCartIndex] = useState(-1);
     const [currentFocus, setCurrentFocus] = useState<'search' | 'grid' | 'cart' | 'checkout' | 'success' | 'empty' | 'customer'>('search');
-    const [visibleCount, setVisibleCount] = useState(20);
     const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
     const [showOnboarding, setShowOnboarding] = useState(false);
     
@@ -271,7 +278,7 @@ export default function POSPage() {
     }, []);
 
     useEffect(() => {
-        fetchProducts();
+        fetchCatalogCategories().then(setCategories).catch(() => setCategories([]));
         fetchProfile();
         // Auto-focus search on load
         // A phone keyboard would cover the items, so only a desktop focuses the search up front.
@@ -469,59 +476,92 @@ export default function POSPage() {
     useEffect(() => {
         if (!searchTerm || searchTerm.length < 3) return;
 
-        const timer = setTimeout(() => {
+        const timer = setTimeout(async () => {
             // Check product-level AND batch-level barcodes
-            const matches = products.filter(p => 
-                p.barcode === searchTerm || 
-                (p.batches && p.batches.some(b => b.barcode === searchTerm))
-            );
-            if (matches.length === 1) {
-                const added = handleAddToCart(matches[0], searchTerm);
-                setSearchTerm('');
-                if (added) toast.success(`Added ${matches[0].name}`, { duration: 1000, icon: '🛒' });
-            } else if (matches.length > 1) {
-                handleAddToCart(matches[0], searchTerm);
-                setSearchTerm('');
+            let matches: Product[] = [];
+            try {
+                matches = await lookupBarcode<Product>(searchTerm);
+            } catch {
+                return;
             }
+            if (matches.length === 0) return;
+            const added = handleAddToCart(matches[0], searchTerm);
+            setSearchTerm('');
+            if (added && matches.length === 1) toast.success(`Added ${matches[0].name}`, { duration: 1000, icon: '🛒' });
         }, 400);
 
         return () => clearTimeout(timer);
-    }, [searchTerm, products]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm]);
 
-    const showProducts = (dataList: Product[]) => {
-        setProducts(dataList);
-        // Extract unique categories
-        const cats = Array.from(new Set(dataList.map((p: Product) => p.category_name || 'Uncategorized')));
-        setCategories(['All', ...cats as string[]]);
-    };
-
-    const loadProductList = async () => {
-        const response = await api.get('/products/?no_page=true&is_active=true');
-        return (response.data.results || response.data || []) as Product[];
-    };
-
-    // The list is kept for the page load (see sessionCache): coming back to the POS reuses it, and
-    // `reload` fetches it again after a change the POS cannot apply itself.
-    const fetchProducts = async ({ reload = false, quiet = false } = {}) => {
-        const cached = !reload && (posProductsCache.peek() as Product[] | undefined);
-        if (cached) {
-            showProducts(cached);
-            setIsFetching(false);
-            return;
-        }
+    // What the grid shows follows the search box and the category pill: a page of the catalog while
+    // the box is empty, the server's best matches while it is not. A late answer for an earlier
+    // keystroke is dropped.
+    const loadView = async ({ quiet = false } = {}) => {
+        const seq = ++viewSeq.current;
+        const term = searchTerm.trim();
+        if (term && term.length < POS_MIN_SEARCH_LENGTH) return;
         if (!quiet) setIsFetching(true);
         try {
-            const request = reload ? posProductsCache.refresh(loadProductList) : posProductsCache.load(loadProductList);
-            const loaded = await request;
-            // A sale recorded while this was loading is in the cache, not in `loaded`.
-            showProducts(((posProductsCache.peek() ?? loaded) as Product[]));
+            if (term) {
+                searchLimitRef.current = POS_SEARCH_STEP;
+                const rows = await searchCatalog<Product>(term, POS_SEARCH_STEP, activeCategory);
+                if (seq !== viewSeq.current) return;
+                setProducts(rows);
+                setHasMoreProducts(nextSearchLimit(POS_SEARCH_STEP, rows.length) !== null);
+            } else {
+                browsePageRef.current = 1;
+                const page = await browseCatalog<Product>(1, activeCategory);
+                if (seq !== viewSeq.current) return;
+                setProducts(page.rows);
+                setHasMoreProducts(page.hasMore);
+            }
         } catch (error) {
+            if (seq !== viewSeq.current) return;
             if (!quiet) toast.error("Failed to load products for POS");
             console.error(error);
         } finally {
-            setIsFetching(false);
+            if (seq === viewSeq.current) setIsFetching(false);
         }
     };
+
+    const loadMoreProducts = async () => {
+        if (isLoadingMore || isFetching || !hasMoreProducts) return;
+        const seq = viewSeq.current;
+        const term = searchTerm.trim();
+        setIsLoadingMore(true);
+        try {
+            if (term) {
+                const limit = nextSearchLimit(searchLimitRef.current, products.length);
+                if (limit === null) { setHasMoreProducts(false); return; }
+                const rows = await searchCatalog<Product>(term, limit, activeCategory);
+                if (seq !== viewSeq.current) return;
+                searchLimitRef.current = limit;
+                setProducts(rows);
+                setHasMoreProducts(nextSearchLimit(limit, rows.length) !== null);
+            } else {
+                const page = await browseCatalog<Product>(browsePageRef.current + 1, activeCategory);
+                if (seq !== viewSeq.current) return;
+                browsePageRef.current += 1;
+                setProducts(prev => {
+                    const seen = new Set(prev.map(p => p.id));
+                    return [...prev, ...page.rows.filter(p => !seen.has(p.id))];
+                });
+                setHasMoreProducts(page.hasMore);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    };
+
+    useEffect(() => {
+        const delay = searchTerm.trim() ? 250 : 0;
+        const timer = setTimeout(() => { loadView(); }, delay);
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm, activeCategory]);
 
     const updateActiveSession = (update: Partial<POSSession>) => {
         setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, ...update } : s));
@@ -726,15 +766,13 @@ export default function POSPage() {
             toast.success(`Order ${response.data.order.order_number} created successfully!`);
             
             updateActiveSession({ completedOrder: response.data.order });
-            // Take the sold stock off the cached list instead of loading every product again.
-            const sold = applySaleToProducts((posProductsCache.peek() as Product[] | undefined) ?? products, activeSession.cart);
-            posProductsCache.set(sold);
-            showProducts(sold);
+            // Take the sold stock off the rows on screen instead of loading them again.
+            setProducts(prev => applySaleToProducts(prev, activeSession.cart));
         } catch (error: any) {
             toast.error(error.response?.data?.error || "Checkout failed");
             // A refusal (stock, oversell permission) means the shown stock may be out of date, and a
             // timeout may still have saved the bill, so load the stock again in the background.
-            fetchProducts({ reload: true, quiet: true });
+            loadView({ quiet: true });
         } finally {
             setIsCheckoutLoading(false);
         }
@@ -818,7 +856,6 @@ export default function POSPage() {
         setSearchTerm(val);
         setActiveGridIndex(-1); // Reset grid selection on new search
         setCurrentFocus('search');
-        setVisibleCount(20); // Reset visible count on new search
     };
 
     const handleSearchKeyDown = (e: React.KeyboardEvent) => {
@@ -829,9 +866,7 @@ export default function POSPage() {
                 const cols = window.innerWidth >= 1280 ? 4 : 3;
                 setActiveGridIndex(prev => {
                     const next = Math.min(prev + cols, filteredProducts.length - 1);
-                    if (next >= visibleCount) {
-                        setVisibleCount(next + 20); // Auto-expand when navigating down
-                    }
+                    if (next >= filteredProducts.length - 3) loadMoreProducts(); // Near the end: fetch the next rows
                     return next;
                 });
                 setCurrentFocus('grid');
@@ -850,9 +885,7 @@ export default function POSPage() {
                 e.preventDefault();
                 setActiveGridIndex(prev => {
                     const next = Math.min(prev + 1, filteredProducts.length - 1);
-                    if (next >= visibleCount) {
-                        setVisibleCount(next + 20); // Auto-expand when navigating right
-                    }
+                    if (next >= filteredProducts.length - 3) loadMoreProducts();
                     return next;
                 });
             }
@@ -872,69 +905,69 @@ export default function POSPage() {
             }
 
             if (!searchTerm) return;
-
-            // Support barcode*qty multiplier syntax
-            let actualBarcode = searchTerm;
-            let multiplier = 1;
-            if (searchTerm.includes('*')) {
-                const parts = searchTerm.split('*');
-                actualBarcode = parts[0];
-                multiplier = parseInt(parts[1]) || 1;
-                multiplier = Math.max(1, Math.min(multiplier, 999)); // Safety clamp
-            }
-
-            // 1. Check for exact barcode match first (High Priority for Scanners)
-            const matches = findProductsByBarcode(actualBarcode);
-            if (matches.length > 0) {
-                e.preventDefault();
-                let added = true;
-                for (let i = 0; i < multiplier && added; i++) {
-                    added = handleAddToCart(matches[0], actualBarcode);
-                }
-                if (added && multiplier > 1) toast.success(`Added ${multiplier}× ${matches[0].name}`, { duration: 1500, icon: '📦' });
-                setSearchTerm('');
-                return;
-            }
-
-            // 2. If single search result, add it directly
-            if (filteredProducts.length === 1) {
-                e.preventDefault();
-                let added = true;
-                for (let i = 0; i < multiplier && added; i++) {
-                    added = handleAddToCart(filteredProducts[0]);
-                }
-                setSearchTerm('');
-                return;
-            }
-
-            // 3. Otherwise, if no products match the search term, open QuickAdd
-            if (filteredProducts.length === 0) {
-                if (/^\d+$/.test(actualBarcode) || actualBarcode.length > 5) {
-                    setUnknownBarcode(actualBarcode);
-                    setIsQuickAddOpen(true);
-                }
-            }
+            e.preventDefault();
+            submitSearch(searchTerm);
         } else if (e.key === 'Escape') {
             setActiveGridIndex(-1);
             setSearchTerm('');
         }
     };
 
-    const findProductsByBarcode = (code: string) =>
-        products.filter(p => p.barcode === code || (p.batches && p.batches.some(b => b.barcode === code)));
+    const addScanned = (product: Product, barcode: string, times: number) => {
+        let added = true;
+        for (let i = 0; i < times && added; i++) {
+            added = handleAddToCart(product, barcode);
+        }
+        return added;
+    };
+
+    // Enter in the search box, from a scanner or the keyboard. The server answers for the code: an
+    // exact barcode wins, then a single search hit; otherwise a code nobody has opens Quick Add.
+    const submitSearch = async (raw: string) => {
+        const { code, multiplier } = parseScanInput(raw);
+        if (!code) return;
+        // Free the box straight away so the next scan can start; a miss puts the text back.
+        setSearchTerm('');
+        let rows: Product[] = [];
+        try {
+            rows = await searchCatalog<Product>(code, 20);
+        } catch (error) {
+            toast.error("Search failed. Check the connection and scan again.");
+            setSearchTerm(raw);
+            return;
+        }
+        const matches = rowsWithBarcode(rows, code);
+        const hit = matches[0] ?? (rows.length === 1 ? rows[0] : undefined);
+        if (hit) {
+            const added = addScanned(hit, matches.length > 0 ? code : '', multiplier);
+            if (added && multiplier > 1) toast.success(`Added ${multiplier}× ${hit.name}`, { duration: 1500, icon: '📦' });
+            return;
+        }
+        setSearchTerm(raw);
+        if (rows.length === 0 && isUnknownBarcodeCandidate(code)) {
+            setUnknownBarcode(code);
+            setIsQuickAddOpen(true);
+        }
+    };
 
     // Phone camera scan: same lookup as a scanner typing into the search box.
     // The scanner stays open and reads a code each time the cashier taps Scan, until they close it.
-    const handleCameraScan = (code: string) => {
+    const handleCameraScan = async (code: string) => {
         const scanned = code.trim();
         if (!scanned) return;
-        const matches = findProductsByBarcode(scanned);
+        let matches: Product[] = [];
+        try {
+            matches = await lookupBarcode<Product>(scanned);
+        } catch (error) {
+            toast.error("Search failed. Check the connection and scan again.");
+            return;
+        }
         if (matches.length > 0) {
             handleAddToCart(matches[0], scanned);
             toast.success(`Added ${matches[0].name}`, { duration: 1200 });
             return;
         }
-        if (/^\d+$/.test(scanned) || scanned.length > 5) {
+        if (isUnknownBarcodeCandidate(scanned)) {
             // Quick add needs the screen, so close the camera for it.
             setIsCameraScanOpen(false);
             setUnknownBarcode(scanned);
@@ -946,38 +979,20 @@ export default function POSPage() {
 
     const handleQuickAddSuccess = (newProduct: any, linkedBarcode?: string) => {
         // Refresh local product list first
-        fetchProducts({ reload: true, quiet: true });
+        loadView({ quiet: true });
         // Add to cart with the linked barcode so the correct batch auto-selects
         handleAddToCart(newProduct, linkedBarcode);
         setSearchTerm('');
     };
 
-    const filteredProducts = products.filter(p => {
-        const matchSearch = (() => {
-            const searchLower = searchTerm.toLowerCase().trim();
-            if (!searchLower) return true;
-            const words = searchLower.split(/\s+/).filter(Boolean);
-            return words.every(word => 
-                p.name.toLowerCase().includes(word) || 
-                (p.barcode && p.barcode.includes(word)) ||
-                (p.batches && p.batches.some(b => b.barcode && b.barcode.includes(word)))
-            );
-        })();
-        const productCategory = p.category_name || 'Uncategorized';
-        const matchCategory = activeCategory === 'All' || productCategory === activeCategory;
-        return matchSearch && matchCategory;
-    });
-
-    const displayedProducts = filteredProducts.slice(0, visibleCount);
+    // The server already applied the search and the category, so these are the rows to show.
+    const filteredProducts = products;
+    const displayedProducts = products;
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
-        // Load more when scrolled within 1.5 screen heights of the bottom
-        if (scrollHeight - scrollTop <= clientHeight * 1.5) {
-            if (visibleCount < filteredProducts.length) {
-                setVisibleCount(prev => prev + 20);
-            }
-        }
+        // Fetch more when scrolled within 1.5 screen heights of the bottom
+        if (scrollHeight - scrollTop <= clientHeight * 1.5) loadMoreProducts();
     };
 
     return (
@@ -1086,17 +1101,17 @@ export default function POSPage() {
                     
                     {/* Category Pills */}
                     <div className="flex gap-2 mt-3 md:mt-4 overflow-x-auto pb-1 md:pb-2 scrollbar-hide">
-                        {categories.map(cat => (
+                        {[{ id: null, name: 'All' }, ...categories].map(cat => (
                             <button
-                                key={cat}
-                                onClick={() => { setActiveCategory(cat); setVisibleCount(20); }}
+                                key={cat.id ?? 'all'}
+                                onClick={() => setActiveCategory(cat.id)}
                                 className={`px-5 py-2.5 md:py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                                    activeCategory === cat 
+                                    activeCategory === cat.id 
                                     ? 'bg-primary text-white shadow-md shadow-primary/20' 
                                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                 }`}
                             >
-                                {cat}
+                                {cat.name}
                             </button>
                         ))}
                     </div>
@@ -1873,7 +1888,7 @@ export default function POSPage() {
                 isOpen={isReturnModalOpen}
                 onClose={() => setIsReturnModalOpen(false)}
                 onSuccess={() => {
-                    fetchProducts({ reload: true, quiet: true }); // Refresh stock after return
+                    loadView({ quiet: true }); // Refresh stock after return
                 }}
             />
             
