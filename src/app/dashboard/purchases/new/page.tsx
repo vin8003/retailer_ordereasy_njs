@@ -6,7 +6,6 @@ import api, { authService } from '@/services/api';
 import { fetchAllPages } from '@/utils/fetchAllPages';
 import { findProductByBarcode, looksLikeBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { addOrBumpRow, mergeSuggestions } from '@/utils/purchaseRows';
-import { posProductsCache } from '@/services/sessionCache';
 import { productService } from '@/services/api';
 import { calculatePurchaseTax, resolvePurchaseTaxType } from '@/lib/purchaseTax';
 import {
@@ -70,7 +69,7 @@ export default function NewPurchasePage() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     // Only the POS list when the POS already loaded it. Everything else comes from the search API
     // as the user types, so opening this page never loads the whole catalogue.
-    const [products, setProducts] = useState<Product[]>(() => (posProductsCache.peek() as Product[] | undefined) ?? []);
+    const [products, setProducts] = useState<Product[]>([]);
     const [searchHits, setSearchHits] = useState<{ query: string; items: Product[] }>({ query: '', items: [] });
     const [isSearching, setIsSearching] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');

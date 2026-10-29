@@ -5,7 +5,7 @@ import { Search, Plus, Loader2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { productService } from "@/services/api";
+import { findCatalogProducts } from "@/services/posCatalog";
 import { Badge } from "@/components/ui/badge";
 
 interface Product {
@@ -15,6 +15,7 @@ interface Product {
     unit: string;
     barcode?: string;
     image_display_url?: string;
+    image?: string;
 }
 
 interface ProductSelectorProps {
@@ -28,39 +29,30 @@ export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorPr
     const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
+    // The server searches; the dialog never holds the whole catalog. A late answer for an earlier
+    // keystroke is dropped.
     useEffect(() => {
-        if (open) {
-            fetchAllProducts();
-        }
-    }, [open]);
+        if (!open) return;
+        let stale = false;
+        const timer = setTimeout(async () => {
+            setIsLoading(true);
+            try {
+                const rows = await findCatalogProducts<Product>(search);
+                if (!stale) setAllProducts(rows);
+            } catch (error) {
+                console.error("Failed to fetch products", error);
+            } finally {
+                if (!stale) setIsLoading(false);
+            }
+        }, search.trim() ? 250 : 0);
 
-    const fetchAllProducts = async () => {
-        setIsLoading(true);
-        try {
-            const response = await productService.fetchProducts({ no_page: 'true', is_active: 'true' });
-            setAllProducts(response.data.results || response.data || []);
-        } catch (error) {
-            console.error("Failed to fetch products", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        return () => {
+            stale = true;
+            clearTimeout(timer);
+        };
+    }, [open, search]);
 
-    const handleSearch = () => {
-        // Real-time filtering is handled client-side
-    };
-
-    const filteredProducts = (() => {
-        const searchLower = search.toLowerCase().trim();
-        if (!searchLower) return allProducts;
-        const words = searchLower.split(/\s+/).filter(Boolean);
-        return allProducts.filter(p => 
-            words.every(word => 
-                p.name.toLowerCase().includes(word) || 
-                (p.barcode && p.barcode.includes(word))
-            )
-        );
-    })();
+    const filteredProducts = allProducts;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -82,12 +74,9 @@ export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorPr
                             className="pl-9"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                         />
                     </div>
-                    <Button onClick={handleSearch} disabled={isLoading}>
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
-                    </Button>
+                    {isLoading && <Loader2 className="h-4 w-4 animate-spin self-center text-muted-foreground" />}
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                     <div className="space-y-2">
@@ -97,9 +86,9 @@ export function ProductSelector({ onSelect, excludeIds = [] }: ProductSelectorPr
                                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                             >
                                 <div className="flex items-center gap-3">
-                                    {product.image_display_url ? (
+                                    {(product.image_display_url || product.image) ? (
                                         <img
-                                            src={product.image_display_url}
+                                            src={product.image_display_url || product.image}
                                             alt={product.name}
                                             className="w-10 h-10 rounded object-cover border"
                                         />

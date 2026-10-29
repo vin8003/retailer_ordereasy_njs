@@ -4,7 +4,6 @@ import {
     clearAllSessionCaches,
     createSessionCache,
     invalidateAfterMutation,
-    posProductsCache,
     profileCache,
 } from "./sessionCache";
 
@@ -47,21 +46,18 @@ describe("invalidateAfterMutation", () => {
     beforeEach(() => {
         profileCache.set({ data: { shop_name: "A" } } as never);
         authProfileCache.set({ data: { is_admin: false } } as never);
-        posProductsCache.set([{ id: 1 }]);
     });
 
     it("ignores reads", () => {
         invalidateAfterMutation("get", "retailer/profile/");
         invalidateAfterMutation(undefined, "products/1/update/");
         expect(profileCache.peek()).toBeDefined();
-        expect(posProductsCache.peek()).toBeDefined();
     });
 
     it("drops the profiles after a profile or verification write", () => {
         invalidateAfterMutation("patch", "retailer/profile/update/");
         expect(profileCache.peek()).toBeUndefined();
         expect(authProfileCache.peek()).toBeUndefined();
-        expect(posProductsCache.peek()).toBeDefined();
     });
 
     it("keeps the profiles for a device token register", () => {
@@ -72,38 +68,10 @@ describe("invalidateAfterMutation", () => {
     it("clears everything on login and signup", () => {
         invalidateAfterMutation("post", "auth/retailer/login/");
         expect(profileCache.peek()).toBeUndefined();
-        expect(posProductsCache.peek()).toBeUndefined();
-    });
-
-    it.each([
-        ["put", "/products/12/update/"],
-        ["post", "products/create/"],
-        ["post", "/products/erp/purchase-invoices/"],
-        ["post", "/returns/sales/"],
-        ["post", "orders/inbox/5/actions/"],
-        ["patch", "https://api.ordereasy.win/api/orders/5/status/"],
-    ])("drops the POS products after %s %s", (method, url) => {
-        invalidateAfterMutation(method, url);
-        expect(posProductsCache.peek()).toBeUndefined();
-    });
-
-    it.each([
-        ["post", "/products/erp/pos-checkout/"],
-        ["post", "/products/erp/suppliers/"],
-        ["post", "orders/5/rate-customer/"],
-        ["post", "orders/5/chat/send/"],
-        ["post", "offers/calculate/"],
-    ])("keeps the POS products after %s %s", (method, url) => {
-        invalidateAfterMutation(method, url);
-        expect(posProductsCache.peek()).toBeDefined();
     });
 
     it("clearAllSessionCaches empties every cache", () => {
         clearAllSessionCaches();
-        expect([profileCache.peek(), authProfileCache.peek(), posProductsCache.peek()]).toEqual([
-            undefined,
-            undefined,
-            undefined,
-        ]);
+        expect([profileCache.peek(), authProfileCache.peek()]).toEqual([undefined, undefined]);
     });
 });

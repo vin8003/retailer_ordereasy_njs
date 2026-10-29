@@ -7,7 +7,6 @@ import { fetchAllPages } from '@/utils/fetchAllPages';
 import { findProductByBarcode, mergeProductsById, productMatchesQuery, unwrapProductList } from '@/utils/productMatch';
 import { productService } from '@/services/api';
 import { mergeSuggestions } from '@/utils/purchaseRows';
-import { posProductsCache } from '@/services/sessionCache';
 import { calculatePurchaseTax, purchaseTaxSnapshot, resolvePurchaseTaxType } from '@/lib/purchaseTax';
 import {
     Plus, Trash2, ScanLine,
@@ -86,7 +85,7 @@ function EditPurchaseContent() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     // Only the POS list when the POS already loaded it. The invoice's own products are fetched by id
     // and everything else comes from the search API, so opening a bill never pages the catalogue.
-    const [products, setProducts] = useState<Product[]>(() => (posProductsCache.peek() as Product[] | undefined) ?? []);
+    const [products, setProducts] = useState<Product[]>([]);
     const [searchHits, setSearchHits] = useState<{ query: string; items: Product[] }>({ query: '', items: [] });
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState('');
