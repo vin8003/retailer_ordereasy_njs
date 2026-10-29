@@ -207,14 +207,20 @@ export const orderService = {
   fetchOrders: (params?: any) => api.get('orders/history/', { params }),
   fetchOrderList: (params?: Record<string, string | number | boolean | undefined>) => {
     const status = params?.status;
+    if (status === 'active') {
+      const inboxParams = { ...params };
+      delete inboxParams.status;
+      return api.get('orders/inbox/', { params: inboxParams });
+    }
     if (typeof status === 'string' && TERMINAL_ORDER_STATUSES.has(status)) {
       return api.get('orders/history/', { params });
     }
-    const inboxParams = { ...params };
-    if (status === 'all') {
-      delete inboxParams.status;
+    if (!status || status === 'all') {
+      const historyParams = { ...params };
+      delete historyParams.status;
+      return api.get('orders/history/', { params: historyParams });
     }
-    return api.get('orders/inbox/', { params: inboxParams });
+    return api.get('orders/inbox/', { params });
   },
   /** Detail — required for delivery_info, pickup_code, and full order fields. */
   fetchOrderDetails: (id: number) => api.get(`orders/${id}/`),

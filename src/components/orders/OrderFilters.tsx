@@ -9,6 +9,7 @@ interface OrderFiltersProps {
 
 export function OrderFilters({ currentStatus, onStatusChange }: OrderFiltersProps) {
     const statuses = [
+        { value: "active", label: "⚡ Active Inbox" },
         { value: "all", label: "All Orders" },
         { value: "pending", label: "Pending" },
         { value: "waiting_for_customer_approval", label: "Awaiting Appr." },

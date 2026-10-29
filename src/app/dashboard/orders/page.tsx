@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeftRight, Search } from "lucide-react";
+import { ArrowLeftRight, CheckCircle2, Search, ShoppingBag, Zap } from "lucide-react";
 import { toast } from "sonner";
 
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { OrderTable } from "@/components/orders/OrderTable";
 import { OrderFilters } from "@/components/orders/OrderFilters";
@@ -109,7 +110,7 @@ export default function OrdersPage() {
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
                     <p className="text-muted-foreground">
-                        Manage active orders from the inbox. Open an order for courier and pickup details.
+                        Manage active orders from the inbox or view complete store and online order history.
                     </p>
                 </div>
                 <Link
@@ -118,6 +119,75 @@ export default function OrdersPage() {
                 >
                     <ArrowLeftRight size={16} className="text-red-500" /> Sales returns
                 </Link>
+            </div>
+
+            {/* Quick Filter Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter("active")}
+                    className={cn(
+                        "flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all",
+                        statusFilter === "active"
+                            ? "bg-amber-500/10 border-amber-500/30 text-amber-900 ring-2 ring-amber-500/20 shadow-sm"
+                            : "bg-white hover:bg-gray-50 border-gray-200 text-gray-700"
+                    )}
+                >
+                    <div className={cn(
+                        "p-2.5 rounded-xl transition-colors",
+                        statusFilter === "active" ? "bg-amber-500 text-white" : "bg-amber-100 text-amber-700"
+                    )}>
+                        <Zap size={20} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-sm">Active Inbox</div>
+                        <div className="text-xs text-muted-foreground">Orders needing action</div>
+                    </div>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter("all")}
+                    className={cn(
+                        "flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all",
+                        statusFilter === "all"
+                            ? "bg-primary/10 border-primary/30 text-primary ring-2 ring-primary/20 shadow-sm"
+                            : "bg-white hover:bg-gray-50 border-gray-200 text-gray-700"
+                    )}
+                >
+                    <div className={cn(
+                        "p-2.5 rounded-xl transition-colors",
+                        statusFilter === "all" ? "bg-primary text-white" : "bg-primary/10 text-primary"
+                    )}>
+                        <ShoppingBag size={20} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-sm">All Orders</div>
+                        <div className="text-xs text-muted-foreground">Store POS + Online history</div>
+                    </div>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter("delivered")}
+                    className={cn(
+                        "flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all",
+                        statusFilter === "delivered"
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-900 ring-2 ring-emerald-500/20 shadow-sm"
+                            : "bg-white hover:bg-gray-50 border-gray-200 text-gray-700"
+                    )}
+                >
+                    <div className={cn(
+                        "p-2.5 rounded-xl transition-colors",
+                        statusFilter === "delivered" ? "bg-emerald-500 text-white" : "bg-emerald-100 text-emerald-700"
+                    )}>
+                        <CheckCircle2 size={20} />
+                    </div>
+                    <div>
+                        <div className="font-bold text-sm">Delivered</div>
+                        <div className="text-xs text-muted-foreground">Completed counter & delivery</div>
+                    </div>
+                </button>
             </div>
 
             <div className="flex flex-col gap-4">
