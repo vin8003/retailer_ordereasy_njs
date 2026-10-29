@@ -65,7 +65,7 @@ export default function LoginPage() {
             console.error("Login error:", error);
             const errorMessage =
                 error.response?.data?.detail || "Invalid username or password";
-            toast.error(errorMessage);
+            toast.error(errorMessage, { testId: "login-error" });
         } finally {
             setIsLoading(false);
         }
