@@ -368,7 +368,7 @@ function CustomerDetailContent() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Left Sidebar: Stats & Actions */}
                 <div className="md:col-span-1 space-y-6">
-                    <Card>
+                    <Card data-testid="khata-panel">
                         <CardHeader>
                             <CardTitle className="text-lg">Stats Overview</CardTitle>
                         </CardHeader>
