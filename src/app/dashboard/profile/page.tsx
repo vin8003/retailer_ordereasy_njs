@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_ORIGIN, authService } from '@/services/api';
+import { API_ORIGIN, authService, notifyVerificationChanged } from '@/services/api';
 import { clearAllSessionCaches } from '@/services/sessionCache';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -171,6 +171,13 @@ export default function ProfilePage() {
         }
     };
 
+    // The verification checklist links here with ?edit=1 so the form opens ready to fill.
+    useEffect(() => {
+        if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('edit') === '1') {
+            setIsEditing(true);
+        }
+    }, []);
+
     useEffect(() => {
         const loadPageData = async () => {
              await fetchProfile();
@@ -242,6 +249,7 @@ export default function ProfilePage() {
             const response = await authService.updateProfile(formDataToSend);
             if (response.status === 200) {
                 toast.success("Profile updated successfully");
+                notifyVerificationChanged();
                 setIsEditing(false);
                 fetchProfile();
             }
@@ -307,6 +315,7 @@ export default function ProfilePage() {
                 initialPhone={profile.contactPhone}
                 onVerified={() => {
                     fetchProfile();
+                    notifyVerificationChanged();
                     setShowVerification(false);
                 }}
             />
