@@ -20,7 +20,8 @@ import {
     BookOpen,
     Barcode,
     Tag,
-    ShieldCheck
+    ShieldCheck,
+    Flag
 } from 'lucide-react';
 import { authService } from '@/services/api';
 
@@ -82,7 +83,10 @@ const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
     ];
 
     const adminNavItems = isAdmin
-        ? [{ label: 'Admin Panel', icon: ShieldCheck, href: '/dashboard/admin/verifications' }]
+        ? [
+            { label: 'Admin Panel', icon: ShieldCheck, href: '/dashboard/admin/verifications' },
+            { label: 'Reports & Products', icon: Flag, href: '/dashboard/admin/moderation' },
+        ]
         : [];
 
     const navItems = [...baseNavItems, ...adminNavItems];

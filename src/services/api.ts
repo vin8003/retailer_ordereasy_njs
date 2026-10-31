@@ -361,6 +361,20 @@ export const adminService = {
     api.get(`retailer/admin/verifications/${profileId}/documents/${docId}/`, { responseType: 'blob' }),
   verifyAction: (profileId: number, data: { action: VerificationAdminAction; reason?: string }) =>
     api.post(`retailer/admin/verifications/${profileId}/action/`, data),
+  /** Customer report inbox, grouped by shop or product (open | actioned | dismissed). */
+  fetchReports: (params?: { status?: string; page?: number }) =>
+    api.get('retailer/admin/reports/', { params }),
+  reportAction: (data: {
+    retailer_id: number;
+    product_id?: number | null;
+    action: 'dismiss' | 'hide_product' | 'remove_product' | 'strike';
+    reason?: string;
+  }) => api.post('retailer/admin/reports/action/', data),
+  /** Products held by moderation: pending_review | hidden | removed. */
+  fetchProductReview: (params?: { status?: string; page?: number }) =>
+    api.get('retailer/admin/products/review/', { params }),
+  moderateProduct: (productId: number, data: { action: 'approve' | 'hide' | 'remove'; reason?: string }) =>
+    api.post(`retailer/admin/products/${productId}/moderate/`, data),
 };
 
 /** Shop owner's onboarding checklist (docs/requirements/retailer-verification.md). */

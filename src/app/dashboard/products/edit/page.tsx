@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductForm } from "@/components/products/ProductForm";
+import { ModerationNotice } from "@/components/moderation/ModerationNotice";
 import { productService } from "@/services/api";
 
 function EditProductContent() {
@@ -64,6 +65,8 @@ function EditProductContent() {
                     </p>
                 </div>
             </div>
+
+            <ModerationNotice product={product} />
 
             <div className="border rounded-lg p-6 bg-card">
                 <ProductForm initialData={product} isEditing={true} />
