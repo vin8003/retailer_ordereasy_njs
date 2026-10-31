@@ -17,8 +17,12 @@ import {
   AlertTriangle,
   Loader2,
   RefreshCw,
-  FileText
+  FileText,
+  Eye,
+  PauseCircle
 } from 'lucide-react';
+import AdminReviewDialog from '@/components/verification/AdminReviewDialog';
+import type { CheckResult, VerificationStatus } from '@/components/verification/verificationModel';
 import { toast } from 'sonner';
 
 import { adminService, authService } from '@/services/api';
@@ -60,18 +64,28 @@ interface RetailerVerificationItem {
   gst_number: string;
   pan_number: string;
   is_verified: boolean;
-  verification_status: 'pending' | 'approved' | 'rejected';
+  verification_status: VerificationStatus;
   rejection_reason: string;
   is_active: boolean;
   created_at: string;
+  submitted_at?: string | null;
+  review_needed?: boolean;
+  is_phone_verified?: boolean;
+  check_counts?: Record<CheckResult, number> | null;
 }
 
-interface VerificationCounts {
-  pending: number;
-  approved: number;
-  rejected: number;
-  all: number;
-}
+type TabKey = 'pending' | 'needs_changes' | 'review_needed' | 'approved' | 'suspended' | 'rejected' | 'all';
+const TABS: { key: TabKey; label: string; urgent?: boolean }[] = [
+  { key: 'pending', label: 'Pending', urgent: true },
+  { key: 'needs_changes', label: 'Needs changes' },
+  { key: 'review_needed', label: 'Changed', urgent: true },
+  { key: 'approved', label: 'Approved' },
+  { key: 'suspended', label: 'Suspended' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'all', label: 'All' },
+];
+
+type VerificationCounts = Record<TabKey, number>;
 
 export default function AdminVerificationsPage() {
   const router = useRouter();
@@ -79,12 +93,16 @@ export default function AdminVerificationsPage() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [activeTab, setActiveTab] = useState<TabKey>('pending');
+  const [reviewId, setReviewId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [retailers, setRetailers] = useState<RetailerVerificationItem[]>([]);
   const [counts, setCounts] = useState<VerificationCounts>({
     pending: 0,
+    needs_changes: 0,
+    review_needed: 0,
     approved: 0,
+    suspended: 0,
     rejected: 0,
     all: 0,
   });
@@ -130,7 +148,7 @@ export default function AdminVerificationsPage() {
       if (res.data) {
         setRetailers(res.data.results || []);
         if (res.data.counts) {
-          setCounts(res.data.counts);
+          setCounts((prev) => ({ ...prev, ...res.data.counts }));
         }
       }
     } catch (err: any) {
@@ -210,6 +228,18 @@ export default function AdminVerificationsPage() {
             <XCircle className="h-3.5 w-3.5" /> Rejected
           </Badge>
         );
+      case 'suspended':
+        return (
+          <Badge variant="destructive" className="gap-1 px-2.5 py-0.5">
+            <PauseCircle className="h-3.5 w-3.5" /> Suspended
+          </Badge>
+        );
+      case 'needs_changes':
+        return (
+          <Badge variant="secondary" className="bg-sky-100 text-sky-900 border border-sky-300 dark:bg-sky-950 dark:text-sky-200 gap-1 px-2.5 py-0.5">
+            <AlertTriangle className="h-3.5 w-3.5" /> Needs changes
+          </Badge>
+        );
       case 'pending':
       default:
         return (
@@ -256,7 +286,7 @@ export default function AdminVerificationsPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Retailer Verifications</h1>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
-            Review new retailer signups, approve genuine stores, or reject with a reason.
+            Open a shop to see its automated checks, photos and private documents, then approve, ask for changes or reject.
           </p>
         </div>
         <Button
@@ -278,27 +308,17 @@ export default function AdminVerificationsPage() {
           onValueChange={(val) => setActiveTab(val as any)}
           className="w-full md:w-auto"
         >
-          <TabsList className="grid grid-cols-4 w-full md:w-auto">
-            <TabsTrigger value="pending" className="gap-1.5 text-xs sm:text-sm">
-              Pending
-              {counts.pending > 0 && (
-                <span className="ml-1 rounded-full bg-amber-500 text-white text-[10px] px-1.5 py-0.2 font-bold">
-                  {counts.pending}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="approved" className="gap-1.5 text-xs sm:text-sm">
-              Approved
-              <span className="text-xs text-muted-foreground">({counts.approved})</span>
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="gap-1.5 text-xs sm:text-sm">
-              Rejected
-              <span className="text-xs text-muted-foreground">({counts.rejected})</span>
-            </TabsTrigger>
-            <TabsTrigger value="all" className="gap-1.5 text-xs sm:text-sm">
-              All
-              <span className="text-xs text-muted-foreground">({counts.all})</span>
-            </TabsTrigger>
+          <TabsList className="flex w-full md:w-auto h-auto flex-wrap justify-start gap-1">
+            {TABS.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className="gap-1.5 text-xs sm:text-sm" data-testid={`verification-tab-${t.key}`}>
+                {t.label}
+                {t.urgent && counts[t.key] > 0 ? (
+                  <span className="ml-1 rounded-full bg-amber-500 text-white text-[10px] px-1.5 font-bold">{counts[t.key]}</span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">({counts[t.key] ?? 0})</span>
+                )}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
 
@@ -401,10 +421,34 @@ export default function AdminVerificationsPage() {
                         </div>
                       </div>
 
+                      {/* Automated check summary and submission state */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {retailer.submitted_at ? (
+                          <span className="text-muted-foreground">Submitted {new Date(retailer.submitted_at).toLocaleString()}</span>
+                        ) : retailer.verification_status === 'pending' ? (
+                          <span className="text-muted-foreground italic">Checklist not submitted yet</span>
+                        ) : null}
+                        {retailer.review_needed && (
+                          <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                            Changed after approval
+                          </span>
+                        )}
+                        {retailer.check_counts && (
+                          <>
+                            {retailer.check_counts.fail > 0 && <span className="rounded-full border px-2 py-0.5 font-semibold bg-red-100 text-red-800 border-red-300">{retailer.check_counts.fail} fail</span>}
+                            {retailer.check_counts.flag > 0 && <span className="rounded-full border px-2 py-0.5 font-semibold bg-red-100 text-red-800 border-red-300">{retailer.check_counts.flag} flag</span>}
+                            {retailer.check_counts.manual > 0 && <span className="rounded-full border px-2 py-0.5 font-semibold bg-amber-100 text-amber-900 border-amber-300">{retailer.check_counts.manual} to check</span>}
+                            {retailer.check_counts.fail === 0 && retailer.check_counts.flag === 0 && (
+                              <span className="rounded-full border px-2 py-0.5 font-semibold bg-emerald-100 text-emerald-800 border-emerald-300">Automated checks pass</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+
                       {/* Rejection reason (if rejected) */}
-                      {retailer.verification_status === 'rejected' && retailer.rejection_reason && (
+                      {retailer.verification_status !== 'approved' && retailer.verification_status !== 'pending' && retailer.rejection_reason && (
                         <div className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-200 dark:border-red-900/40">
-                          <span className="font-semibold">Rejection Reason:</span> {retailer.rejection_reason}
+                          <span className="font-semibold">Reason sent to retailer:</span> {retailer.rejection_reason}
                         </div>
                       )}
                     </div>
@@ -441,32 +485,17 @@ export default function AdminVerificationsPage() {
                             Reject
                           </Button>
                         </>
-                      ) : retailer.verification_status === 'rejected' ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 gap-1.5"
-                          onClick={() => handleApprove(retailer)}
-                          disabled={isProcessing}
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Re-approve
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-red-300 text-red-600 hover:bg-red-50 gap-1.5"
-                          onClick={() => {
-                            setSelectedRetailerForReject(retailer);
-                            setRejectReason('');
-                          }}
-                          disabled={isProcessing}
-                        >
-                          <XCircle className="h-4 w-4" />
-                          Revoke Approval
-                        </Button>
-                      )}
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 flex-1 sm:flex-none"
+                        data-testid="verification-review-open"
+                        onClick={() => setReviewId(retailer.id)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        Review
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -475,6 +504,12 @@ export default function AdminVerificationsPage() {
           })}
         </div>
       )}
+
+      <AdminReviewDialog
+        profileId={reviewId}
+        onClose={() => setReviewId(null)}
+        onChanged={() => loadVerifications(activeTab, searchQuery)}
+      />
 
       {/* Reject Modal Dialog */}
       <Dialog

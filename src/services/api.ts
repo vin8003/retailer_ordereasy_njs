@@ -344,11 +344,43 @@ export const offerService = {
     api.post('offers/calculate/', { items, channel: 'pos' }),
 };
 
+export type VerificationAdminAction =
+  | 'approve'
+  | 'request_changes'
+  | 'reject'
+  | 'suspend'
+  | 'reinstate'
+  | 'mark_reviewed';
+
 export const adminService = {
   fetchVerifications: (params?: { status?: string; search?: string }) =>
     api.get('retailer/admin/verifications/', { params }),
-  verifyAction: (profileId: number, data: { action: 'approve' | 'reject'; reason?: string }) =>
+  fetchVerificationDetail: (profileId: number) =>
+    api.get(`retailer/admin/verifications/${profileId}/`),
+  fetchVerificationDocument: (profileId: number, docId: number) =>
+    api.get(`retailer/admin/verifications/${profileId}/documents/${docId}/`, { responseType: 'blob' }),
+  verifyAction: (profileId: number, data: { action: VerificationAdminAction; reason?: string }) =>
     api.post(`retailer/admin/verifications/${profileId}/action/`, data),
+};
+
+/** Shop owner's onboarding checklist (docs/requirements/retailer-verification.md). */
+export const verificationService = {
+  fetchStatus: () => api.get('retailer/verification/'),
+  submit: () => api.post('retailer/verification/submit/'),
+  uploadDocument: (kind: 'proof' | 'owner_id' | 'selfie', file: File) => {
+    const form = new FormData();
+    form.append('kind', kind);
+    form.append('file', file);
+    return api.post('retailer/verification/documents/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+/** Fired after anything that can change the checklist, so the banner refreshes. */
+export const VERIFICATION_CHANGED_EVENT = 'ordereasy:verification-changed';
+export const notifyVerificationChanged = () => {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(VERIFICATION_CHANGED_EVENT));
 };
 
 export default api;
