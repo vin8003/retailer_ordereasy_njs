@@ -239,7 +239,7 @@ export default function CustomersPage() {
     }
 
     return (
-        <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+        <div className="p-0 sm:p-6 space-y-6 bg-slate-50 min-h-screen">
             <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
             </div>

@@ -195,7 +195,7 @@ export default function OperatingHoursPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+        <div className="p-0 sm:p-6 max-w-4xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Operating Hours</h1>
@@ -210,7 +210,7 @@ export default function OperatingHoursPage() {
             </div>
 
             <Card>
-                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 space-y-0 pb-2">
+                <CardHeader className="px-4 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 space-y-0 pb-2">
                     <div className="space-y-1">
                         <CardTitle className="text-lg sm:text-xl">Weekly Schedule</CardTitle>
                         <CardDescription className="text-xs sm:text-sm">Configure open and close times for each day of the week.</CardDescription>
