@@ -128,6 +128,6 @@ describe("wiring (regression: badges and admin calls stay connected)", () => {
     });
 
     it("the sidebar links admins to the moderation page", () => {
-        expect(read("src/components/layout/Sidebar.tsx")).toContain("'/dashboard/admin/moderation'");
+        expect(read("src/hooks/useIsAdmin.ts")).toContain("'/dashboard/admin/moderation'");
     });
 });

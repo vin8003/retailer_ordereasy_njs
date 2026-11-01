@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Flag, Loader2, PackageX, RefreshCw, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ import {
     type ReviewProduct,
 } from '@/components/moderation/moderationModel';
 
+const PAGE_SIZE = 50; // the backend's page size for both lists
 type View = 'reports' | 'products';
 type ReportStatus = 'open' | 'actioned' | 'dismissed';
 type HeldStatus = Exclude<ModerationStatus, 'ok'>;
@@ -99,6 +100,8 @@ export default function AdminModerationPage() {
     const [products, setProducts] = useState<ReviewProduct[]>([]);
     const [counts, setCounts] = useState<Record<HeldStatus, number>>({ pending_review: 0, hidden: 0, removed: 0 });
     const [loading, setLoading] = useState(false);
+    const [total, setTotal] = useState(0);
+    const loadSeq = useRef(0);
     const [busyKey, setBusyKey] = useState<string | null>(null);
 
     useEffect(() => {
@@ -109,20 +112,26 @@ export default function AdminModerationPage() {
     }, []);
 
     const load = useCallback(async () => {
+        // Switching tabs quickly can finish out of order; only the latest request may write.
+        const seq = ++loadSeq.current;
         setLoading(true);
         try {
             if (view === 'reports') {
                 const res = await adminService.fetchReports({ status: reportStatus });
+                if (seq !== loadSeq.current) return;
                 setGroups(res.data?.results || []);
+                setTotal(res.data?.count ?? (res.data?.results || []).length);
             } else {
                 const res = await adminService.fetchProductReview({ status: productStatus });
+                if (seq !== loadSeq.current) return;
                 setProducts(res.data?.results || []);
+                setTotal(res.data?.count ?? (res.data?.results || []).length);
                 if (res.data?.counts) setCounts(res.data.counts);
             }
         } catch (err) {
-            toast.error(errorText(err, 'Could not load the list.'));
+            if (seq === loadSeq.current) toast.error(errorText(err, 'Could not load the list.'));
         } finally {
-            setLoading(false);
+            if (seq === loadSeq.current) setLoading(false);
         }
     }, [view, reportStatus, productStatus]);
 
@@ -278,6 +287,11 @@ export default function AdminModerationPage() {
                             })}
                         </div>
                     )}
+                    {!loading && total > PAGE_SIZE && (
+                        <p className="text-xs text-muted-foreground text-center" data-testid="more-results">
+                            Showing the first {PAGE_SIZE} of {total}. Resolve some to see the rest.
+                        </p>
+                    )}
                 </>
             ) : (
                 <>
@@ -332,6 +346,11 @@ export default function AdminModerationPage() {
                                 </Card>
                             ))}
                         </div>
+                    )}
+                    {!loading && total > PAGE_SIZE && (
+                        <p className="text-xs text-muted-foreground text-center" data-testid="more-results">
+                            Showing the first {PAGE_SIZE} of {total}. Resolve some to see the rest.
+                        </p>
                     )}
                 </>
             )}

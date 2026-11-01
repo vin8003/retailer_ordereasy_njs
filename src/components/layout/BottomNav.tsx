@@ -18,8 +18,11 @@ import {
     Package,
     BookOpen,
     Barcode,
-    Tag
+    Tag,
+    ShieldCheck,
+    Flag
 } from 'lucide-react';
+import { ADMIN_NAV, useIsAdmin } from '@/hooks/useIsAdmin';
 import {
     Drawer,
     DrawerClose,
@@ -31,6 +34,7 @@ import {
 
 const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
     const pathname = usePathname();
+    const isAdmin = useIsAdmin();
 
     const mainNavItems = [
         { label: 'Home', icon: LayoutDashboard, href: '/dashboard' },
@@ -50,6 +54,7 @@ const BottomNav = ({ pendingCount }: { pendingCount: number }) => {
         { label: 'Reviews', icon: Star, href: '/dashboard/reviews' },
         { label: 'Offers', icon: Award, href: '/dashboard/offers' },
         { label: 'Operating Hours', icon: Clock, href: '/dashboard/operating-hours' },
+        ...(isAdmin ? [{ ...ADMIN_NAV[0], icon: ShieldCheck }, { ...ADMIN_NAV[1], icon: Flag }] : []),
     ];
 
     const handleLogout = () => {
