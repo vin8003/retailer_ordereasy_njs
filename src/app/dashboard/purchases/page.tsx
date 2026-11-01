@@ -143,7 +143,7 @@ export default function PurchasesPage() {
     const unpaidBalance = invoiceRows.reduce((s, i) => s + ((Number(i.total_amount) || 0) - (Number(i.paid_amount) || 0)), 0);
 
     return (
-        <div className="p-8 max-w-7xl mx-auto font-sans">
+        <div className="p-0 sm:p-8 max-w-7xl mx-auto font-sans">
             <Toaster position="top-right" />
 
             {/* Header */}

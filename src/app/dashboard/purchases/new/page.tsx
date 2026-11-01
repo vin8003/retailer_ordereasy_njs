@@ -360,7 +360,7 @@ export default function NewPurchasePage() {
     );
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto font-sans min-h-screen pb-32">
+        <div className="p-0 sm:p-8 max-w-[1400px] mx-auto font-sans min-h-screen pb-32">
             <Toaster position="top-right" />
             
             {/* Header */}
@@ -382,7 +382,7 @@ export default function NewPurchasePage() {
                 <div className="xl:col-span-2 space-y-6">
                     
                     {/* Invoice Meta */}
-                    <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white p-4 sm:p-8 rounded-[2rem] border border-gray-100 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -460,7 +460,7 @@ export default function NewPurchasePage() {
                     {/* Product Search & Table */}
                     <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden min-h-[500px] flex flex-col">
                         
-                        <div className="p-8 border-b border-gray-100 bg-gray-50/30">
+                        <div className="p-4 sm:p-8 border-b border-gray-100 bg-gray-50/30">
                             <div className="relative group">
                                 <ScanLine className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={24} />
                                 <input 

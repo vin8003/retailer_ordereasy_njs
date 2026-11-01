@@ -199,7 +199,7 @@ export default function SuppliersPage() {
     };
 
     return (
-        <div className="p-4 sm:p-8 max-w-7xl mx-auto font-sans">
+        <div className="p-0 sm:p-8 max-w-7xl mx-auto font-sans">
             <Toaster position="top-right" />
             
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-10">

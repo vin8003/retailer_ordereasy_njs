@@ -308,7 +308,7 @@ export default function ProfilePage() {
     if (!profile) return null;
 
     return (
-        <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+        <div className="p-0 sm:p-6 space-y-6 bg-slate-50 min-h-screen">
             <PhoneVerification
                 isOpen={showVerification}
                 onClose={() => setShowVerification(false)}
@@ -347,10 +347,10 @@ export default function ProfilePage() {
                 {/* Left Column: Image & Contact */}
                 <div className="space-y-6">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <CardTitle>Display Picture</CardTitle>
                         </CardHeader>
-                        <CardContent className="flex flex-col items-center gap-4">
+                        <CardContent className="px-4 sm:px-6 flex flex-col items-center gap-4">
                             <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
                                 <AvatarImage src={shopImageFile ? URL.createObjectURL(shopImageFile) : formatImageUrl(profile.shopImage)} />
                                 <AvatarFallback className="text-4xl">{profile.shopName?.[0]}</AvatarFallback>
@@ -378,10 +378,10 @@ export default function ProfilePage() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <CardTitle>Contact Info</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="px-4 sm:px-6 space-y-4">
                             <div className="space-y-2">
                                 <Label>Email</Label>
                                 <Input disabled={!isEditing} value={formData.contactEmail} onChange={e => setFormData({ ...formData, contactEmail: e.target.value })} />
@@ -419,13 +419,13 @@ export default function ProfilePage() {
                 {/* Middle & Right: Details Form */}
                 <div className="md:col-span-2 space-y-6">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <div className="flex items-center gap-2">
                                 <Store className="h-5 w-5 text-blue-600" />
                                 <CardTitle>Basic Information</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="px-4 sm:px-6 space-y-4">
                             <div className="space-y-2">
                                 <Label>Shop Name</Label>
                                 <Input data-testid="profile-shop-name" disabled={!isEditing} value={formData.shopName} onChange={e => setFormData({ ...formData, shopName: e.target.value })} />
@@ -475,13 +475,13 @@ export default function ProfilePage() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <div className="flex items-center gap-2">
                                 <MapPin className="h-5 w-5 text-green-600" />
                                 <CardTitle>Address</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="px-4 sm:px-6 space-y-4">
                             <div className="space-y-2">
                                 <Label>Address Line 1</Label>
                                 <Input disabled={!isEditing} value={formData.addressLine1} onChange={e => setFormData({ ...formData, addressLine1: e.target.value })} />
@@ -528,13 +528,13 @@ export default function ProfilePage() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <div className="flex items-center gap-2">
                                 <CreditCard className="h-5 w-5 text-purple-600" />
                                 <CardTitle>Business & Payment</CardTitle>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="px-4 sm:px-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Business Type</Label>
@@ -612,11 +612,11 @@ export default function ProfilePage() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <CardTitle>Delivery Settings</CardTitle>
                             <CardDescription>Configure how you deliver to customers</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="px-4 sm:px-6 space-y-6">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-0.5">
                                     <Label>Offers Delivery</Label>
@@ -679,11 +679,11 @@ export default function ProfilePage() {
                     </Card>
 
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <CardTitle>Delivery Charges</CardTitle>
                             <CardDescription>Configure delivery fees and free delivery thresholds</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="px-4 sm:px-6 space-y-6">
                             <DeliveryFeeSettings
                                 disabled={!isEditing}
                                 mode={formData.deliveryFeeMode ?? 'flat'}
@@ -705,14 +705,14 @@ export default function ProfilePage() {
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="px-4 sm:px-6">
                             <div className="flex items-center gap-2">
                                 <Printer className="h-5 w-5 text-gray-600" />
                                 <CardTitle>Receipt Customization</CardTitle>
                             </div>
                             <CardDescription>Configure how your printed receipts look</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="px-4 sm:px-6 space-y-4">
                             <div className="flex items-center justify-between border rounded-lg p-4 bg-slate-50">
                                 <div className="space-y-0.5">
                                     <Label>Show GST Number</Label>
