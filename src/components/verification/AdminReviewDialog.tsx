@@ -107,11 +107,13 @@ export default function AdminReviewDialog({ profileId, onClose, onChanged }: Pro
                 setDetail(d);
                 // Private documents need the auth header, so fetch them as blobs.
                 for (const doc of d.documents) {
+                    if (!alive) return; // closed meanwhile: stop pulling private files
                     try {
                         const blob = await adminService.fetchVerificationDocument(profileId, doc.id);
+                        if (!alive) return;
                         const url = URL.createObjectURL(blob.data);
                         created.push(url);
-                        if (alive) setDocUrls((prev) => ({ ...prev, [doc.id]: url }));
+                        setDocUrls((prev) => ({ ...prev, [doc.id]: url }));
                     } catch {
                         /* shown as unavailable */
                     }

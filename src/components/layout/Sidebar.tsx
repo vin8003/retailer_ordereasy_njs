@@ -20,39 +20,14 @@ import {
     BookOpen,
     Barcode,
     Tag,
-    ShieldCheck
+    ShieldCheck,
+    Flag
 } from 'lucide-react';
-import { authService } from '@/services/api';
+import { ADMIN_NAV, useIsAdmin } from '@/hooks/useIsAdmin';
 
 const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
     const pathname = usePathname();
-    const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-        if (typeof window !== 'undefined') {
-            try {
-                const saved = localStorage.getItem('user_profile');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    return Boolean(parsed.is_admin);
-                }
-            } catch (e) {}
-        }
-        return false;
-    });
-
-    useEffect(() => {
-        authService.fetchAuthProfile()
-            .then((res) => {
-                if (res.data && typeof res.data.is_admin === 'boolean') {
-                    setIsAdmin(res.data.is_admin);
-                    try {
-                        const saved = localStorage.getItem('user_profile');
-                        const current = saved ? JSON.parse(saved) : {};
-                        localStorage.setItem('user_profile', JSON.stringify({ ...current, ...res.data }));
-                    } catch (e) {}
-                }
-            })
-            .catch(() => {});
-    }, []);
+    const isAdmin = useIsAdmin();
 
     const handleLogout = () => {
         // Clear tokens and redirect
@@ -82,7 +57,10 @@ const Sidebar = ({ pendingCount }: { pendingCount: number }) => {
     ];
 
     const adminNavItems = isAdmin
-        ? [{ label: 'Admin Panel', icon: ShieldCheck, href: '/dashboard/admin/verifications' }]
+        ? [
+            { ...ADMIN_NAV[0], icon: ShieldCheck },
+            { ...ADMIN_NAV[1], icon: Flag },
+        ]
         : [];
 
     const navItems = [...baseNavItems, ...adminNavItems];
