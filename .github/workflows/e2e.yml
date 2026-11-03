@@ -2,6 +2,7 @@ name: e2e
 
 # Runs the shared Playwright journeys (RetailerCustomerPlatform/e2e) against this PR's code.
 # The suite, seed and stack setup live in RetailerCustomerPlatform; this file only passes our ref.
+# Pin to an RCP main SHA (never a PR branch). No path filters: the required check "e2e / e2e" must report on every PR.
 on:
   pull_request:
   push:
@@ -9,10 +10,10 @@ on:
 
 jobs:
   e2e:
-    uses: vin8003/RetailerCustomerPlatform/.github/workflows/e2e.yml@72627d633f34203712881c38032df070ac75a27e
+    uses: vin8003/RetailerCustomerPlatform/.github/workflows/e2e.yml@a4b835f6f3d99be174d8268c3e865a222f7208a5
     with:
       area: retailer
-      rcp_ref: 72627d633f34203712881c38032df070ac75a27e
+      rcp_ref: a4b835f6f3d99be174d8268c3e865a222f7208a5
       retailer_ref: ${{ github.event.pull_request.head.sha || github.sha }}
     secrets:
       E2E_REPO_TOKEN: ${{ secrets.E2E_REPO_TOKEN }}
