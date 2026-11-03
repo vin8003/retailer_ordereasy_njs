@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { prepareImageForUpload, uploadErrorMessage } from '@/lib/imageUpload';
 import { API_ORIGIN, authService, notifyVerificationChanged } from '@/services/api';
 import { clearAllSessionCaches } from '@/services/sessionCache';
 import { Button } from '@/components/ui/button';
@@ -282,6 +283,8 @@ export default function ProfilePage() {
                 const label = fieldLabels[firstField] || firstField.replace(/_/g, ' ');
                 const msg = Array.isArray(firstMsg) ? firstMsg[0] : firstMsg;
                 toast.error(`${label}: ${msg}`);
+            } else if (error.response?.status === 413 || !error.response) {
+                toast.error(uploadErrorMessage(error));
             } else {
                 toast.error(errData?.detail || errData?.error || "Failed to update profile");
             }
@@ -368,8 +371,12 @@ export default function ProfilePage() {
                                         type="file"
                                         className="hidden"
                                         accept="image/*"
-                                        onChange={(e) => {
-                                            if (e.target.files?.[0]) setShopImageFile(e.target.files[0]);
+                                        onChange={async (e) => {
+                                            const f = e.target.files?.[0];
+                                            e.target.value = '';
+                                            if (!f) return;
+                                            try { setShopImageFile(await prepareImageForUpload(f)); }
+                                            catch (err: any) { toast.error(err.message); }
                                         }}
                                     />
                                 </div>
@@ -588,8 +595,12 @@ export default function ProfilePage() {
                                                 type="file"
                                                 className="hidden"
                                                 accept="image/*"
-                                                onChange={(e) => {
-                                                    if (e.target.files?.[0]) setQrCodeFile(e.target.files[0]);
+                                                onChange={async (e) => {
+                                                    const f = e.target.files?.[0];
+                                                    e.target.value = '';
+                                                    if (!f) return;
+                                                    try { setQrCodeFile(await prepareImageForUpload(f)); }
+                                                    catch (err: any) { toast.error(err.message); }
                                                 }}
                                             />
                                         </div>

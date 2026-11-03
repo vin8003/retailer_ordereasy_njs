@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, FileUp, Loader2, Lock, ShieldCheck } from 'lucide
 import { toast } from 'sonner';
 
 import { authService, notifyVerificationChanged, verificationService } from '@/services/api';
+import { prepareImageForUpload, uploadErrorMessage } from '@/lib/imageUpload';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,17 +42,16 @@ function UploadButton({
     const [busy, setBusy] = useState(false);
     const pick = async (file: File | undefined) => {
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('File must be 5 MB or smaller.');
-            return;
-        }
         setBusy(true);
         try {
-            await verificationService.uploadDocument(kind, file);
+            const ready = await prepareImageForUpload(file);
+            await verificationService.uploadDocument(kind, ready);
             toast.success('Uploaded');
             onUploaded();
-        } catch {
-            /* the API layer shows the error */
+        } catch (err: any) {
+            // The API layer already toasts any answer the server sent; the rest is ours.
+            if (!err?.response) toast.error(err?.name === 'AxiosError' ? uploadErrorMessage(err) : err.message);
+            else if (err.response.status === 413) toast.error(uploadErrorMessage(err));
         } finally {
             setBusy(false);
             if (input.current) input.current.value = '';
